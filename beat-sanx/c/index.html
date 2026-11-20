@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beat Sanx · Friend Challenge</title>
+<meta name="theme-color" content="#120634">
+<meta property="og:title" content="You have been challenged on Beat Sanx!">
+<meta property="og:description" content="Same pattern. Fair fight. Beat your friend's score and win 2× coins.">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#fff;background:radial-gradient(120% 70% at 50% 0,#743ae8 0%,#2b0e6b 45%,#0b0520 85%)}
+  .box{width:100%;max-width:380px;text-align:center}
+  .k{font-size:12px;font-weight:900;letter-spacing:3px;color:#c4a7ff}
+  h1{font-size:30px;font-weight:900;margin:8px 0 6px;line-height:1.15}
+  p{font-size:15px;line-height:1.5;color:rgba(233,221,255,.8)}
+  .who{font-size:18px;font-weight:800;margin-top:14px}
+  .big{font-size:64px;font-weight:900;line-height:1}
+  .code{margin:18px 0 6px;padding:12px;border-radius:14px;border:1.5px dashed #9a6df5;background:rgba(0,0,0,.3);font:700 13px ui-monospace,monospace;word-break:break-all}
+  .btn{display:block;width:100%;margin-top:12px;padding:16px;border-radius:16px;border:0;font-size:17px;font-weight:900;color:#fff;text-decoration:none;background:linear-gradient(180deg,#9a6df5,#743ae8);box-shadow:0 5px 0 #2e0f73,0 12px 24px rgba(116,58,232,.45);cursor:pointer}
+  .btn.ghost{background:rgba(255,255,255,.08);box-shadow:none;border:1px solid rgba(154,109,245,.5);font-size:15px}
+  ol{text-align:left;margin:18px 0 0 22px;font-size:14px;line-height:1.7;color:rgba(233,221,255,.85)}
+  .ok{font-size:13px;color:#c4a7ff;min-height:18px;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="k">⚔ FRIEND CHALLENGE</div>
+  <h1>You've been challenged on Beat Sanx!</h1>
+  <div id="info"></div>
+  <div class="code" id="code">No challenge code in this link</div>
+  <button class="btn" id="copy">COPY CODE</button>
+  <div class="ok" id="ok"></div>
+  <a class="btn ghost" href="https://play.google.com/store/apps/details?id=com.sanxgraphikians.beatsanx">Get Beat Sanx on Google Play</a>
+  <ol>
+    <li>Have the app? This link opens it directly.</li>
+    <li>If not, copy the code and install Beat Sanx.</li>
+    <li>Open <b>Challenge a Friend</b> → <b>Paste</b>.</li>
+  </ol>
+</div>
+<script>
+  var c = new URLSearchParams(location.search).get('c') || '';
+  var ok = /^BSX-[CR]1\.[A-Za-z0-9_\-.]+$/.test(c);
+  if (ok) {
+    document.getElementById('code').textContent = c;
+    try {
+      var p = c.slice(4).split('.');
+      if (p[0] === 'C1') {
+        var s = p[8].replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '=';
+        var name = decodeURIComponent(escape(atob(s)));
+        var modes = ['Classic', 'Reverse', 'Speed', 'Twin', 'Chaos', 'Ghost', 'Negative', 'Focus'];
+        var box = document.getElementById('info');
+        var who = document.createElement('div'); who.className = 'who'; who.textContent = name + ' cleared';
+        var big = document.createElement('div'); big.className = 'big'; big.textContent = p[5];
+        var sub = document.createElement('p'); sub.textContent = 'levels in ' + (modes[+p[3]] || 'Classic') + (+p[6] ? ' · bet ' + p[6] + ' coins' : '') + '. Can you beat it?';
+        box.appendChild(who); box.appendChild(big); box.appendChild(sub);
+      }
+    } catch (e) {}
+  }
+  document.getElementById('copy').onclick = function () {
+    if (!ok) return;
+    var done = function () { document.getElementById('ok').textContent = 'Copied! Now open Beat Sanx → Challenge a Friend → Paste'; };
+    if (navigator.clipboard) navigator.clipboard.writeText(c).then(done, done); else done();
+  };
+</script>
+</body>
+</html>

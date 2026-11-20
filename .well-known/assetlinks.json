@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.sanxgraphikians.beatsanx",
+      "sha256_cert_fingerprints": [
+        "AC:3F:A2:36:B0:62:42:AF:BC:B6:30:35:69:BE:2F:3E:89:4F:7B:0F:50:2A:9E:AA:18:01:96:D5:E7:71:77:F9"
+      ]
+    }
+  }
+]
