@@ -119,7 +119,7 @@ const REC = (() => {
     const total = P.segs.reduce((a, s) => a + (s.b - s.a) / s.rate, 0) + 4.8;
     let T = 0; const tStart = performance.now();
     const drawFrame = (ts, seg, segU, outT) => {
-      x.setTransform(sc, 0, 0, sc, 0, 0);
+      x.setTransform(sc, 0, 0, sc, 0, 0); C.setRS(sc);
       C.bg(x, A, outT, null, 0.5, 'studio', 0.6);
       /* frame panels */
       x.fillStyle = 'rgba(10,4,30,.55)'; C.rr(x, 36, 60, W - 72, 980, 44); x.fill(); x.strokeStyle = 'rgba(154,109,245,.6)'; x.lineWidth = 4; x.stroke();
@@ -163,7 +163,7 @@ const REC = (() => {
     /* outro */
     SND.beat.fill(); SND.crash();
     const o0 = performance.now(), best = data.res ? (data.res.tiles || data.res.levels || 0) : 0;
-    await new Promise(res => { const loop = () => { const u = (performance.now() - o0) / 1000; x.setTransform(sc, 0, 0, sc, 0, 0); C.bg(x, A, T + u, null, 0.5, 'arena', 0.6); C.endCard(x, A, T + u, T, { title: best ? `BEAT ${data.creator}'S ${best}!` : 'CAN YOU BEAT IT?', line: 'Same game. Your turn.', footer: '500+ LEVELS · DUELS · DAILY BEAT' }); px.drawImage(out, 0, 0, 270, 480); if (u >= 4.8) return res(); requestAnimationFrame(loop); }; requestAnimationFrame(loop); });
+    await new Promise(res => { const loop = () => { const u = (performance.now() - o0) / 1000; x.setTransform(sc, 0, 0, sc, 0, 0); C.setRS(sc); C.bg(x, A, T + u, null, 0.5, 'arena', 0.6); C.endCard(x, A, T + u, T, { title: best ? `BEAT ${data.creator}'S ${best}!` : 'CAN YOU BEAT IT?', line: 'Same game. Your turn.', footer: '500+ LEVELS · DUELS · DAILY BEAT' }); px.drawImage(out, 0, 0, 270, 480); if (u >= 4.8) return res(); requestAnimationFrame(loop); }; requestAnimationFrame(loop); });
     if (mus) mus.stop();
     rec.stop(); await done; SND.beat.stop(); SND.beat.lock(false); SND.rec(false); try { srcNode && srcNode.disconnect(); } catch (e) { }
     URL.revokeObjectURL(vid.src);

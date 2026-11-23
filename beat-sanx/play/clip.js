@@ -18,6 +18,17 @@ const CLIP = (() => {
   const F = (w, s) => `${w} ${Math.round(s)}px Inter, system-ui, sans-serif`;
   const FT = s => `${Math.round(s)}px 'Lilita One', Inter, sans-serif`;     // game display font (headlines)
   const FN = s => `${Math.round(s)}px Anton, Inter, sans-serif`;            // numbers
+  /* hue rotate + brightness of a hex colour (same maths as the CSS filter, done once and cached) */
+  const HS = new Map();
+  function hueShift(hex, deg, br) {
+    const key = hex + deg + br; if (HS.has(key)) return HS.get(key);
+    let r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+    const a = deg * Math.PI / 180, c = Math.cos(a), s2 = Math.sin(a);
+    const m = [0.213 + c * 0.787 - s2 * 0.213, 0.715 - c * 0.715 - s2 * 0.715, 0.072 - c * 0.072 + s2 * 0.928, 0.213 - c * 0.213 + s2 * 0.143, 0.715 + c * 0.285 + s2 * 0.140, 0.072 - c * 0.072 - s2 * 0.283, 0.213 - c * 0.213 - s2 * 0.787, 0.715 - c * 0.715 + s2 * 0.715, 0.072 + c * 0.928 + s2 * 0.072];
+    const f = v => Math.max(0, Math.min(255, Math.round(v * br))).toString(16).padStart(2, '0');
+    const out = '#' + f(m[0] * r + m[1] * g + m[2] * b) + f(m[3] * r + m[4] * g + m[5] * b) + f(m[6] * r + m[7] * g + m[8] * b);
+    HS.set(key, out); return out;
+  }
   function rr(x, a, b, w, h, r) { r = Math.min(r, w / 2, h / 2); x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r); x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath(); }
   function mul(seed) { let t = seed >>> 0; return () => { t = (t + 0x6D2B79F5) >>> 0; let r = Math.imul(t ^ (t >>> 15), 1 | t); r ^= r + Math.imul(r ^ (r >>> 7), 61 | r); return ((r ^ (r >>> 14)) >>> 0) / 4294967296; }; }
   function makeSeq(rng, n, g) { const s = []; while (s.length < n) { const v = Math.floor(rng() * g * g); if (s.length && v === s[s.length - 1]) continue; s.push(v); } return s; }
@@ -50,6 +61,23 @@ const CLIP = (() => {
   const lookSkin = (style, v) => (v | 0) > 1 ? LOOKS.skins[(v - 2 + hashS(style)) % LOOKS.skins.length] : null;
   const S0 = { climb: 'arena', play: 'studio', duel: 'versus', rush: 'club', close: 'space', spot: 'studio', brag: 'arena' };
   function lookName(style, v) { const L = look(style, v, S0[style] || 'studio'), sk = lookSkin(style, v); return [NAMES[L.world], sk ? D.skin(sk).name + ' skin' : 'Classic skin', NAMES[L.frame], NAMES[L.type], NAMES[L.trans]].join(' · '); }
+
+  /* ================= SPRITE CACHE =================
+     Heavy, mostly static things (glows, shadows, phone frame, headline text) are drawn ONCE into an
+     offscreen canvas at the output resolution and then just stamped every frame. Keeps every frame
+     well under 33 ms so videos record smoothly at 30 fps even on ordinary laptops. */
+  let RS = 0.5;                       // output pixels per design pixel (set every frame)
+  const SPR = new Map();
+  function sprite(key, w, h, draw, q = 1) {
+    const k = key + '@' + RS.toFixed(3) + 'q' + q; let s2 = SPR.get(k);
+    if (!s2) {
+      if (SPR.size > 400) SPR.clear();
+      const r = RS * q, c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(w * r)); c.height = Math.max(1, Math.ceil(h * r));
+      const g = c.getContext('2d'); g.scale(r, r); draw(g); s2 = { c, w, h }; SPR.set(k, s2);
+    }
+    return s2;
+  }
+  const stamp = (x, sp, X, Y, w = sp.w, h = sp.h) => x.drawImage(sp.c, X, Y, w, h);
 
   function canRecord() { return !!(window.MediaRecorder && HTMLCanvasElement.prototype.captureStream); }
   function pickMime() {
@@ -140,10 +168,22 @@ const CLIP = (() => {
     if (wash && wash.a > 0.01) { const w = x.createRadialGradient(W / 2, H * 0.52, 20, W / 2, H * 0.52, H * 0.62); w.addColorStop(0, wash.c + '55'); w.addColorStop(1, wash.c + '00'); x.globalAlpha = wash.a; x.fillStyle = w; x.fillRect(0, 0, W, H); x.globalAlpha = 1; }
   }
   function vignette(x, red = 0) {
-    const v = x.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.78); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, red ? `rgba(170,0,35,${0.5 * red + 0.35})` : 'rgba(0,0,0,.55)');
-    x.fillStyle = v; x.fillRect(0, 0, W, H);
+    const vs = sprite('vig', W, H, g => { const v = g.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.78); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.55)'); g.fillStyle = v; g.fillRect(0, 0, W, H); }, 0.5);
+    stamp(x, vs, 0, 0, W, H);
+    if (red > 0.01) { const rv = sprite('vigR', W, H, g => { const v = g.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.78); v.addColorStop(0, 'rgba(170,0,35,0)'); v.addColorStop(1, 'rgba(170,0,35,.85)'); g.fillStyle = v; g.fillRect(0, 0, W, H); }, 0.5); x.save(); x.globalAlpha = Math.min(1, red); stamp(x, rv, 0, 0, W, H); x.restore(); }
   }
   function bigText(x, t, X, Y, size, o = {}) {
+    if (o._raw || !t || size < 6) return bigTextRaw(x, t, X, Y, size, o);
+    const { max = 940, align = 'center', font = 'title' } = o, fnt = v => font === 'num' ? FN(v) : FT(v);
+    let sz = Math.round(size); x.font = fnt(sz); let tw = x.measureText(t).width; while (tw > max && sz > 20) { sz -= 3; x.font = fnt(sz); tw = x.measureText(t).width; }
+    const ty = o.type || LK.type, key = ['T', t, sz, ty, o.c1, o.c2, o.glow, o.stroke, font].join('|');
+    const pad = sz * 0.75, w = tw + pad * 2 + sz * 0.25, h = sz * 1.9;
+    const sp = sprite(key, w, h, g => { g.font = fnt(sz); bigTextRaw(g, t, pad, sz * 1.2, sz, Object.assign({}, o, { align: 'left', max: 1e9, type: ty })); }, 1.15);
+    const ox = align === 'center' ? tw / 2 + pad : align === 'right' ? tw + pad : pad;
+    stamp(x, sp, X - ox, Y - sz * 1.2);
+    return sz;
+  }
+  function bigTextRaw(x, t, X, Y, size, o = {}) {
     const { max = 940, c1 = '#ffffff', c2 = '#e3d4ff', glow = 0.35, align = 'center', font = 'title' } = o;
     let sz = size; const fnt = v => font === 'num' ? FN(v) : FT(v);
     x.font = fnt(sz); while (x.measureText(t).width > max && sz > 20) { sz -= 3; x.font = fnt(sz); }
@@ -158,7 +198,7 @@ const CLIP = (() => {
       x.fillStyle = '#2b0e6b'; x.fillText(t, X + sz * 0.07, Y + sz * 0.1); x.fillStyle = '#743ae8'; x.fillText(t, X + sz * 0.035, Y + sz * 0.05);
       x.fillStyle = o.c2 && o.c2 !== '#e3d4ff' && o.c2 !== '#e6d8ff' ? o.c2 : '#ffffff'; x.fillText(t, X, Y); return sz;
     }
-    if (ty === 'slant' && !o._sl) { x.save(); x.translate(X, Y); x.transform(1, 0, -0.2, 1, 0, 0); const r2 = bigText(x, t, 0, 0, sz, Object.assign({}, o, { _sl: 1, type: 'gloss' })); x.restore(); return r2; }
+    if (ty === 'slant' && !o._sl) { x.save(); x.translate(X, Y); x.transform(1, 0, -0.2, 1, 0, 0); const r2 = bigTextRaw(x, t, 0, 0, sz, Object.assign({}, o, { _sl: 1, type: 'gloss' })); x.restore(); return r2; }
     /* hard 3D drop */
     x.fillStyle = '#12052f'; x.strokeStyle = '#12052f'; x.lineWidth = sz * 0.2;
     x.strokeText(t, X, Y + sz * 0.1); x.fillText(t, X, Y + sz * 0.1);
@@ -214,14 +254,14 @@ const CLIP = (() => {
     x.fillStyle = 'rgba(10,4,30,.62)'; rr(x, -pad, -pad, size + pad * 2, size + pad * 2, size * 0.075); x.fill();
     x.strokeStyle = st.wrong != null ? `rgba(255,45,90,${0.5 + 0.5 * (st.wrongA || 0)})` : 'rgba(154,109,245,.55)'; x.lineWidth = 3; x.stroke();
     for (let i = 0; i < g * g; i++) {
-      const r = Math.floor(i / g), c = i % g, X = c * (ts + gap), Y = r * (ts + gap), k = i % 9, v = Math.floor(i / 9), col = colors[k];
+      const r = Math.floor(i / g), c = i % g, X = c * (ts + gap), Y = r * (ts + gap), k = i % 9, v = Math.floor(i / 9), col = v ? hueShift(colors[k], v === 1 ? 28 : -30, v === 1 ? 1.08 : 0.92) : colors[k];
       const L = (st.lit && st.lit[i]) || 0, P = (st.press && st.press[i]) || 0, isW = st.wrong === i ? Math.max(0.35, st.wrongA || 0) : 0, on = Math.max(L, P);
       pos[i] = { x: cx + X + ts / 2 - size / 2, y: cy + Y + ts / 2 - size / 2, s: ts };
       const sc = 1 + L * 0.06 - P * 0.05, R = ts * 0.22;
       x.save(); x.translate(X + ts / 2, Y + ts / 2); x.scale(sc, sc); x.translate(-ts / 2, -ts / 2);
-      if (v) x.filter = v === 1 ? 'hue-rotate(28deg) brightness(1.08)' : 'hue-rotate(-30deg) brightness(.92)';
-      if (L > 0) { x.shadowColor = col; x.shadowBlur = ts * 0.55 * L; }
-      x.fillStyle = isW ? '#ff2d5a' : col; rr(x, 0, 0, ts, ts, R); x.fill(); x.shadowBlur = 0;
+
+      if (L > 0.02) { const gw = x.createRadialGradient(ts / 2, ts / 2, ts * 0.35, ts / 2, ts / 2, ts * 0.95); gw.addColorStop(0, col); gw.addColorStop(1, col.length === 7 ? col + '00' : 'rgba(0,0,0,0)'); x.save(); x.globalAlpha *= 0.85 * L; x.fillStyle = gw; x.fillRect(-ts * 0.5, -ts * 0.5, ts * 2, ts * 2); x.restore(); }
+      x.fillStyle = isW ? '#ff2d5a' : col; rr(x, 0, 0, ts, ts, R); x.fill();
       x.save(); rr(x, 0, 0, ts, ts, R); x.clip();
       /* inner bevel like the app: light top edge, dark bottom edge */
       x.fillStyle = 'rgba(255,255,255,.25)'; x.fillRect(0, 0, ts, ts * 0.035);
@@ -234,7 +274,7 @@ const CLIP = (() => {
       /* lit glow */
       if (L > 0) { const gl = x.createRadialGradient(ts / 2, ts / 2, 0, ts / 2, ts / 2, ts * 0.8); gl.addColorStop(0, `rgba(255,255,255,${0.45 * L})`); gl.addColorStop(0.6, 'rgba(255,255,255,0)'); x.fillStyle = gl; x.fillRect(0, 0, ts, ts); }
       if (P > 0.3 || L > 0.85) { x.strokeStyle = `rgba(255,255,255,${Math.max(P, L)})`; x.lineWidth = ts * 0.06; rr(x, ts * 0.03, ts * 0.03, ts * 0.94, ts * 0.94, R * 0.9); x.stroke(); }
-      x.restore(); x.filter = 'none';
+      x.restore();
       if (st.newT === i && L > 0) { x.font = F(900, ts * 0.1); const tw = x.measureText('NEW').width + ts * 0.1; x.fillStyle = '#fff'; rr(x, ts / 2 - tw / 2, ts * 0.06, tw, ts * 0.15, ts * 0.04); x.fill(); x.fillStyle = '#743ae8'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('NEW', ts / 2, ts * 0.135); x.textBaseline = 'alphabetic'; }
       if (isW) { x.strokeStyle = '#fff'; x.lineWidth = ts * 0.07; x.lineCap = 'round'; x.beginPath(); x.moveTo(ts * 0.32, ts * 0.32); x.lineTo(ts * 0.68, ts * 0.68); x.moveTo(ts * 0.68, ts * 0.32); x.lineTo(ts * 0.32, ts * 0.68); x.stroke(); }
       if (st.nums && st.nums[i] != null) { const txt = String(st.nums[i]); x.fillStyle = 'rgba(10,4,30,.55)'; rr(x, ts * 0.18, ts * 0.18, ts * 0.64, ts * 0.64, ts * 0.32); x.fill(); x.font = FN(ts * (txt.length > 3 ? 0.22 : 0.4)); x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(txt, ts / 2, ts / 2 + ts * 0.02); x.textBaseline = 'alphabetic'; }
@@ -284,7 +324,7 @@ const CLIP = (() => {
     }
   }
   function avatarDisc(x, img, X, Y, R, ring = '#c4a7ff', label) {
-    if (R <= 0) return;
+    if (!(R > 8)) return;
     x.save(); x.fillStyle = '#743ae8'; x.beginPath(); x.arc(X, Y, R, 0, 7); x.fill();
     if (img) { x.save(); x.beginPath(); x.arc(X, Y, R - 6, 0, 7); x.clip(); x.drawImage(img, X - R, Y - R, R * 2, R * 2); x.restore(); }
     x.strokeStyle = ring; x.lineWidth = Math.max(4, R * 0.06); x.beginPath(); x.arc(X, Y, R, 0, 7); x.stroke(); x.restore();
@@ -305,27 +345,31 @@ const CLIP = (() => {
   function label(x, txt, Y, col = '#fff', s = 56) { x.font = F(900, s); x.fillStyle = col; x.textAlign = 'center'; x.fillText(txt, W / 2, Y); }
   /* realistic phone (titanium frame, thin bezel, dynamic island, glass) with the real game screen inside */
   function phone(x, A, t, cx, cy, ph, rot, o = {}) {
-    const pw = ph * 0.475, X = -pw / 2, Y = -ph / 2, R = pw * 0.17;
-    x.save(); x.translate(cx, cy); x.rotate(rot);
-    /* soft shadow + purple rim light */
-    x.save(); x.shadowColor = 'rgba(0,0,0,.65)'; x.shadowBlur = 90; x.shadowOffsetY = 40; x.fillStyle = '#000'; rr(x, X, Y, pw, ph, R); x.fill(); x.restore();
-    x.save(); x.shadowColor = 'rgba(154,109,245,.75)'; x.shadowBlur = 70; x.strokeStyle = 'rgba(154,109,245,.5)'; x.lineWidth = 2; rr(x, X, Y, pw, ph, R); x.stroke(); x.restore();
-    /* side buttons */
-    x.fillStyle = '#4a4360'; rr(x, X - 5, Y + ph * 0.2, 7, ph * 0.06, 3); x.fill(); rr(x, X - 5, Y + ph * 0.29, 7, ph * 0.1, 3); x.fill(); rr(x, X + pw - 2, Y + ph * 0.25, 7, ph * 0.13, 3); x.fill();
-    /* titanium frame */
-    const fg = x.createLinearGradient(X, 0, X + pw, 0); fg.addColorStop(0, '#2d2840'); fg.addColorStop(0.08, '#9d96b8'); fg.addColorStop(0.2, '#3b3552'); fg.addColorStop(0.8, '#3b3552'); fg.addColorStop(0.93, '#a59ec2'); fg.addColorStop(1, '#2d2840');
-    x.fillStyle = fg; rr(x, X, Y, pw, ph, R); x.fill();
-    const bz = pw * 0.022; x.fillStyle = '#05030a'; rr(x, X + bz, Y + bz, pw - bz * 2, ph - bz * 2, R - bz); x.fill();
-    const sp = pw * 0.045, SX = X + sp, SY = Y + sp, SW = pw - sp * 2, SH = ph - sp * 2, SR = R - sp;
-    x.save(); rr(x, SX, SY, SW, SH, SR); x.clip();
-    gameScreen(x, A, t, SX, SY, SW, SH, o);
-    /* glass reflection */
-    const gl = x.createLinearGradient(SX, SY, SX + SW, SY + SH * 0.55); gl.addColorStop(0, 'rgba(255,255,255,.16)'); gl.addColorStop(0.42, 'rgba(255,255,255,.04)'); gl.addColorStop(0.43, 'rgba(255,255,255,0)'); gl.addColorStop(1, 'rgba(255,255,255,0)');
-    x.fillStyle = gl; x.fillRect(SX, SY, SW, SH);
-    x.restore();
-    /* dynamic island */
-    x.fillStyle = '#000'; rr(x, -SW * 0.15, SY + SW * 0.035, SW * 0.3, SW * 0.085, SW * 0.0425); x.fill();
-    x.fillStyle = '#1b1530'; x.beginPath(); x.arc(SW * 0.09, SY + SW * 0.0775, SW * 0.018, 0, 7); x.fill();
+    const P0 = 860, pw = P0 * 0.475, X = -pw / 2, Y = -P0 / 2, R = pw * 0.17, pad = 140;
+    const sp = pw * 0.045, SX = X + sp, SY = Y + sp, SW = pw - sp * 2, SH = P0 - sp * 2, SR = R - sp;
+    /* static back layer: shadow, rim light, side buttons, titanium frame, black bezel */
+    const back = sprite('phoneBack', pw + pad * 2, P0 + pad * 2, g => {
+      g.translate(pad + pw / 2, pad + P0 / 2);
+      g.save(); g.shadowColor = 'rgba(0,0,0,.65)'; g.shadowBlur = 90; g.shadowOffsetY = 40; g.fillStyle = '#000'; rr(g, X, Y, pw, P0, R); g.fill(); g.restore();
+      g.save(); g.shadowColor = 'rgba(154,109,245,.75)'; g.shadowBlur = 70; g.strokeStyle = 'rgba(154,109,245,.5)'; g.lineWidth = 2; rr(g, X, Y, pw, P0, R); g.stroke(); g.restore();
+      g.fillStyle = '#4a4360'; rr(g, X - 5, Y + P0 * 0.2, 7, P0 * 0.06, 3); g.fill(); rr(g, X - 5, Y + P0 * 0.29, 7, P0 * 0.1, 3); g.fill(); rr(g, X + pw - 2, Y + P0 * 0.25, 7, P0 * 0.13, 3); g.fill();
+      const fg = g.createLinearGradient(X, 0, X + pw, 0); fg.addColorStop(0, '#2d2840'); fg.addColorStop(0.08, '#9d96b8'); fg.addColorStop(0.2, '#3b3552'); fg.addColorStop(0.8, '#3b3552'); fg.addColorStop(0.93, '#a59ec2'); fg.addColorStop(1, '#2d2840');
+      g.fillStyle = fg; rr(g, X, Y, pw, P0, R); g.fill();
+      const bz = pw * 0.022; g.fillStyle = '#05030a'; rr(g, X + bz, Y + bz, pw - bz * 2, P0 - bz * 2, R - bz); g.fill();
+    });
+    /* static front layer: glass reflection + dynamic island */
+    const front = sprite('phoneFront', pw, P0, g => {
+      g.translate(pw / 2, P0 / 2);
+      g.save(); rr(g, SX, SY, SW, SH, SR); g.clip();
+      const gl = g.createLinearGradient(SX, SY, SX + SW, SY + SH * 0.55); gl.addColorStop(0, 'rgba(255,255,255,.16)'); gl.addColorStop(0.42, 'rgba(255,255,255,.04)'); gl.addColorStop(0.43, 'rgba(255,255,255,0)'); gl.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gl; g.fillRect(SX, SY, SW, SH); g.restore();
+      g.fillStyle = '#000'; rr(g, -SW * 0.15, SY + SW * 0.035, SW * 0.3, SW * 0.085, SW * 0.0425); g.fill();
+      g.fillStyle = '#1b1530'; g.beginPath(); g.arc(SW * 0.09, SY + SW * 0.0775, SW * 0.018, 0, 7); g.fill();
+    });
+    x.save(); x.translate(cx, cy); x.rotate(rot); x.scale(ph / P0, ph / P0);
+    stamp(x, back, X - pad, Y - pad);
+    x.save(); rr(x, SX, SY, SW, SH, SR); x.clip(); gameScreen(x, A, t, SX, SY, SW, SH, o); x.restore();
+    stamp(x, front, X, Y);
     x.restore();
   }
   /* the app's game screen in miniature: status bar, HUD, prize, live board, streak bar */
@@ -354,11 +398,9 @@ const CLIP = (() => {
     const u = t - t0; if (u < 0) return;
     x.fillStyle = `rgba(5,1,20,${clamp(u / 0.35) * 0.6})`; x.fillRect(0, 0, W, H);
     /* soft light behind the phone */
-    const cy = 905, gl = x.createRadialGradient(W / 2, cy, 40, W / 2, cy, 760); gl.addColorStop(0, `rgba(154,109,245,${0.45 * clamp(u / 0.6)})`); gl.addColorStop(0.5, `rgba(116,58,232,${0.18 * clamp(u / 0.6)})`); gl.addColorStop(1, 'rgba(116,58,232,0)');
-    x.fillStyle = gl; x.fillRect(0, 0, W, H);
-    x.save(); x.globalCompositeOperation = 'lighter'; x.translate(W / 2, cy); x.rotate(u * 0.12);
-    for (let k = 0; k < 10; k++) { x.rotate(Math.PI / 5); const g = x.createLinearGradient(0, 0, 0, -1000); g.addColorStop(0, `rgba(154,109,245,${0.12 * clamp(u / 0.6)})`); g.addColorStop(1, 'rgba(154,109,245,0)'); x.fillStyle = g; x.beginPath(); x.moveTo(-20, 0); x.lineTo(20, 0); x.lineTo(130, -1000); x.lineTo(-130, -1000); x.closePath(); x.fill(); }
-    x.restore();
+    const cy = 905;
+    const rays = sprite('rays10', 2000, 2000, g => { g.translate(1000, 1000); const gl = g.createRadialGradient(0, 0, 40, 0, 0, 760); gl.addColorStop(0, 'rgba(154,109,245,.45)'); gl.addColorStop(0.5, 'rgba(116,58,232,.18)'); gl.addColorStop(1, 'rgba(116,58,232,0)'); g.fillStyle = gl; g.fillRect(-1000, -1000, 2000, 2000); for (let k = 0; k < 10; k++) { g.rotate(Math.PI / 5); const gr = g.createLinearGradient(0, 0, 0, -1000); gr.addColorStop(0, 'rgba(154,109,245,.12)'); gr.addColorStop(1, 'rgba(154,109,245,0)'); g.fillStyle = gr; g.beginPath(); g.moveTo(-20, 0); g.lineTo(20, 0); g.lineTo(130, -1000); g.lineTo(-130, -1000); g.closePath(); g.fill(); } }, 0.35);
+    x.save(); x.globalCompositeOperation = 'lighter'; x.globalAlpha = clamp(u / 0.6); x.translate(W / 2, cy); x.rotate(u * 0.12); stamp(x, rays, -1000, -1000); x.restore();
     if (A.logo) { const k = eBack(u / 0.5), s2 = 300 * k, h = s2 * A.logo.height / A.logo.width; x.globalAlpha = clamp(u / 0.2); x.drawImage(A.logo, (W - s2) / 2, 64, s2, h); x.globalAlpha = 1; }
     if (u > 0.3) slam(x, o.title || 'CAN YOU BEAT IT?', t0 + 0.3, t, W / 2, 330, 90, 99);
     if (u > 0.65) { x.globalAlpha = clamp((u - 0.65) / 0.3); sub(x, o.line || 'Think you can beat me?', W / 2, 398, 38, '#e9dcff', 700); x.globalAlpha = 1; }
@@ -366,7 +408,7 @@ const CLIP = (() => {
     if (u > 0.35) {
       const k = eBack((u - 0.35) / 0.7), e = eOut((u - 0.35) / 0.7);
       x.save(); x.globalAlpha = clamp((u - 0.35) / 0.25);
-      x.fillStyle = 'rgba(0,0,0,.45)'; x.beginPath(); x.ellipse(W / 2, 1352, 230 * k, 26 * k, 0, 0, 7); x.filter = 'blur(14px)'; x.fill(); x.filter = 'none';
+      if (k > 0.05) { x.save(); x.translate(W / 2, 1352); x.scale(1, 26 / 230); const sg = x.createRadialGradient(0, 0, 0, 0, 0, 260 * k); sg.addColorStop(0, 'rgba(0,0,0,.55)'); sg.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = sg; x.fillRect(-270 * k, -270 * k, 540 * k, 540 * k); x.restore(); }
       phone(x, A, t, W / 2 + (1 - e) * 120, cy + (1 - e) * 380 + Math.sin(u * 1.4) * 6, 860 * (0.85 + 0.15 * k), -0.055 - (1 - e) * 0.2 + Math.sin(u * 0.9) * 0.008, o);
       x.restore();
     }
@@ -374,8 +416,8 @@ const CLIP = (() => {
     if (u > 1.0) {
       const tapT = t0 + 2.2, pr = Math.max(0, 1 - Math.abs(t - tapT) / 0.14), k = eBack((u - 1.0) / 0.45) * (1 + Math.sin(u * 6) * 0.018) * (1 - pr * 0.07);
       const bw = 720 * k, bh = 140 * k, bx = W / 2 - bw / 2, by = 1470 - bh / 2;
-      x.save(); x.shadowColor = 'rgba(154,109,245,.9)'; x.shadowBlur = 50 + pr * 40; const bgB = x.createLinearGradient(0, by, 0, by + bh); bgB.addColorStop(0, '#b794ff'); bgB.addColorStop(1, '#743ae8'); x.fillStyle = bgB; rr(x, bx, by, bw, bh, bh / 2); x.fill(); x.restore();
-      x.strokeStyle = 'rgba(255,255,255,.55)'; x.lineWidth = 3; rr(x, bx + 2, by + 2, bw - 4, bh - 4, bh / 2); x.stroke();
+      const btn = sprite('dlBtn', 720 + 160, 140 + 160, g => { g.translate(80, 80); g.shadowColor = 'rgba(154,109,245,.95)'; g.shadowBlur = 55; const bgB = g.createLinearGradient(0, 0, 0, 140); bgB.addColorStop(0, '#b794ff'); bgB.addColorStop(1, '#743ae8'); g.fillStyle = bgB; rr(g, 0, 0, 720, 140, 70); g.fill(); g.shadowBlur = 0; g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 3; rr(g, 2, 2, 716, 136, 68); g.stroke(); });
+      if (k > 0.02) stamp(x, btn, bx - 80 * k, by - 80 * k, 880 * k, 300 * k);
       x.save(); rr(x, bx, by, bw, bh, bh / 2); x.clip(); const sx = bx + ((u * 520) % (bw + 400)) - 200; const sh = x.createLinearGradient(sx - 80, 0, sx + 80, 0); sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(0.5, 'rgba(255,255,255,.45)'); sh.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = sh; x.fillRect(bx, by, bw, bh); x.restore();
       bigText(x, o.cta || 'DOWNLOAD FREE', W / 2, by + bh * 0.68, 70 * k, { glow: 0, stroke: '#2b0e6b', type: 'gloss' });
       for (const d of [0, 0.12]) { const v = t - tapT - d; if (v >= 0 && v < 0.6) { const q = v / 0.6; x.strokeStyle = `rgba(255,255,255,${0.7 * (1 - q)})`; x.lineWidth = 6 * (1 - q) + 2; rr(x, bx - q * 60, by - q * 40, bw + q * 120, bh + q * 80, (bh + q * 80) / 2); x.stroke(); } }
@@ -671,8 +713,8 @@ const CLIP = (() => {
   function featCard(x, A, t, t0, f, Y, o = {}) {
     const u = t - t0; if (u < 0) return; const k = eBack(u / 0.5), s2 = (o.size || 300) * k;
     x.save(); x.translate(W / 2, Y); x.rotate((1 - clamp(u / 0.5)) * -0.4 + Math.sin(u * 1.6) * 0.03);
-    x.shadowColor = 'rgba(154,109,245,.95)'; x.shadowBlur = 70; const g = x.createLinearGradient(0, -s2 / 2, 0, s2 / 2); g.addColorStop(0, '#9a6df5'); g.addColorStop(1, '#5b21d6'); x.fillStyle = g; rr(x, -s2 / 2, -s2 / 2, s2, s2, s2 * 0.24); x.fill(); x.shadowBlur = 0;
-    x.strokeStyle = 'rgba(255,255,255,.6)'; x.lineWidth = 5; rr(x, -s2 / 2 + 6, -s2 / 2 + 6, s2 - 12, s2 - 12, s2 * 0.21); x.stroke();
+    const base = sprite('featCard', 300 + 200, 300 + 200, g => { g.translate(250, 250); g.shadowColor = 'rgba(154,109,245,.95)'; g.shadowBlur = 70; const gr = g.createLinearGradient(0, -150, 0, 150); gr.addColorStop(0, '#9a6df5'); gr.addColorStop(1, '#5b21d6'); g.fillStyle = gr; rr(g, -150, -150, 300, 300, 72); g.fill(); g.shadowBlur = 0; g.strokeStyle = 'rgba(255,255,255,.6)'; g.lineWidth = 5; rr(g, -144, -144, 288, 288, 63); g.stroke(); });
+    if (s2 > 4) stamp(x, base, -s2 / 300 * 250, -s2 / 300 * 250, s2 / 300 * 500, s2 / 300 * 500);
     if (A.fIcon) x.drawImage(A.fIcon, -s2 * 0.3, -s2 * 0.3, s2 * 0.6, s2 * 0.6);
     x.restore();
   }
@@ -819,7 +861,7 @@ const CLIP = (() => {
       lens.forEach((n, i) => {
         const last = i === lens.length - 1, wrongAt = last && (isImp || !win) ? n - 1 : -1;
         const lab = f.kind === 'challenge' ? (isImp ? `${n} TILES` : `★ ${i + 1} · ${n} TILES`) : (last ? 'FINAL STAGE' : `STAGE ${i * 3 + 2}`);
-        const s1 = playRound(n, { label: lab, boss: last, hype: last, beat: isImp ? b * 0.75 : b, pre: 1.0, after: last ? 0 : 0.8, r: { wrongAt, slowLast: last } });
+        const s1 = playRound(n, { label: lab, boss: last, hype: last, beat: isImp || n >= 9 ? b * 0.75 : n >= 8 ? b * 0.85 : b, pre: 1.0, after: last ? 0 : 0.8, r: { wrongAt, slowLast: last } });
         s1.mode = modes[i] || null; sc.push(s1);
         if (wrongAt < 0) T.cue(s1.R.end, () => { SND.beat.fill(); SND.crash(); SND.level(); }); else { const tw = s1.R.taps[wrongAt]; T.cue(tw + 0.05, () => SND.beat.mode('still')); }
         if (last) T.drop = s1.R.t0;
@@ -855,7 +897,14 @@ const CLIP = (() => {
   };
 
   /* ================= ASSETS + RENDER ================= */
-  async function assets(spec) {
+  /* assets are loaded once per skin / avatar / feature and reused (changing looks stays instant) */
+  const ACACHE = new Map();
+  function assets(spec) {
+    const f = spec.feature, key = [spec.skin || lookSkin(spec.style, spec.variation || 1) || 'player', spec.avatar || '', f ? f.kind + f.id + (f.others || []).map(o => o.icon).join() : '', (spec.colors || []).join()].join('|');
+    if (!ACACHE.has(key)) { if (ACACHE.size > 40) ACACHE.clear(); ACACHE.set(key, assets0(spec).catch(e => { ACACHE.delete(key); throw e; })); }
+    return ACACHE.get(key);
+  }
+  async function assets0(spec) {
     try { await document.fonts.load(F(900, 40)); await document.fonts.load(F(800, 30)); } catch (e) { }
     try { await document.fonts.load(FT(60)); await document.fonts.load(FN(60)); } catch (e) { }
     const sx = {}; for (const m of ['smug', 'laugh', 'shock', 'angry', 'sad']) sx[m] = await svgImg(ART.sanx(m));
@@ -898,7 +947,8 @@ const CLIP = (() => {
   /* pro intro FX on top of every hook: light burst + logo slam with a shine sweep */
   function intro(x, A, t) {
     if (t > 2.4) return;
-    if (t < 0.9) { x.save(); x.globalCompositeOperation = 'lighter'; x.translate(W / 2, 900); const a = 1 - t / 0.9; for (let k = 0; k < 16; k++) { x.rotate(Math.PI / 8); const g = x.createLinearGradient(0, 0, 0, -1100 * eOut(t / 0.5)); g.addColorStop(0, `rgba(196,167,255,${0.5 * a})`); g.addColorStop(1, 'rgba(196,167,255,0)'); x.fillStyle = g; x.beginPath(); x.moveTo(-18, -160); x.lineTo(18, -160); x.lineTo(60, -1100); x.lineTo(-60, -1100); x.closePath(); x.fill(); } x.restore(); }
+    if (t < 0.9) { const ir = sprite('introRays', 2200, 2200, g => { g.translate(1100, 1100); for (let k = 0; k < 16; k++) { g.rotate(Math.PI / 8); const gr = g.createLinearGradient(0, 0, 0, -1100); gr.addColorStop(0, 'rgba(196,167,255,.5)'); gr.addColorStop(1, 'rgba(196,167,255,0)'); g.fillStyle = gr; g.beginPath(); g.moveTo(-18, -160); g.lineTo(18, -160); g.lineTo(60, -1100); g.lineTo(-60, -1100); g.closePath(); g.fill(); } }, 0.35);
+      const e = Math.max(0.05, eOut(t / 0.5)); x.save(); x.globalCompositeOperation = 'lighter'; x.globalAlpha = 1 - t / 0.9; x.translate(W / 2, 900); x.scale(e, e); stamp(x, ir, -1100, -1100); x.restore(); }
     if (A.logo) {
       const k = t < 0.3 ? lerp(1.8, 1, eOut(t / 0.3)) : 1, lw = 400 * k, lh = lw * A.logo.height / A.logo.width, lx = (W - lw) / 2, ly = 120;
       x.globalAlpha = clamp(t / 0.1) * clamp((2.4 - t) / 0.3); x.drawImage(A.logo, lx, ly, lw, lh);
@@ -908,6 +958,8 @@ const CLIP = (() => {
   }
   function frame(x, A, T, t, scale, dt = 1 / 30) {
     if (T.look) LK = T.look;
+    RS = scale;
+    if (x.reset) x.reset(); else { x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 1; x.globalCompositeOperation = 'source-over'; x.shadowBlur = 0; x.filter = 'none'; }
     x.setTransform(scale, 0, 0, scale, 0, 0);
     T.P.kick *= Math.pow(0.86, dt * 30); T.P.pulse *= Math.pow(0.8, dt * 30);
     const c = Object.assign({}, camAt(T, t)), cm = LK.cam, tu = trAt(T, t), tk = tu == null ? 0 : 1 - Math.abs(tu);
@@ -920,7 +972,8 @@ const CLIP = (() => {
     const wash = T.wash ? T.wash(t) : null;
     bg(x, A, t, wash, (wash ? 0.8 : 0.4) + T.P.pulse * 0.35, T.world || 'studio', T.beat);
     if (T.P.pulse > 0.02) { const pg = x.createRadialGradient(W / 2, H * 0.5, 100, W / 2, H * 0.5, H * 0.7); pg.addColorStop(0, `rgba(154,109,245,${0.12 * T.P.pulse})`); pg.addColorStop(1, 'rgba(154,109,245,0)'); x.fillStyle = pg; x.fillRect(0, 0, W, H); }
-    for (const s of T.segs) if (t >= s.a && t < s.b) s.draw(x, t);
+    /* one bad frame never stops the video: the scene is skipped for that frame only */
+    for (const s of T.segs) if (t >= s.a && t < s.b) { x.save(); try { s.draw(x, t); } catch (e) { if ((frame.warned = (frame.warned || 0) + 1) < 20) console.warn('clip frame', t.toFixed(2), String(e)); } x.restore(); x.globalAlpha = 1; x.shadowBlur = 0; x.filter = 'none'; x.globalCompositeOperation = 'source-over'; }
     x.restore();
     if (T.intro !== false) intro(x, A, t);
     if (LK.mood === 'midnight') { x.fillStyle = 'rgba(4,0,24,.16)'; x.fillRect(0, 0, W, H); }
@@ -947,14 +1000,13 @@ const CLIP = (() => {
       return;
     }
     if (kind === 'glow') {
-      const a = 0.55 + 0.25 * Math.sin(t * 3);
-      x.save(); x.shadowColor = '#9a6df5'; x.shadowBlur = 36; x.strokeStyle = `rgba(196,167,255,${a})`; x.lineWidth = 7; rr(x, 22, 22, W - 44, H - 44, 70); x.stroke(); x.restore();
+      const gf = sprite('glowFrame', W, H, g => { g.shadowColor = '#9a6df5'; g.shadowBlur = 36; g.strokeStyle = 'rgba(196,167,255,1)'; g.lineWidth = 7; rr(g, 22, 22, W - 44, H - 44, 70); g.stroke(); }, 0.6);
+      x.save(); x.globalAlpha = 0.55 + 0.25 * Math.sin(t * 3); stamp(x, gf, 0, 0, W, H); x.restore();
       return;
     }
     if (kind === 'grain') {
-      const r = mul(Math.floor(t * 24) + 1); x.fillStyle = 'rgba(255,255,255,.05)';
-      for (let i = 0; i < 900; i++) x.fillRect(r() * W, r() * H, 2, 2);
-      x.fillStyle = 'rgba(0,0,0,.08)'; for (let y = 0; y < H; y += 6) x.fillRect(0, y, W, 2);
+      const n = Math.floor(t * 12) % 4, gr = sprite('grain' + n, W, H, g => { const r = mul(n * 97 + 5); g.fillStyle = 'rgba(255,255,255,.06)'; for (let i = 0; i < 1400; i++) g.fillRect(r() * W, r() * H, 2.5, 2.5); g.fillStyle = 'rgba(0,0,0,.08)'; for (let y = 0; y < H; y += 6) g.fillRect(0, y, W, 2); }, 0.5);
+      stamp(x, gr, 0, 0, W, H);
     }
   }
   /* the cut between scenes, different per variation */
@@ -1000,7 +1052,7 @@ const CLIP = (() => {
         const t = SND.now() - T0;
         /* cues are scheduled 0.12 s ahead at their exact time, so every note lands on the beat */
         while (ci < cues.length && cues[ci].t <= t + 0.12) { SND.at(T0 + cues[ci].t); try { cues[ci].fn(); } catch (e) { } SND.at(null); ci++; }
-        frame(x, A, T, Math.max(0, Math.min(t, T.total)), scale, Math.max(0.001, t - last)); last = t;
+        try { frame(x, A, T, Math.max(0, Math.min(t, T.total)), scale, Math.max(0.001, t - last)); } catch (e) { console.warn('frame', e); } last = t;
         if (onProgress) onProgress(Math.min(1, t / T.total));
         if (t >= T.total + 0.3) return res();
         requestAnimationFrame(loop);
@@ -1023,7 +1075,7 @@ const CLIP = (() => {
     const mus = withSound && music ? SND.playBuffer(music.buffer, T0, musicStart(music, T), musicVol) : null;
     return {
       total: T.total,
-      draw: tt => { const t = withSound ? SND.now() - T0 : tt; if (withSound) while (ci < cues.length && cues[ci].t <= t + 0.12) { SND.at(T0 + cues[ci].t); try { cues[ci].fn(); } catch (e) { } SND.at(null); ci++; } frame(x, A, T, Math.max(0, Math.min(t, T.total)), w / W, Math.max(0.001, t - last)); last = t; return t; },
+      draw: tt => { const t = withSound ? SND.now() - T0 : tt; if (withSound) while (ci < cues.length && cues[ci].t <= t + 0.12) { SND.at(T0 + cues[ci].t); try { cues[ci].fn(); } catch (e) { } SND.at(null); ci++; } try { frame(x, A, T, Math.max(0, Math.min(t, T.total)), w / W, Math.max(0.001, t - last)); } catch (e) { console.warn('frame', e); } last = t; return t; },
       stop: () => { if (mus) mus.stop(); if (withSound) { SND.beat.stop(); SND.beat.lock(false); SND.key(null); } }
     };
   }
@@ -1105,6 +1157,7 @@ const CLIP = (() => {
     /* song too short / drop too early: first bar line that leaves room for the whole video */
     let st = m.bar0; while (st + T.total > m.secs && st - m.barLen >= 0) st -= m.barLen; return Math.max(0, st);
   }
-  const _ = { board, bigText, slam, sub, hud, endCard, intro, assets, bg, vignette, chip, ripple, rr, clamp, eBack, eOut, finger, W, H };
+  const setRS = v => { RS = v; };
+  const _ = { setRS, phone, gameScreen, board, bigText, slam, sub, hud, endCard, intro, assets, bg, vignette, chip, ripple, rr, clamp, eBack, eOut, finger, W, H };
   return { _, make, preview, still, loadMusic, musicStart, look, lookName, lookSkin, canRecord, pickMime, STYLES: Object.keys(STYLES), COLORS };
 })();

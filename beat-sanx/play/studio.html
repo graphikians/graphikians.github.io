@@ -191,13 +191,18 @@ function captionFor(sp) { const s = STY.find(x => x.id === sp.style), list = sp.
 const TAGS = '\n\nPlay free: Beat Sanx on Google Play 🎮\n\n#memorytest #brainteaser #braingames #puzzle #beatsanx #memorychallenge #mobilegame #mindgames';
 function caption() { $('cap').value = captionFor(spec()); }
 /* ---------- variation thumbnails ---------- */
-let thumbJob = 0;
+let thumbJob = 0, thumbsLater = false;
 async function thumbs() {
   const job = ++thumbJob, base = spec({ v: 1 });
   $('vars').innerHTML = [...Array(9).keys()].map(i => `<button class="var ${i + 1 === curVar ? 'on' : ''}" data-v="${i + 1}"><canvas width="108" height="192"></canvas><i>${i + 1}</i></button>`).join('');
   $('vname').textContent = `Look ${curVar}: ${CLIP.lookName(base.style, curVar)}`;
   const cs = [...document.querySelectorAll('.var canvas')], at = { climb: 4.4, play: 7.5, duel: 10, rush: 4.5, close: 6, spot: 6.5 }[base.style] || 6;
-  for (let i = 0; i < 9; i++) { if (job !== thumbJob) return; try { await CLIP.still(spec({ v: i + 1 }), cs[i], at, 108, 192); } catch (e) { } }
+  for (let i = 0; i < 9; i++) {
+    if (job !== thumbJob) return;
+    if (busy) { thumbsLater = true; return; }            /* never compete with a running preview / recording */
+    try { await CLIP.still(spec({ v: i + 1 }), cs[i], at, 108, 192); } catch (e) { }
+    await new Promise(r => setTimeout(r, 0));
+  }
   if (job === thumbJob) showStill();
 }
 async function showStill() { if (busy) return; const sp = spec(), at = { climb: 4.4, play: 7.5, duel: 10, rush: 4.5, close: 6, spot: 6.5 }[sp.style] || 6; try { await CLIP.still(sp, $('cv'), at, 540, 960); } catch (e) { } }
@@ -211,10 +216,21 @@ $('mus').onchange = async e => { const f = e.target.files[0]; if (!f) return; $(
 $('musClear').onclick = () => { MUS = null; $('mus').value = ''; $('musInfo').textContent = 'No song selected · the game\'s own beat is used.'; };
 const withMusic = sp => { if (MUS) { sp.bpm = MUS.bpm; sp.sync = true; } return sp; };
 $('crGo').onclick = () => { const n = encodeURIComponent(($('crName').value || '').trim()), hk = encodeURIComponent(($('crHook').value || '').trim()); window.open(`index.html?creator=1${n ? '&name=' + n : ''}${hk ? '&hook=' + hk : ''}`, '_blank'); };
+/* busy guard that can never get stuck: always released, thumbnails catch up afterwards */
+function done() { busy = false; $('prev').disabled = $('make').disabled = $('batch').disabled = false; $('prev').textContent = '▶ Preview (with sound)'; if (thumbsLater) { thumbsLater = false; thumbs(); } }
+function start() { busy = true; $('make').disabled = $('batch').disabled = true; }
 $('prev').onclick = async () => {
-  if (busy) return; busy = true; SND.unlock();
-  pv = await CLIP.preview(withMusic(spec()), $('cv'), 540, 960, true, MUS, +$('mv').value);
-  const loop = () => { const t = pv.draw(); $('pg').style.width = Math.min(100, t / pv.total * 100) + '%'; if (t < pv.total + 0.2) requestAnimationFrame(loop); else { pv.stop(); busy = false; } };
+  if (pv && busy) { try { pv.stop(); } catch (e) { } pv = null; done(); return; }       // second click = stop
+  if (busy) return; start(); SND.unlock();
+  try { pv = await CLIP.preview(withMusic(spec()), $('cv'), 540, 960, true, MUS, +$('mv').value); }
+  catch (e) { $('log').textContent = 'Preview failed: ' + e.message; done(); return; }
+  $('prev').textContent = '■ Stop preview'; const me = pv;
+  const loop = () => {
+    if (pv !== me) return;
+    let t = 0; try { t = me.draw(); } catch (e) { console.warn(e); t = 0; }
+    $('pg').style.width = Math.min(100, t / me.total * 100) + '%';
+    if (t < me.total + 0.2) requestAnimationFrame(loop); else { me.stop(); pv = null; done(); }
+  };
   loop();
 };
 /* ---------- saving: a chosen folder (no prompts, best for batches) or Downloads ---------- */
@@ -260,10 +276,10 @@ async function makeOne(sp, capText, idx) {
   out.where = where; return out;
 }
 $('make').onclick = async () => {
-  if (busy) return; busy = true; SND.unlock();
+  if (busy) return; start(); $('prev').disabled = true; SND.unlock();
   try { const sp = spec(), out = await makeOne(sp, $('cap').value, 0); $('log').innerHTML = `<span class="ok">✓ Saved to ${out.where === 'folder' ? 'your folder' : 'Downloads'}</span> · ${Math.round(out.secs)} s · ${(out.blob.size / 1e6).toFixed(1)} MB · ${out.ext.toUpperCase()}` + (out.ext === 'webm' ? '\nThis browser made WEBM. Use Chrome on a laptop for MP4.' : ''); }
   catch (e) { $('log').textContent = 'Could not record: ' + e.message; }
-  busy = false;
+  done();
 };
 /* batch: rotate styles x features x looks x hooks x avatars so every video is unique */
 function batchPlan(N, d) {
@@ -282,14 +298,14 @@ function batchPlan(N, d) {
   return out;
 }
 $('batch').onclick = async () => {
-  if (busy) return; busy = true; SND.unlock();
+  if (busy) return; start(); $('prev').disabled = true; SND.unlock();
   const N = +$('bn').value, d = $('day').value, plan = batchPlan(N, d);
   for (let i = 0; i < plan.length; i++) {
     const sp = spec(Object.assign({ day: d }, plan[i]));
     try { await makeOne(sp, captionFor(sp), i + 1); } catch (e) { $('log').textContent = 'Stopped: ' + e.message; break; }
     await new Promise(r => setTimeout(r, 700));
   }
-  $('log').textContent += `\nBatch done: ${N} unique videos + captions ${DIR ? 'in your folder' : 'in Downloads'}.`; busy = false;
+  $('log').textContent += `\nBatch done: ${N} unique videos + captions ${DIR ? 'in your folder' : 'in Downloads'}.`; done();
 };
 $('copy').onclick = () => { navigator.clipboard.writeText($('cap').value); $('copy').textContent = 'Copied ✓'; setTimeout(() => $('copy').textContent = 'Copy caption', 1500); };
 </script>
