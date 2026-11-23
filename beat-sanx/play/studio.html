@@ -9,57 +9,87 @@
   *{box-sizing:border-box;margin:0;padding:0}
   body{min-height:100vh;font-family:Inter,system-ui,sans-serif;color:#fff;background:radial-gradient(120% 70% at 50% 0,#3b1580,#0b0520 75%);padding:18px}
   h1{font-size:22px;font-weight:900}h1 small{display:block;font-size:12px;font-weight:700;color:#c4a7ff;letter-spacing:1px;margin-top:2px}
-  .wrap{max-width:1150px;margin:0 auto;display:grid;grid-template-columns:minmax(260px,360px) 1fr;gap:22px;margin-top:16px}
+  .wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:minmax(260px,360px) 1fr;gap:22px;margin-top:16px;align-items:start}
   @media (max-width:760px){.wrap{grid-template-columns:1fr}}
+  .left{position:sticky;top:12px}
   .stage{aspect-ratio:9/16;border-radius:20px;overflow:hidden;border:1px solid rgba(154,109,245,.45);background:#07031a}
   .stage canvas{width:100%;height:100%;display:block}
   .card{background:rgba(255,255,255,.05);border:1px solid rgba(154,109,245,.3);border-radius:16px;padding:14px;margin-bottom:12px}
   .card b.k{display:block;font-size:11px;letter-spacing:1.4px;color:#c4a7ff;margin-bottom:8px}
   label{display:block;font-size:13px;font-weight:700;margin:8px 0 4px;color:#e4d7ff}
   select,input,textarea{width:100%;padding:10px 12px;border-radius:12px;border:1px solid rgba(154,109,245,.45);background:rgba(0,0,0,.3);color:#fff;font:700 14px Inter,sans-serif}
+  select option,select optgroup{background:#1c0a4f}
   textarea{min-height:110px;font-weight:600;font-size:13px;line-height:1.45}
   .row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1;min-width:120px}
   button{cursor:pointer;border:0;border-radius:14px;padding:13px 14px;font:900 15px Inter,sans-serif;color:#fff;background:linear-gradient(180deg,#9a6df5,#743ae8);box-shadow:0 4px 0 #2e0f73}
   button.ghost{background:rgba(255,255,255,.08);box-shadow:none;border:1px solid rgba(154,109,245,.5)}
+  button.sm{padding:8px 12px;font-size:13px;border-radius:10px}
   button:disabled{opacity:.5}
-  .styles{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+  .styles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
   @media (max-width:900px){.styles{grid-template-columns:repeat(2,1fr)}}
   .sty{padding:12px 10px;border-radius:14px;background:rgba(0,0,0,.25);border:1px solid rgba(154,109,245,.35);box-shadow:none;text-align:left;font-weight:800}
   .sty b{display:block;font-size:14px}.sty small{display:block;font-size:11px;font-weight:600;color:#d9c8ff;margin-top:3px;line-height:1.35}
   .sty.on{background:linear-gradient(180deg,#9a6df5,#743ae8);border-color:#e4d7ff}
+  .vars{display:grid;grid-template-columns:repeat(9,1fr);gap:6px}
+  @media (max-width:1000px){.vars{grid-template-columns:repeat(5,1fr)}}
+  .var{padding:0;border-radius:10px;overflow:hidden;background:#07031a;border:2px solid transparent;box-shadow:none;position:relative;aspect-ratio:9/16}
+  .var canvas{width:100%;height:100%;display:block}
+  .var i{position:absolute;left:4px;top:4px;font:900 11px Inter;background:rgba(0,0,0,.6);padding:2px 6px;border-radius:6px;font-style:normal}
+  .var.on{border-color:#e4d7ff;box-shadow:0 0 0 2px #9a6df5}
+  .vname{font-size:12.5px;color:#e4d7ff;margin-top:8px;font-weight:700}
   .pg{height:8px;border-radius:8px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:10px}.pg i{display:block;height:100%;width:0;background:linear-gradient(90deg,#743ae8,#c4a7ff)}
   .log{font-size:12.5px;color:#e4d7ff;margin-top:8px;line-height:1.6;white-space:pre-line}
   .tip{font-size:12px;color:rgba(233,221,255,.75);line-height:1.55}
+  .ok{color:#b9f6ca}
+  .vids{margin-top:12px;display:flex;flex-direction:column;gap:6px;max-height:260px;overflow:auto}
+  .vid{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.25);border:1px solid rgba(154,109,245,.3);border-radius:12px;padding:8px 10px;font-size:12.5px;font-weight:700}
+  .vid span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 </head>
 <body>
 <h1>Beat Sanx · Video Studio<small>PRO SHORTS FOR YOUTUBE SHORTS · REELS · FACEBOOK · SNAPCHAT — ZERO COST PER VIDEO</small></h1>
 <div class="wrap">
-  <div><div class="stage"><canvas id="cv"></canvas></div><div class="pg"><i id="pg"></i></div><div class="log" id="log">Pick a style, press Preview or Make video.</div></div>
+  <div class="left">
+    <div class="stage"><canvas id="cv"></canvas></div><div class="pg"><i id="pg"></i></div>
+    <div class="log" id="log">Pick a style, a feature and a variation. Press Preview or Make video.</div>
+    <div class="vids" id="vids"></div>
+  </div>
   <div>
     <div class="card"><b class="k">1 · STYLE</b><div class="styles" id="styles"></div></div>
-    <div class="card"><b class="k">2 · DETAILS (AUTO — CHANGE ONLY IF YOU WANT)</b>
-      <div class="row"><div><label>Date</label><input type="date" id="day"></div><div><label>Hook</label><select id="hook"></select></div><div><label>Quality</label><select id="q"><option value="720">720p (fast)</option><option value="1080" selected>1080p</option></select></div></div>
-      <div class="row"><div><label>Variation</label><select id="var"></select></div><div><label>Avatar (duel / end)</label><select id="av"><option value="ace">Ace</option><option value="nova">Nova</option><option value="ronin">Cyber Ronin</option><option value="astro">Astro Queen</option></select></div></div>
+    <div class="card"><b class="k">2 · FEATURE FOCUS — REAL GAME CONTENT</b>
+      <div class="row"><div><label>Show off</label><select id="feat"></select></div></div>
+      <div class="tip" id="featTip" style="margin-top:6px"></div>
+    </div>
+    <div class="card"><b class="k">3 · VARIATION — EACH ONE LOOKS DIFFERENT</b>
+      <div class="vars" id="vars"></div><div class="vname" id="vname"></div>
+    </div>
+    <div class="card"><b class="k">4 · DETAILS (AUTO — CHANGE ONLY IF YOU WANT)</b>
+      <div class="row"><div><label>Date</label><input type="date" id="day"></div><div><label>Hook</label><select id="hook"></select></div></div>
+      <div class="row"><div><label>Quality</label><select id="q"><option value="720">720p (fast)</option><option value="1080" selected>1080p</option></select></div><div><label>Avatar (duel / end)</label><select id="av"><option value="ace">Ace</option><option value="nova">Nova</option><option value="ronin">Cyber Ronin</option><option value="astro">Astro Queen</option></select></div></div>
       <div class="row" style="margin-top:12px"><button class="ghost" id="prev">▶ Preview (with sound)</button><button id="make">● Make this video</button></div>
     </div>
-    <div class="card"><b class="k">MUSIC (OPTIONAL)</b>
-      <div class="tip">Use your own song (MP3/WAV). The tool finds its beat and cuts the video on it. Use royalty-free music (YouTube Audio Library, Pixabay Music). For trending songs: export with game sounds only and add the song inside Instagram.</div>
-      <div class="row" style="margin-top:8px"><div><label>Song</label><input type="file" id="mus" accept="audio/*"></div><div><label>Music volume</label><input type="range" id="mv" min="0" max="1" step="0.05" value="0.8"></div><div><label>Tile sound volume</label><input type="range" id="sv" min="0" max="1" step="0.05" value="1"></div></div>
+    <div class="card"><b class="k">SAVE ON THIS LAPTOP</b>
+      <div class="tip">Pick a folder once and every video + caption goes straight into it (best for batches). Without a folder, videos go to your Downloads. Every finished video is also listed under the preview with a Download button.</div>
+      <div class="row" style="margin-top:8px"><button class="ghost" id="dirBtn">📁 Choose save folder</button></div>
+      <div class="log" id="dirInfo">Saving to: Downloads</div>
+    </div>
+    <div class="card"><b class="k">MUSIC (OPTIONAL) — AUTO BEAT-SYNC</b>
+      <div class="tip">Add your own song (MP3/WAV). The tool finds its exact beat, bars, drop and key. Every tile flash, tap and cut lands on the song's beat, the big moment lands on the drop, and the tile notes play in the song's key, so it sounds like one track. Use royalty-free music (YouTube Audio Library, Pixabay Music).</div>
+      <div class="row" style="margin-top:8px"><div><label>Song</label><input type="file" id="mus" accept="audio/*"></div><div><label>Music volume</label><input type="range" id="mv" min="0" max="1" step="0.05" value="0.8"></div><div><label>Tile sound volume</label><input type="range" id="sv" min="0" max="1" step="0.05" value="0.9"></div></div>
       <div class="log" id="musInfo">No song selected · the game's own beat is used.</div>
       <div class="row" style="margin-top:6px"><button class="ghost" id="musClear">Remove song</button></div>
     </div>
     <div class="card"><b class="k">🎥 CREATOR MODE — YOUR FACE + THE GAME</b>
-      <div class="tip">Opens the real game with your webcam. Play any mode and talk; when the run ends the tool auto-edits one video: game on top, your face below, slow-motion replay of the big moment, intro + DOWNLOAD FREE outro, under 50 s. Works for every team member on their own laptop — nothing is uploaded.</div>
+      <div class="tip">Opens the real game with your webcam. Play any mode and talk; when the run ends the tool auto-edits one video: game on top, your face below, slow-motion replay of the big moment, intro + DOWNLOAD FREE outro, under 50 s. It saves straight to this laptop. Works for every team member on their own laptop — nothing is uploaded.</div>
       <div class="row" style="margin-top:8px"><div><label>Creator name</label><input id="crName" maxlength="14" placeholder="RAHUL"></div><div><label>Hook text</label><input id="crHook" maxlength="26" placeholder="CAN I BEAT LEVEL 20?"></div></div>
       <div class="row" style="margin-top:10px"><button id="crGo">🎥 Open Creator Mode</button></div>
     </div>
-    <div class="card"><b class="k">3 · CAPTION (AUTO)</b><textarea id="cap"></textarea><div class="row" style="margin-top:8px"><button class="ghost" id="copy">Copy caption</button></div></div>
+    <div class="card"><b class="k">CAPTION (AUTO)</b><textarea id="cap"></textarea><div class="row" style="margin-top:8px"><button class="ghost" id="copy">Copy caption</button></div></div>
     <div class="card"><b class="k">BATCH — MANY UNIQUE VIDEOS IN ONE CLICK</b>
-      <div class="tip">Every video in a batch is different: a different style, pattern, hook, avatar and caption, so the platforms never see duplicates. Keep this tab open and in front while it records (each video records in real time, 20–40 s).</div>
-      <div class="row" style="margin-top:10px"><div><label>How many</label><select id="bn"><option>5</option><option selected>10</option><option>15</option><option>20</option></select></div><div style="display:flex;align-items:flex-end"><button id="batch" style="width:100%">Make batch</button></div></div>
+      <div class="tip">Every video is different: it rotates the styles, the features (boosters, skins, events, challenges), the 9 looks, hooks, patterns and avatars, so no two videos look the same. Keep this tab open and in front while it records (each video records in real time, 20–45 s).</div>
+      <div class="row" style="margin-top:10px"><div><label>How many</label><select id="bn"><option>5</option><option selected>10</option><option>15</option><option>20</option><option>30</option></select></div><div style="display:flex;align-items:flex-end"><button id="batch" style="width:100%">Make batch</button></div></div>
     </div>
-    <div class="card"><b class="k">POSTING TIPS</b><div class="tip">Post at 5:30–8:30 am India time (US/UK evening). Same video on Shorts + Reels + Facebook Reels. Reply to comments with the answer. Never cut the first 2 seconds — the hook stops the scroll. Post 1–3 a day, every day.</div></div>
+    <div class="card"><b class="k">POSTING TIPS</b><div class="tip">Post at 5:30–8:30 am India time (US/UK evening). Same video on Shorts + Reels + Facebook Reels. Reply to comments with the answer. Never cut the first 2 seconds — the hook stops the scroll. Post 1–3 a day, every day. Only post features that are live in the game.</div></div>
   </div>
 </div>
 <script src="data.js"></script>
@@ -84,40 +114,127 @@ const STY = [
     cap: ['Satisfying memory rhythm 🎵 What were the last 6 tiles? Comment /6 👇', 'Watch till the end… then remember the last 6 🧠', 'Rhythm + memory = this 🔥 Score yourself /6'] },
   { id: 'close', name: 'So Close!', sub: 'Two painful fails on the last tile, then FINALLY',
     hooks: [['1 TILE AWAY', 'EVERY. SINGLE. TIME.'], ['THE LAST TILE', 'IS ALWAYS THE HARDEST'], ['THIS GAME', 'HATES ME']],
-    cap: ['The last tile is ALWAYS the hardest 😭 Could you do it first try?', 'One tile away… twice 😤 Your turn 👇', 'This game hates me. Bet you need 4 tries 😂'] }
+    cap: ['The last tile is ALWAYS the hardest 😭 Could you do it first try?', 'One tile away… twice 😤 Your turn 👇', 'This game hates me. Bet you need 4 tries 😂'] },
+  { id: 'spot', name: 'Feature Spotlight', sub: 'A booster, skin, event or challenge in action', hooks: [], cap: [] }
 ];
-const TAGS = '\n\nPlay free: Beat Sanx on Google Play 🎮\n\n#memorytest #brainteaser #braingames #puzzle #beatsanx #memorychallenge #mobilegame #mindgames';
-let cur = 0;
+/* ---------- FEATURE FOCUS: real content from the game ---------- */
+const EVENTS = [
+  { id: 'bts', name: 'Beat the Sanx', icon: 'skull', desc: 'Bet coins. Beat Sanx before the clock.', period: 'DAILY', prize: 'WIN UP TO 3,600 COINS' },
+  { id: 'champ', name: 'Beat the Champion', icon: 'crown', desc: "Dethrone this week's AI champion.", period: 'WEEKLY', prize: 'TAKE THE CROWN' },
+  { id: 'oma', name: 'One Man Army', icon: 'army', desc: 'Outlast 5 AI soldiers. Sudden death.', period: 'WEEKLY', prize: 'BOUNTIES UP TO 1,000' },
+  { id: 'bco', name: 'Beat the Coins', icon: 'vault', desc: 'Raid the vault. Max coins in one run.', period: 'DAILY', prize: 'RAID THE VAULT' },
+  { id: 'tour', name: 'World Flash Tour', icon: 'globe', desc: '4 grids. A new one every week.', period: 'MONTHLY', prize: 'MONTHLY TROPHY' },
+  { id: 'mania', name: 'Sanx Mania', icon: 'flame', desc: 'Monthly score chase. Win the Sanx skin.', period: 'MONTHLY', prize: 'WIN THE SANX SKIN' },
+  ...D.ARENA.map(a => ({ id: a.id, name: a.name, icon: a.icon, desc: a.tag, period: 'DAILY', hearts: a.hearts, prize: 'WIN UP TO 4,000 COINS', modes: a.id === 'gauntlet' ? ['CLASSIC', 'REVERSE', 'CHAOS'] : a.id === 'roulette' ? ['GHOST', 'SPEED', 'NEGATIVE'] : null }))
+];
+const fmt = n => Number(n).toLocaleString('en');
+function skinPrice(s) { if (s.cost > 0) return `${fmt(s.cost)} COINS IN THE SHOP`; if (s.cost === -3) return `UNLOCK WITH ${s.ads} AD VIEWS`; if (s.cost === -7) return 'COLLECT ALL 30 STARS'; if (s.cost === -1) return 'PRESTIGE REWARD'; if (s.cost === -2) return 'SANX EXCLUSIVE'; if (s.cost === 0) return 'FREE'; return 'SPECIAL REWARD'; }
+const SKINS = D.SKINS.filter(s => s.colors && s.colors.length >= 9 && s.id !== 'classic');
+function featureObj(key, seed = 1) {
+  if (!key || key === 'auto') return null;
+  const [kind, id] = key.split(':');
+  if (kind === 'booster') { const b = D.BOOST[id], rest = D.BOOSTERS.filter(x => x.id !== id), o1 = rest[seed % rest.length], o2 = rest[(seed * 7 + 3) % rest.length]; return { kind, id, name: b.name, icon: b.icon, desc: b.desc, price: `${fmt(b.coins)} COINS IN THE SHOP`, others: [o1, o2 === o1 ? rest[(seed + 1) % rest.length] : o2].map(o => ({ name: o.name, icon: o.icon })) }; }
+  if (kind === 'skin') { const s = D.skin(id), others = SKINS.filter(x => x.id !== id); return { kind, id, name: s.name, icon: 'star', price: skinPrice(s), count: D.SKINS.length, collection: [0, 1, 2, 3, 4, 5].map(i => others[(seed + i * 3) % others.length]).map(o => ({ name: o.name, colors: o.colors })) }; }
+  if (kind === 'event') { const e = EVENTS.find(x => x.id === id); return Object.assign({ kind }, e); }
+  if (kind === 'challenge') { if (id === 'imp') return { kind, id, name: 'Impossible 100', icon: 'brain', desc: 'One pattern. 100 tiles. Nobody has done it.' }; const c = D.CHALLENGES.find(x => x.id === id); return { kind, id, name: c.name, icon: c.icon, desc: c.tag, stars: c.stars, hearts: c.hearts || 3, prize: '30 STARS = STAR LEGEND SKIN' }; }
+  return null;
+}
+const FKEYS = [...D.BOOSTERS.map(b => 'booster:' + b.id), ...SKINS.map(s => 'skin:' + s.id), ...EVENTS.map(e => 'event:' + e.id), 'challenge:imp', ...D.CHALLENGES.map(c => 'challenge:' + c.id)];
+$('feat').innerHTML = `<option value="auto">Auto — game only (no feature)</option>
+  <optgroup label="Boosters (15)">${D.BOOSTERS.map(b => `<option value="booster:${b.id}">${b.name} — ${b.desc}</option>`).join('')}</optgroup>
+  <optgroup label="Skins (${SKINS.length})">${SKINS.map(s => `<option value="skin:${s.id}">${s.name} skin</option>`).join('')}</optgroup>
+  <optgroup label="Events (${EVENTS.length})">${EVENTS.map(e => `<option value="event:${e.id}">${e.name} — ${e.desc}</option>`).join('')}</optgroup>
+  <optgroup label="Challenges (${D.CHALLENGES.length + 1})"><option value="challenge:imp">Impossible 100</option>${D.CHALLENGES.map(c => `<option value="challenge:${c.id}">${c.name} — ${c.tag}</option>`).join('')}</optgroup>`;
+function featHooks(f) {
+  const N = f.name.toUpperCase();
+  if (f.kind === 'booster') return [['THIS BOOSTER', 'IS ILLEGAL 😳'], ['STUCK ON A LEVEL?', 'USE THIS'], ['SECRET WEAPON:', N], ['THE BOSS HAD', 'NO CHANCE']];
+  if (f.kind === 'skin') return [['NEW SKIN', 'JUST DROPPED'], ['WHICH SKIN', 'IS YOUR VIBE?'], [N, 'SKIN UNLOCKED']];
+  if (f.kind === 'event') return [["TODAY'S EVENT", N], ['ONLY 1% WIN', 'THIS EVENT'], ['CAN YOU SURVIVE', N + '?']];
+  if (f.id === 'imp') return [['IMPOSSIBLE 100', 'HOW FAR CAN YOU GO?'], ['NOBODY HAS', 'REACHED 100'], ['100 TILES', 'ONE PATTERN']];
+  return [['CHALLENGE:', N], ['3 STARS?', 'GOOD LUCK'], ['ONLY GENIUSES', 'GET 3 STARS']];
+}
+function featCaps(f) {
+  if (f.kind === 'booster') return [`${f.name}: ${f.desc.toLowerCase()} 😳 1 of 15 boosters in Beat Sanx. Which one would you pick? 👇`, `Stuck on the boss? ${f.name} says hi 😎 Comment your favourite booster 👇`, `This booster should be illegal 😂 ${f.name} in action.`];
+  if (f.kind === 'skin') return [`New look: the ${f.name} skin ✨ Which skin is your vibe? 👇`, `${f.name} skin unlocked 🔥 Collect them all in Beat Sanx.`, `Same game, new vibe: ${f.name} 🎨 Rate it /10 👇`];
+  if (f.kind === 'event') return [`${f.name}: ${f.desc} 🏆 Could you win it? 👇`, `Only 1% win ${f.name} 😤 Are you in?`, `Today's event in Beat Sanx: ${f.name} ⚡`];
+  if (f.id === 'imp') return ['Impossible 100: one pattern, 100 tiles 🧠 How far would you get? 👇', 'Nobody has reached 100. Yet. 👀 Comment your best'];
+  return [`${f.name}: ${f.desc} ⭐ Can you get 3 stars? 👇`, `3 stars on ${f.name}? Good luck 😂`];
+}
+let cur = 0, curVar = 1;
 $('styles').innerHTML = STY.map((s, i) => `<button class="sty ${i ? '' : 'on'}" data-i="${i}"><b>${i + 1}. ${s.name}</b><small>${s.sub}</small></button>`).join('');
-$('styles').onclick = e => { const b = e.target.closest('.sty'); if (!b) return; cur = +b.dataset.i; document.querySelectorAll('.sty').forEach(x => x.classList.toggle('on', x === b)); fill(); };
-$('var').innerHTML = [...Array(9).keys()].map(i => `<option value="${i + 1}">Pattern ${i + 1}</option>`).join('');
+$('styles').onclick = e => { const b = e.target.closest('.sty'); if (!b) return; cur = +b.dataset.i; if (STY[cur].id === 'spot' && $('feat').value === 'auto') $('feat').value = 'booster:xray'; syncUI(); };
 $('day').value = new Date().toISOString().slice(0, 10);
 const dayNo = d => D.dbeatNo(new Date(d + 'T12:00:00'));
-function fill() { const s = STY[cur]; $('hook').innerHTML = s.hooks.map((h, i) => `<option value="${i}">${h.join(' ')}</option>`).join(''); $('hook').value = dayNo($('day').value) % s.hooks.length; caption(); }
+function hooksFor(si, f) { return STY[si].id === 'spot' && f ? featHooks(f) : STY[si].hooks; }
+function syncUI() {
+  let fk = $('feat').value; const f0 = featureObj(fk);
+  /* boosters, events and challenges are shown in the Spotlight style; skins work in every style */
+  if (f0 && f0.kind !== 'skin' && STY[cur].id !== 'spot') cur = STY.findIndex(s => s.id === 'spot');
+  if (STY[cur].id === 'spot' && !f0) { $('feat').value = 'booster:xray'; fk = 'booster:xray'; }
+  document.querySelectorAll('.sty').forEach((x, i) => x.classList.toggle('on', i === cur));
+  const f = featureObj($('feat').value, dayNo($('day').value));
+  $('featTip').textContent = !f ? 'Game only. Each variation plays in a different shop skin.' : f.kind === 'skin' ? `The whole video plays in the ${f.name} skin (any style).` : `${f.name} is shown in the Feature Spotlight style.`;
+  const hs = hooksFor(cur, f); $('hook').innerHTML = hs.map((h, i) => `<option value="${i}">${h.join(' ')}</option>`).join(''); $('hook').value = dayNo($('day').value) % hs.length;
+  caption(); thumbs();
+}
 function spec(o = {}) {
-  const si = o.si != null ? o.si : cur, s = STY[si], d = o.day || $('day').value, hi = o.hi != null ? o.hi : +$('hook').value, v = o.v != null ? o.v : +$('var').value;
-  const h = s.hooks[hi % s.hooks.length], seed = dayNo(d) * 1000 + si * 100 + v * 7 + hi;
+  const si = o.si != null ? o.si : cur, s = STY[si], d = o.day || $('day').value, fk = o.fk != null ? o.fk : $('feat').value, v = o.v != null ? o.v : curVar;
+  const f = featureObj(fk, dayNo(d) + (o.salt || 0)), hs = hooksFor(si, f), hi = o.hi != null ? o.hi : +$('hook').value || 0;
+  const h = hs[hi % hs.length], seed = dayNo(d) * 1000 + si * 100 + v * 7 + hi + (o.salt || 0) * 13;
   const av = o.av || $('av').value, len = 7 + (seed % 3);
-  const sp = { style: s.id, seed, hook1: h[0], hook2: h[1], len, avatar: `img/av/${av}.webp`, youName: { ace: 'ACE', nova: 'NOVA', ronin: 'RONIN', astro: 'ASTRO' }[av], footer: `Daily Beat #${dayNo(d)} · same pattern for the whole world`, playerWins: seed % 2 === 0 };
+  const sp = { style: s.id, seed, variation: v, hook1: h[0], hook2: h[1], len, avatar: `img/av/${av}.webp`, youName: { ace: 'ACE', nova: 'NOVA', ronin: 'RONIN', astro: 'ASTRO' }[av], footer: `Daily Beat #${dayNo(d)} · same pattern for the whole world`, playerWins: seed % 2 === 0 };
   if (s.id === 'rush') sp.words = h;
+  if (f) { if (f.kind === 'skin') sp.skin = f.id; if (s.id === 'spot') { sp.feature = f; sp.footer = '500+ LEVELS · 15 BOOSTERS · LIVE EVENTS'; } }
   return sp;
 }
-function captionFor(si, seed, n) { const s = STY[si]; return s.cap[seed % s.cap.length].replace(/\{n\}/g, n) + TAGS; }
-function caption() { const sp = spec(); $('cap').value = captionFor(cur, sp.seed, sp.len); }
-['hook', 'var', 'av'].forEach(id => $(id).onchange = caption); $('day').onchange = fill;
-fill();
+function captionFor(sp) { const s = STY.find(x => x.id === sp.style), list = sp.feature ? featCaps(sp.feature) : s.cap; return list[sp.seed % list.length].replace(/\{n\}/g, sp.len) + TAGS; }
+const TAGS = '\n\nPlay free: Beat Sanx on Google Play 🎮\n\n#memorytest #brainteaser #braingames #puzzle #beatsanx #memorychallenge #mobilegame #mindgames';
+function caption() { $('cap').value = captionFor(spec()); }
+/* ---------- variation thumbnails ---------- */
+let thumbJob = 0;
+async function thumbs() {
+  const job = ++thumbJob, base = spec({ v: 1 });
+  $('vars').innerHTML = [...Array(9).keys()].map(i => `<button class="var ${i + 1 === curVar ? 'on' : ''}" data-v="${i + 1}"><canvas width="108" height="192"></canvas><i>${i + 1}</i></button>`).join('');
+  $('vname').textContent = `Look ${curVar}: ${CLIP.lookName(base.style, curVar)}`;
+  const cs = [...document.querySelectorAll('.var canvas')], at = { climb: 4.4, play: 7.5, duel: 10, rush: 4.5, close: 6, spot: 6.5 }[base.style] || 6;
+  for (let i = 0; i < 9; i++) { if (job !== thumbJob) return; try { await CLIP.still(spec({ v: i + 1 }), cs[i], at, 108, 192); } catch (e) { } }
+  if (job === thumbJob) showStill();
+}
+async function showStill() { if (busy) return; const sp = spec(), at = { climb: 4.4, play: 7.5, duel: 10, rush: 4.5, close: 6, spot: 6.5 }[sp.style] || 6; try { await CLIP.still(sp, $('cv'), at, 540, 960); } catch (e) { } }
+$('vars').onclick = e => { const b = e.target.closest('.var'); if (!b) return; curVar = +b.dataset.v; document.querySelectorAll('.var').forEach(x => x.classList.toggle('on', x === b)); $('vname').textContent = `Look ${curVar}: ${CLIP.lookName(STY[cur].id, curVar)}`; caption(); showStill(); };
+$('feat').onchange = syncUI; $('day').onchange = syncUI; $('hook').onchange = () => { caption(); thumbs(); }; $('av').onchange = () => { caption(); showStill(); };
 let busy = false, pv = null, MUS = null;
-$('mus').onchange = async e => { const f = e.target.files[0]; if (!f) return; $('musInfo').textContent = 'Reading the song…'; SND.unlock(); try { MUS = await CLIP.loadMusic(f); $('musInfo').textContent = `${MUS.name} · ${MUS.bpm} BPM · ${Math.round(MUS.secs)} s — cuts will follow this beat.`; } catch (err) { MUS = null; $('musInfo').textContent = 'Could not read this file. Try an MP3.'; } };
+syncUI();
+/* ---------- music ---------- */
+const mmss = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+$('mus').onchange = async e => { const f = e.target.files[0]; if (!f) return; $('musInfo').textContent = 'Listening to the song: tempo, bars, drop, key…'; SND.unlock(); try { MUS = await CLIP.loadMusic(f); $('musInfo').innerHTML = `<span class="ok">✓ ${MUS.name}</span>\n${MUS.bpm.toFixed(1)} BPM · ${MUS.key.name} · drop at ${mmss(MUS.drops[0] || 0)} · ${mmss(MUS.secs)} long\nTiles, taps and cuts follow this beat · the big moment lands on the drop · tile notes play in ${MUS.key.name}.`; } catch (err) { MUS = null; $('musInfo').textContent = 'Could not read this file. Try an MP3 or WAV.'; } };
 $('musClear').onclick = () => { MUS = null; $('mus').value = ''; $('musInfo').textContent = 'No song selected · the game\'s own beat is used.'; };
+const withMusic = sp => { if (MUS) { sp.bpm = MUS.bpm; sp.sync = true; } return sp; };
 $('crGo').onclick = () => { const n = encodeURIComponent(($('crName').value || '').trim()), hk = encodeURIComponent(($('crHook').value || '').trim()); window.open(`index.html?creator=1${n ? '&name=' + n : ''}${hk ? '&hook=' + hk : ''}`, '_blank'); };
-const withMusic = sp => { if (MUS) sp.bpm = MUS.bpm; return sp; };
 $('prev').onclick = async () => {
   if (busy) return; busy = true; SND.unlock();
   pv = await CLIP.preview(withMusic(spec()), $('cv'), 540, 960, true, MUS, +$('mv').value);
   const loop = () => { const t = pv.draw(); $('pg').style.width = Math.min(100, t / pv.total * 100) + '%'; if (t < pv.total + 0.2) requestAnimationFrame(loop); else { pv.stop(); busy = false; } };
   loop();
 };
-function download(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); }
+/* ---------- saving: a chosen folder (no prompts, best for batches) or Downloads ---------- */
+let DIR = null;
+$('dirBtn').onclick = async () => {
+  if (!window.showDirectoryPicker) { $('dirInfo').textContent = 'This browser cannot pick a folder. Videos go to Downloads (use Chrome or Edge for folder saving).'; return; }
+  try { DIR = await window.showDirectoryPicker({ id: 'beatsanx', mode: 'readwrite', startIn: 'videos' }); $('dirInfo').innerHTML = `<span class="ok">✓ Saving to folder: ${DIR.name}</span>`; } catch (e) { }
+};
+function download(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { a.remove(); }, 1000); }
+async function save(blob, name) {
+  if (DIR) { try { if ((await DIR.queryPermission({ mode: 'readwrite' })) !== 'granted') await DIR.requestPermission({ mode: 'readwrite' }); const fh = await DIR.getFileHandle(name, { create: true }), w = await fh.createWritable(); await w.write(blob); await w.close(); return 'folder'; } catch (e) { } }
+  download(blob, name); return 'downloads';
+}
+function listVideo(blob, name, capText, secs) {
+  const url = URL.createObjectURL(blob), el = document.createElement('div'); el.className = 'vid';
+  el.innerHTML = `<span title="${name}">🎬 ${name} · ${Math.round(secs)} s</span><button class="sm" data-a="dl">Download</button><button class="sm ghost" data-a="cap">Caption</button>`;
+  el.querySelector('[data-a=dl]').onclick = () => { const a = document.createElement('a'); a.href = url; a.download = name; a.click(); };
+  el.querySelector('[data-a=cap]').onclick = () => { navigator.clipboard.writeText(capText); el.querySelector('[data-a=cap]').textContent = 'Copied ✓'; };
+  $('vids').prepend(el);
+}
 /* Chrome on some computers records the sound as Opus. Instagram/Facebook want AAC, so the sound is
    re-encoded to AAC inside the browser (video is copied, nothing is uploaded anywhere). */
 const NEED_AAC = () => !MediaRecorder.isTypeSupported('video/mp4;codecs=avc1,mp4a.40.2');
@@ -130,33 +247,49 @@ async function toAAC(blob) {
   const data = await FFM.readFile('out.mp4'); try { await FFM.deleteFile('in.mp4'); await FFM.deleteFile('out.mp4'); } catch (e) { }
   return new Blob([data.buffer], { type: 'video/mp4' });
 }
-async function makeOne(sp, si, capText, idx) {
-  const q = +$('q').value;
-  $('log').textContent = `${idx ? `Video ${idx} · ` : ''}Recording ${STY[si].name} — "${sp.hook1} ${sp.hook2 || ''}" …`;
+async function makeOne(sp, capText, idx) {
+  const q = +$('q').value, sname = STY.find(s => s.id === sp.style).name;
+  $('log').textContent = `${idx ? `Video ${idx} · ` : ''}Recording ${sname}${sp.feature ? ' · ' + sp.feature.name : ''} · look ${sp.variation} — "${sp.hook1} ${sp.hook2 || ''}" …`;
   const out = await CLIP.make(withMusic(sp), { w: q === 1080 ? 1080 : 720, h: q === 1080 ? 1920 : 1280, canvas: $('cv'), music: MUS, musicVol: +$('mv').value, sfxVol: +$('sv').value, onProgress: p => { $('pg').style.width = Math.round(p * 100) + '%'; } });
   if (out.ext === 'mp4' && NEED_AAC()) { $('log').textContent += '\nMaking the sound Instagram-safe (AAC)…'; try { out.blob = await toAAC(out.blob); out.aac = true; } catch (e) { out.aac = false; } }
-  const base = `beat-sanx-${$('day').value}-${idx ? String(idx).padStart(2, '0') + '-' : ''}${sp.style}`;
-  download(out.blob, `${base}.${out.ext}`);
-  download(new Blob([capText], { type: 'text/plain' }), `${base}-caption.txt`);
-  return out;
+  const tag = sp.feature ? '-' + sp.feature.id : sp.skin ? '-' + sp.skin : '';
+  const base = `beat-sanx-${$('day').value}-${idx ? String(idx).padStart(2, '0') + '-' : ''}${sp.style}${tag}-v${sp.variation}`;
+  const where = await save(out.blob, `${base}.${out.ext}`);
+  await save(new Blob([capText], { type: 'text/plain' }), `${base}-caption.txt`);
+  listVideo(out.blob, `${base}.${out.ext}`, capText, out.secs);
+  out.where = where; return out;
 }
 $('make').onclick = async () => {
   if (busy) return; busy = true; SND.unlock();
-  try { const sp = spec(), out = await makeOne(sp, cur, $('cap').value, 0); $('log').textContent = `Done: ${Math.round(out.secs)} s · ${(out.blob.size / 1e6).toFixed(1)} MB · ${out.ext.toUpperCase()}` + (out.ext === 'webm' ? '\nThis browser made WEBM. Use Chrome on a laptop for MP4.' : ''); }
+  try { const sp = spec(), out = await makeOne(sp, $('cap').value, 0); $('log').innerHTML = `<span class="ok">✓ Saved to ${out.where === 'folder' ? 'your folder' : 'Downloads'}</span> · ${Math.round(out.secs)} s · ${(out.blob.size / 1e6).toFixed(1)} MB · ${out.ext.toUpperCase()}` + (out.ext === 'webm' ? '\nThis browser made WEBM. Use Chrome on a laptop for MP4.' : ''); }
   catch (e) { $('log').textContent = 'Could not record: ' + e.message; }
   busy = false;
 };
-/* batch: rotate styles, hooks, patterns and avatars so every video is unique */
+/* batch: rotate styles x features x looks x hooks x avatars so every video is unique */
+function batchPlan(N, d) {
+  const base = dayNo(d), avs = ['ace', 'nova', 'ronin', 'astro'], out = [];
+  const fk = $('feat').value, fixed = fk !== 'auto' ? fk : null;
+  const boosters = D.BOOSTERS.map(b => 'booster:' + b.id), skins = SKINS.map(s => 'skin:' + s.id), events = EVENTS.map(e => 'event:' + e.id), chals = ['challenge:imp', ...D.CHALLENGES.map(c => 'challenge:' + c.id)];
+  const pools = [boosters, skins, events, chals];
+  for (let i = 0; i < N; i++) {
+    const r = base + i; let si, key = null;
+    if (fixed) { const f = featureObj(fixed); si = f.kind === 'skin' ? r % 5 : STY.findIndex(s => s.id === 'spot'); key = fixed; }
+    else if (i % 3 === 2) { si = STY.findIndex(s => s.id === 'spot'); const pool = pools[Math.floor(i / 3) % 4]; key = pool[(r * 7) % pool.length]; if (key.startsWith('skin:')) si = r % 5; }
+    else { si = (r + Math.floor(i / 3)) % 5; }
+    const v = 1 + ((i * 4 + base) % 9), av = avs[(i + base) % 4], hs = hooksFor(si, featureObj(key));
+    out.push({ si, fk: key || 'auto', v, av, hi: Math.floor(r / 5) % hs.length, salt: i });
+  }
+  return out;
+}
 $('batch').onclick = async () => {
   if (busy) return; busy = true; SND.unlock();
-  const N = +$('bn').value, avs = ['ace', 'nova', 'ronin', 'astro'], d = $('day').value, base = dayNo(d);
-  for (let i = 0; i < N; i++) {
-    const si = (base + i) % STY.length, hi = Math.floor((base + i) / STY.length) % STY[si].hooks.length, v = 1 + ((i * 5 + base) % 9), av = avs[(i + base) % 4];
-    const sp = spec({ si, hi, v, av, day: d });
-    try { await makeOne(sp, si, captionFor(si, sp.seed, sp.len), i + 1); } catch (e) { $('log').textContent = 'Stopped: ' + e.message; break; }
+  const N = +$('bn').value, d = $('day').value, plan = batchPlan(N, d);
+  for (let i = 0; i < plan.length; i++) {
+    const sp = spec(Object.assign({ day: d }, plan[i]));
+    try { await makeOne(sp, captionFor(sp), i + 1); } catch (e) { $('log').textContent = 'Stopped: ' + e.message; break; }
     await new Promise(r => setTimeout(r, 700));
   }
-  $('log').textContent += `\nBatch done: ${N} unique videos + captions.`; busy = false;
+  $('log').textContent += `\nBatch done: ${N} unique videos + captions ${DIR ? 'in your folder' : 'in Downloads'}.`; busy = false;
 };
 $('copy').onclick = () => { navigator.clipboard.writeText($('cap').value); $('copy').textContent = 'Copied ✓'; setTimeout(() => $('copy').textContent = 'Copy caption', 1500); };
 </script>

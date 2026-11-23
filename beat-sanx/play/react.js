@@ -5,6 +5,16 @@
      big moment · captions · DOWNLOAD FREE outro · always under 50 seconds.
    Everything stays on this device until the player chooses to share it. */
 'use strict';
+/* AAC re-encode in the browser (laptop Creator Mode only; the ffmpeg files exist on the web build) */
+let __FFM = null;
+async function toAAC(blob) {
+  if (!window.FFmpegWASM) await new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'ffmpeg/ffmpeg.js'; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+  if (!__FFM) { __FFM = new FFmpegWASM.FFmpeg(); await __FFM.load({ coreURL: new URL('ffmpeg/ffmpeg-core.js', location.href).href, wasmURL: new URL('ffmpeg/ffmpeg-core.wasm', location.href).href }); }
+  await __FFM.writeFile('in.mp4', new Uint8Array(await blob.arrayBuffer()));
+  await __FFM.exec(['-i', 'in.mp4', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', 'out.mp4']);
+  const d = await __FFM.readFile('out.mp4'); try { await __FFM.deleteFile('in.mp4'); await __FFM.deleteFile('out.mp4'); } catch (e) { }
+  return new Blob([d.buffer], { type: 'video/mp4' });
+}
 const REC = (() => {
   const W = 1080, H = 1920;
   let armed = false, cam = null, mr = null, chunks = [], t0 = 0, log = [], recording = false, creator = '';
@@ -160,9 +170,14 @@ const REC = (() => {
     const type = (rec.mimeType || mime || 'video/webm').split(';')[0], blob = new Blob(parts, { type }), ext = type.includes('mp4') ? 'mp4' : 'webm';
     UI.closeModal();
     if (opts.onDone) return opts.onDone(blob, ext);
-    window.__lastClip = blob;
-    const v = await UI.ask(`<div class="mdK">Your reaction video is ready</div><div class="mdT">${Math.round(total)} sec</div><div class="mdS">Post it on Reels, Shorts or WhatsApp status.</div><button class="btn big pulse" data-pick="share">${ART.ic('share')} SHARE / SAVE</button><button class="btn ghost" data-pick="no">Close</button>`);
-    if (v === 'share') SH.fileShare(blob, `beat-sanx-reaction.${ext}`, `😱 My Beat Sanx reaction! Can you do better?`);
+    let outB = blob;
+    /* laptop Creator Mode: make the sound Instagram-safe (AAC) and save straight to Downloads */
+    if (window.BS_CREATOR && ext === 'mp4' && !MediaRecorder.isTypeSupported('video/mp4;codecs=avc1,mp4a.40.2')) { try { UI.toast('Finishing the video…', 'clock'); outB = await toAAC(blob); } catch (e) { outB = blob; } }
+    window.__lastClip = outB;
+    const fname = `beat-sanx-reaction-${(data.creator || 'me').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now() % 100000}.${ext}`;
+    if (window.BS_CREATOR) SH.fileShare(outB, fname, '');
+    const v = await UI.ask(`<div class="mdK">Your reaction video is ready</div><div class="mdT">${Math.round(total)} sec</div><div class="mdS">${window.BS_CREATOR ? 'Saved to your Downloads folder. Post it on Reels, Shorts or WhatsApp status.' : 'Post it on Reels, Shorts or WhatsApp status.'}</div><button class="btn big pulse" data-pick="share">${ART.ic(window.BS_CREATOR ? 'check' : 'share')} ${window.BS_CREATOR ? 'DOWNLOAD AGAIN' : 'SHARE / SAVE'}</button><button class="btn ghost" data-pick="no">Close</button>`);
+    if (v === 'share') SH.fileShare(outB, fname, `😱 My Beat Sanx reaction! Can you do better?`);
   }
   return { arm, disarm, begin, evt, end, make, get armed() { return armed; }, get recording() { return recording; }, ok };
 })();

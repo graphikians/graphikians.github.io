@@ -180,7 +180,10 @@ const SH = (() => {
   async function fileShare(blob, name, text) {
     let ok = false;
     try {
-      if (window.BS_SHARE_FILE) { await window.BS_SHARE_FILE(blob, name, text + '\n' + PLAY); ok = true; }
+      /* laptop / Creator Mode: save straight to Downloads (the Windows share sheet does not save files) */
+      const desktop = window.BS_CREATOR || (!window.BS_SHARE_FILE && window.matchMedia && matchMedia('(pointer: fine)').matches && !('ontouchstart' in window));
+      if (desktop) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 1000); UI.toast('Video saved to Downloads', 'check'); ok = true; }
+      else if (window.BS_SHARE_FILE) { await window.BS_SHARE_FILE(blob, name, text + '\n' + PLAY); ok = true; }
       else {
         const file = new File([blob], name, { type: blob.type });
         if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text: text + '\n' + PLAY }); ok = true; }

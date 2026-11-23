@@ -6,7 +6,10 @@ const SND = (() => {
   let ctx = null, master = null, sfxBus = null, musicGain = null, musicTimer = null, musicOn = false;
   const NOTES = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25, 587.33, 659.25, 783.99]; // C D E G A C D E G
   /* 25 notes for bigger grids: pentatonic going down and up from the 9 base notes */
-  const NOTE = i => { const PENT = [1, 9 / 8, 5 / 4, 3 / 2, 5 / 3]; const k = i < 9 ? i : i - 9; if (i < 9) return NOTES[i]; const o = Math.floor(k / 5), d = k % 5; return i < 17 ? 130.81 * PENT[d] * Math.pow(2, o % 2) : 1046.5 * PENT[d] * (k >= 13 ? 1.12 : 1); };
+  /* KEY: when a song is used in a video, tile notes follow the song's key (pentatonic of its root) */
+  let KEY = null;
+  const NOTE0 = i => { if (!KEY) return null; const st = KEY.minor ? [0, 3, 5, 7, 10] : [0, 2, 4, 7, 9], o = Math.floor(i / 5), d = st[i % 5]; return KEY.root * Math.pow(2, (d + 12 * (o % 3)) / 12); };
+  const NOTE = i => { const kn = NOTE0(i); if (kn) return kn; const PENT = [1, 9 / 8, 5 / 4, 3 / 2, 5 / 3]; const k = i < 9 ? i : i - 9; if (i < 9) return NOTES[i]; const o = Math.floor(k / 5), d = k % 5; return i < 17 ? 130.81 * PENT[d] * Math.pow(2, o % 2) : 1046.5 * PENT[d] * (k >= 13 ? 1.12 : 1); };
   let force = false;   // clip recording: always audible
   const vol = (k, d) => { try { const v = S.st.set[k]; return v == null ? d : v; } catch (e) { return d; } };
   const opt = () => force ? { sfx: true, music: true, vib: false } : ((typeof S !== 'undefined') && S.st) ? S.st.set : { sfx: true, music: true, vib: true };
@@ -59,7 +62,9 @@ const SND = (() => {
   };
   const packNow = () => { try { return ((typeof S !== 'undefined') && S.active) ? S.active('sound') : 'synth'; } catch (e) { return 'synth'; } };
   /* if the audio was asleep, play the sound right after it wakes up (no more missing tile notes) */
-  const sfx = fn => { if (!opt().sfx) return; const c = ac(); if (!c) return; if (c.state !== 'running') { c.resume().then(() => fn(c.currentTime + 0.01)).catch(() => { }); return; } fn(c.currentTime); };
+  /* AT: exact audio time for the next sounds (video recording schedules cues ahead so they land on the beat) */
+  let AT = null;
+  const sfx = fn => { if (!opt().sfx) return; const c = ac(); if (!c) return; if (c.state !== 'running') { c.resume().then(() => fn(c.currentTime + 0.01)).catch(() => { }); return; } fn(AT != null ? Math.max(c.currentTime, AT) : c.currentTime); };
   /* the groove ducks under every tile note so the tile is always clear */
   const BEAT_LEVEL = () => 0.42 * vol('musicVol', 0.7);
   const duck = () => { if (!B.gain || !ctx) return; const g = B.gain.gain, t = ctx.currentTime; g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(BEAT_LEVEL() * 0.3, t + 0.02); g.linearRampToValueAtTime(BEAT_LEVEL(), t + 0.38); };
@@ -183,7 +188,9 @@ const SND = (() => {
   api.ctx = () => ac();
   api.masterNode = () => { ac(); return master; };
   /* play an uploaded music file (Studio) through the main mix so it is recorded too */
-  api.playBuffer = (buf, when = 0, offset = 0, vol = 0.8) => { const c = ac(); if (!c || !buf) return null; const s = c.createBufferSource(), g = c.createGain(); s.buffer = buf; g.gain.value = vol; s.connect(g); g.connect(master); s.start(Math.max(c.currentTime, when), offset); return { stop: () => { try { s.stop(); } catch (e) { } }, gain: g }; };
+  api.at = t => { AT = t; };
+  api.key = (root, minor) => { KEY = root ? { root, minor: !!minor } : null; };
+  api.playBuffer = (buf, when = 0, offset = 0, vol = 0.8) => { const c = ac(); if (!c || !buf) return null; const s = c.createBufferSource(), g = c.createGain(); s.buffer = buf; g.gain.value = vol; s.connect(g); g.connect(master); const late = Math.max(0, c.currentTime + 0.01 - when); s.start(when + late, offset + late); return { stop: () => { try { s.stop(); } catch (e) { } }, gain: g }; };
   api.sfxVol = v => { ac(); if (sfxBus) sfxBus.gain.value = v; };
   api.rec = on => {
     const c = ac(); if (!c) return null;
