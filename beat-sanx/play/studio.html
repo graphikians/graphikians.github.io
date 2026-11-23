@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beat Sanx · Video Studio</title>
+<link href="fonts.css" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{min-height:100vh;font-family:Inter,system-ui,sans-serif;color:#fff;background:radial-gradient(120% 70% at 50% 0,#3b1580,#0b0520 75%);padding:18px}
+  h1{font-size:22px;font-weight:900}h1 small{display:block;font-size:12px;font-weight:700;color:#c4a7ff;letter-spacing:1px;margin-top:2px}
+  .wrap{max-width:1150px;margin:0 auto;display:grid;grid-template-columns:minmax(260px,360px) 1fr;gap:22px;margin-top:16px}
+  @media (max-width:760px){.wrap{grid-template-columns:1fr}}
+  .stage{aspect-ratio:9/16;border-radius:20px;overflow:hidden;border:1px solid rgba(154,109,245,.45);background:#07031a}
+  .stage canvas{width:100%;height:100%;display:block}
+  .card{background:rgba(255,255,255,.05);border:1px solid rgba(154,109,245,.3);border-radius:16px;padding:14px;margin-bottom:12px}
+  .card b.k{display:block;font-size:11px;letter-spacing:1.4px;color:#c4a7ff;margin-bottom:8px}
+  label{display:block;font-size:13px;font-weight:700;margin:8px 0 4px;color:#e4d7ff}
+  select,input,textarea{width:100%;padding:10px 12px;border-radius:12px;border:1px solid rgba(154,109,245,.45);background:rgba(0,0,0,.3);color:#fff;font:700 14px Inter,sans-serif}
+  textarea{min-height:110px;font-weight:600;font-size:13px;line-height:1.45}
+  .row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1;min-width:120px}
+  button{cursor:pointer;border:0;border-radius:14px;padding:13px 14px;font:900 15px Inter,sans-serif;color:#fff;background:linear-gradient(180deg,#9a6df5,#743ae8);box-shadow:0 4px 0 #2e0f73}
+  button.ghost{background:rgba(255,255,255,.08);box-shadow:none;border:1px solid rgba(154,109,245,.5)}
+  button:disabled{opacity:.5}
+  .styles{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+  @media (max-width:900px){.styles{grid-template-columns:repeat(2,1fr)}}
+  .sty{padding:12px 10px;border-radius:14px;background:rgba(0,0,0,.25);border:1px solid rgba(154,109,245,.35);box-shadow:none;text-align:left;font-weight:800}
+  .sty b{display:block;font-size:14px}.sty small{display:block;font-size:11px;font-weight:600;color:#d9c8ff;margin-top:3px;line-height:1.35}
+  .sty.on{background:linear-gradient(180deg,#9a6df5,#743ae8);border-color:#e4d7ff}
+  .pg{height:8px;border-radius:8px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:10px}.pg i{display:block;height:100%;width:0;background:linear-gradient(90deg,#743ae8,#c4a7ff)}
+  .log{font-size:12.5px;color:#e4d7ff;margin-top:8px;line-height:1.6;white-space:pre-line}
+  .tip{font-size:12px;color:rgba(233,221,255,.75);line-height:1.55}
+</style>
+</head>
+<body>
+<h1>Beat Sanx · Video Studio<small>PRO SHORTS FOR YOUTUBE SHORTS · REELS · FACEBOOK · SNAPCHAT — ZERO COST PER VIDEO</small></h1>
+<div class="wrap">
+  <div><div class="stage"><canvas id="cv"></canvas></div><div class="pg"><i id="pg"></i></div><div class="log" id="log">Pick a style, press Preview or Make video.</div></div>
+  <div>
+    <div class="card"><b class="k">1 · STYLE</b><div class="styles" id="styles"></div></div>
+    <div class="card"><b class="k">2 · DETAILS (AUTO — CHANGE ONLY IF YOU WANT)</b>
+      <div class="row"><div><label>Date</label><input type="date" id="day"></div><div><label>Hook</label><select id="hook"></select></div><div><label>Quality</label><select id="q"><option value="720">720p (fast)</option><option value="1080" selected>1080p</option></select></div></div>
+      <div class="row"><div><label>Variation</label><select id="var"></select></div><div><label>Avatar (duel / end)</label><select id="av"><option value="ace">Ace</option><option value="nova">Nova</option><option value="ronin">Cyber Ronin</option><option value="astro">Astro Queen</option></select></div></div>
+      <div class="row" style="margin-top:12px"><button class="ghost" id="prev">▶ Preview (with sound)</button><button id="make">● Make this video</button></div>
+    </div>
+    <div class="card"><b class="k">3 · CAPTION (AUTO)</b><textarea id="cap"></textarea><div class="row" style="margin-top:8px"><button class="ghost" id="copy">Copy caption</button></div></div>
+    <div class="card"><b class="k">BATCH — MANY UNIQUE VIDEOS IN ONE CLICK</b>
+      <div class="tip">Every video in a batch is different: a different style, pattern, hook, avatar and caption, so the platforms never see duplicates. Keep this tab open and in front while it records (each video records in real time, 20–40 s).</div>
+      <div class="row" style="margin-top:10px"><div><label>How many</label><select id="bn"><option>5</option><option selected>10</option><option>15</option><option>20</option></select></div><div style="display:flex;align-items:flex-end"><button id="batch" style="width:100%">Make batch</button></div></div>
+    </div>
+    <div class="card"><b class="k">POSTING TIPS</b><div class="tip">Post at 5:30–8:30 am India time (US/UK evening). Same video on Shorts + Reels + Facebook Reels. Reply to comments with the answer. Never cut the first 2 seconds — the hook stops the scroll. Post 1–3 a day, every day.</div></div>
+  </div>
+</div>
+<script src="data.js"></script>
+<script src="art.js"></script>
+<script src="audio.js"></script>
+<script src="clip.js"></script>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const STY = [
+  { id: 'climb', name: 'Level Climb', sub: 'Gameplay from level 1 to the boss, fails on the last tile',
+    hooks: [['LEVEL 1 → 15', 'HOW FAR CAN YOU GO?'], ['FROM EASY', 'TO IMPOSSIBLE'], ['THIS GAME GETS', 'HARDER AND HARDER'], ['I ALMOST', 'BEAT THE BOSS']],
+    cap: ['Level 1 was easy. Level 15? Not so much 😤 How far would you get? 👇', 'From easy to impossible in 40 seconds 🧠 Where would you fail?', 'One tile away from beating the boss… again 😩'] },
+  { id: 'play', name: 'Play Along', sub: 'Viewer plays: watch, timer, answer reveal',
+    hooks: [['ONLY 3% CAN', 'REMEMBER THIS'], ['99% FAIL', 'THIS TEST'], ['HOW OLD IS', 'YOUR BRAIN?'], ['GENIUS LEVEL', 'MEMORY TEST'], ['MOST PEOPLE', 'FAIL THIS']],
+    cap: ['Only 3% can remember all {n} 🧠 Comment your answer 👇', '99% fail this memory test. Did you? ✅ or ❌', 'Genius-level memory test: {n} tiles. Comment the order 👇'] },
+  { id: 'duel', name: 'Beat Sanx Duel', sub: 'Split screen: player vs Sanx, 3 rounds',
+    hooks: [['MEMORY DUEL', 'WHO REMEMBERS MORE?'], ['ME VS SANX', 'SAME PATTERN'], ['CAN YOU', 'BEAT SANX?']],
+    cap: ['Memory duel: same pattern, who wins? 🧠⚔️ Duel your friends in Beat Sanx', 'Me vs Sanx. Same pattern. One winner 👀', 'Think you can beat Sanx? Challenge a friend 👇'] },
+  { id: 'rush', name: 'Rhythm Rush', sub: 'Music-video energy, combo x24, mini challenge',
+    hooks: [['REMEMBER', 'THE', 'BEAT'], ['FEEL', 'THE', 'RHYTHM'], ['DON\'T', 'LOSE', 'FOCUS']],
+    cap: ['Satisfying memory rhythm 🎵 What were the last 6 tiles? Comment /6 👇', 'Watch till the end… then remember the last 6 🧠', 'Rhythm + memory = this 🔥 Score yourself /6'] },
+  { id: 'close', name: 'So Close!', sub: 'Two painful fails on the last tile, then FINALLY',
+    hooks: [['1 TILE AWAY', 'EVERY. SINGLE. TIME.'], ['THE LAST TILE', 'IS ALWAYS THE HARDEST'], ['THIS GAME', 'HATES ME']],
+    cap: ['The last tile is ALWAYS the hardest 😭 Could you do it first try?', 'One tile away… twice 😤 Your turn 👇', 'This game hates me. Bet you need 4 tries 😂'] }
+];
+const TAGS = '\n\nPlay free: Beat Sanx on Google Play 🎮\n\n#memorytest #brainteaser #braingames #puzzle #beatsanx #memorychallenge #mobilegame #mindgames';
+let cur = 0;
+$('styles').innerHTML = STY.map((s, i) => `<button class="sty ${i ? '' : 'on'}" data-i="${i}"><b>${i + 1}. ${s.name}</b><small>${s.sub}</small></button>`).join('');
+$('styles').onclick = e => { const b = e.target.closest('.sty'); if (!b) return; cur = +b.dataset.i; document.querySelectorAll('.sty').forEach(x => x.classList.toggle('on', x === b)); fill(); };
+$('var').innerHTML = [...Array(9).keys()].map(i => `<option value="${i + 1}">Pattern ${i + 1}</option>`).join('');
+$('day').value = new Date().toISOString().slice(0, 10);
+const dayNo = d => D.dbeatNo(new Date(d + 'T12:00:00'));
+function fill() { const s = STY[cur]; $('hook').innerHTML = s.hooks.map((h, i) => `<option value="${i}">${h.join(' ')}</option>`).join(''); $('hook').value = dayNo($('day').value) % s.hooks.length; caption(); }
+function spec(o = {}) {
+  const si = o.si != null ? o.si : cur, s = STY[si], d = o.day || $('day').value, hi = o.hi != null ? o.hi : +$('hook').value, v = o.v != null ? o.v : +$('var').value;
+  const h = s.hooks[hi % s.hooks.length], seed = dayNo(d) * 1000 + si * 100 + v * 7 + hi;
+  const av = o.av || $('av').value, len = 7 + (seed % 3);
+  const sp = { style: s.id, seed, hook1: h[0], hook2: h[1], len, avatar: `img/av/${av}.webp`, youName: { ace: 'ACE', nova: 'NOVA', ronin: 'RONIN', astro: 'ASTRO' }[av], footer: `Daily Beat #${dayNo(d)} · same pattern for the whole world`, playerWins: seed % 2 === 0 };
+  if (s.id === 'rush') sp.words = h;
+  return sp;
+}
+function captionFor(si, seed, n) { const s = STY[si]; return s.cap[seed % s.cap.length].replace(/\{n\}/g, n) + TAGS; }
+function caption() { const sp = spec(); $('cap').value = captionFor(cur, sp.seed, sp.len); }
+['hook', 'var', 'av'].forEach(id => $(id).onchange = caption); $('day').onchange = fill;
+fill();
+let busy = false, pv = null;
+$('prev').onclick = async () => {
+  if (busy) return; busy = true; SND.unlock();
+  pv = await CLIP.preview(spec(), $('cv'), 540, 960, true);
+  const loop = () => { const t = pv.draw(); $('pg').style.width = Math.min(100, t / pv.total * 100) + '%'; if (t < pv.total + 0.2) requestAnimationFrame(loop); else { pv.stop(); busy = false; } };
+  loop();
+};
+function download(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); }
+/* Chrome on some computers records the sound as Opus. Instagram/Facebook want AAC, so the sound is
+   re-encoded to AAC inside the browser (video is copied, nothing is uploaded anywhere). */
+const NEED_AAC = () => !MediaRecorder.isTypeSupported('video/mp4;codecs=avc1,mp4a.40.2');
+let FFM = null;
+async function toAAC(blob) {
+  if (!window.FFmpegWASM) await new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'ffmpeg/ffmpeg.js'; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+  if (!FFM) { FFM = new FFmpegWASM.FFmpeg(); await FFM.load({ coreURL: new URL('ffmpeg/ffmpeg-core.js', location.href).href, wasmURL: new URL('ffmpeg/ffmpeg-core.wasm', location.href).href }); }
+  await FFM.writeFile('in.mp4', new Uint8Array(await blob.arrayBuffer()));
+  await FFM.exec(['-i', 'in.mp4', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', 'out.mp4']);
+  const data = await FFM.readFile('out.mp4'); try { await FFM.deleteFile('in.mp4'); await FFM.deleteFile('out.mp4'); } catch (e) { }
+  return new Blob([data.buffer], { type: 'video/mp4' });
+}
+async function makeOne(sp, si, capText, idx) {
+  const q = +$('q').value;
+  $('log').textContent = `${idx ? `Video ${idx} · ` : ''}Recording ${STY[si].name} — "${sp.hook1} ${sp.hook2 || ''}" …`;
+  const out = await CLIP.make(sp, { w: q === 1080 ? 1080 : 720, h: q === 1080 ? 1920 : 1280, canvas: $('cv'), onProgress: p => { $('pg').style.width = Math.round(p * 100) + '%'; } });
+  if (out.ext === 'mp4' && NEED_AAC()) { $('log').textContent += '\nMaking the sound Instagram-safe (AAC)…'; try { out.blob = await toAAC(out.blob); out.aac = true; } catch (e) { out.aac = false; } }
+  const base = `beat-sanx-${$('day').value}-${idx ? String(idx).padStart(2, '0') + '-' : ''}${sp.style}`;
+  download(out.blob, `${base}.${out.ext}`);
+  download(new Blob([capText], { type: 'text/plain' }), `${base}-caption.txt`);
+  return out;
+}
+$('make').onclick = async () => {
+  if (busy) return; busy = true; SND.unlock();
+  try { const sp = spec(), out = await makeOne(sp, cur, $('cap').value, 0); $('log').textContent = `Done: ${Math.round(out.secs)} s · ${(out.blob.size / 1e6).toFixed(1)} MB · ${out.ext.toUpperCase()}` + (out.ext === 'webm' ? '\nThis browser made WEBM. Use Chrome on a laptop for MP4.' : ''); }
+  catch (e) { $('log').textContent = 'Could not record: ' + e.message; }
+  busy = false;
+};
+/* batch: rotate styles, hooks, patterns and avatars so every video is unique */
+$('batch').onclick = async () => {
+  if (busy) return; busy = true; SND.unlock();
+  const N = +$('bn').value, avs = ['ace', 'nova', 'ronin', 'astro'], d = $('day').value, base = dayNo(d);
+  for (let i = 0; i < N; i++) {
+    const si = (base + i) % STY.length, hi = Math.floor((base + i) / STY.length) % STY[si].hooks.length, v = 1 + ((i * 5 + base) % 9), av = avs[(i + base) % 4];
+    const sp = spec({ si, hi, v, av, day: d });
+    try { await makeOne(sp, si, captionFor(si, sp.seed, sp.len), i + 1); } catch (e) { $('log').textContent = 'Stopped: ' + e.message; break; }
+    await new Promise(r => setTimeout(r, 700));
+  }
+  $('log').textContent += `\nBatch done: ${N} unique videos + captions.`; busy = false;
+};
+$('copy').onclick = () => { navigator.clipboard.writeText($('cap').value); $('copy').textContent = 'Copied ✓'; setTimeout(() => $('copy').textContent = 'Copy caption', 1500); };
+</script>
+</body>
+</html>
