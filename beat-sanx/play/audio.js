@@ -64,7 +64,8 @@ const SND = (() => {
   /* if the audio was asleep, play the sound right after it wakes up (no more missing tile notes) */
   /* AT: exact audio time for the next sounds (video recording schedules cues ahead so they land on the beat) */
   let AT = null;
-  const sfx = fn => { if (!opt().sfx) return; const c = ac(); if (!c) return; if (c.state !== 'running') { c.resume().then(() => fn(c.currentTime + 0.01)).catch(() => { }); return; } fn(AT != null ? Math.max(c.currentTime, AT) : c.currentTime); };
+  let SILENT = false;
+  const sfx = fn => { if (SILENT || !opt().sfx) return; const c = ac(); if (!c) return; if (c.state !== 'running') { c.resume().then(() => fn(c.currentTime + 0.01)).catch(() => { }); return; } fn(AT != null ? Math.max(c.currentTime, AT) : c.currentTime); };
   /* the groove ducks under every tile note so the tile is always clear */
   const BEAT_LEVEL = () => 0.42 * vol('musicVol', 0.7);
   const duck = () => { if (!B.gain || !ctx) return; const g = B.gain.gain, t = ctx.currentTime; g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(BEAT_LEVEL() * 0.3, t + 0.02); g.linearRampToValueAtTime(BEAT_LEVEL(), t + 0.38); };
@@ -189,6 +190,24 @@ const SND = (() => {
   api.masterNode = () => { ac(); return master; };
   /* play an uploaded music file (Studio) through the main mix so it is recorded too */
   api.at = t => { AT = t; };
+  api.silent = on => { SILENT = !!on; };
+  /* play a song as an EDIT: a list of pieces {v0, v1, song, mute} on the video clock, each cut on a bar line
+     with a 12 ms crossfade so joins are click-free; the whole edit fades out at the end */
+  api.playSegs = (buf, T0, segs, vol = 0.8, total = 0, fadeOut = 1.4) => {
+    const c = ac(); if (!c || !buf || !segs) return null;
+    const bus = c.createGain(); bus.gain.value = vol; bus.connect(master); const srcs = [], X = 0.012;
+    if (total) { bus.gain.setValueAtTime(vol, T0 + Math.max(0, total - fadeOut)); bus.gain.linearRampToValueAtTime(0.0001, T0 + total); }
+    for (const sg of segs) {
+      if (sg.mute) continue;
+      let when = T0 + sg.v0 - X, off = sg.song - X, dur = sg.v1 - sg.v0 + 2 * X;
+      if (off < 0) { when -= off; dur += off; off = 0; }
+      const late = c.currentTime + 0.01 - when; if (late > 0) { if (late >= dur - X) continue; when += late; off += late; dur -= late; }
+      const s = c.createBufferSource(), g = c.createGain(); s.buffer = buf; s.connect(g); g.connect(bus);
+      g.gain.setValueAtTime(0, when); g.gain.linearRampToValueAtTime(1, when + X); g.gain.setValueAtTime(1, when + Math.max(X, dur - X)); g.gain.linearRampToValueAtTime(0, when + dur);
+      s.start(when, off, dur); srcs.push(s);
+    }
+    return { stop: () => { srcs.forEach(s => { try { s.stop(); } catch (e) { } }); try { bus.disconnect(); } catch (e) { } }, gain: bus };
+  };
   api.key = (root, minor) => { KEY = root ? { root, minor: !!minor } : null; };
   api.playBuffer = (buf, when = 0, offset = 0, vol = 0.8) => { const c = ac(); if (!c || !buf) return null; const s = c.createBufferSource(), g = c.createGain(); s.buffer = buf; g.gain.value = vol; s.connect(g); g.connect(master); const late = Math.max(0, c.currentTime + 0.01 - when); s.start(when + late, offset + late); return { stop: () => { try { s.stop(); } catch (e) { } }, gain: g }; };
   api.sfxVol = v => { ac(); if (sfxBus) sfxBus.gain.value = v; };

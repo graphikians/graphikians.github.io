@@ -52,6 +52,7 @@
   <div class="left">
     <div class="stage"><canvas id="cv"></canvas></div><div class="pg"><i id="pg"></i></div>
     <div class="log" id="log">Pick a style, a feature and a variation. Press Preview or Make video.</div>
+    <div id="tlWrap" style="display:none;margin-top:10px"><div class="tip" style="margin-bottom:4px">🎵 How your song is cut for this video:</div><canvas id="musTL" width="720" height="64" style="width:100%;height:44px;border-radius:8px;background:rgba(0,0,0,.3)"></canvas><div class="tip" id="tlKey" style="margin-top:4px"></div></div>
     <div class="vids" id="vids"></div>
   </div>
   <div>
@@ -65,7 +66,7 @@
     </div>
     <div class="card"><b class="k">4 · DETAILS (AUTO — CHANGE ONLY IF YOU WANT)</b>
       <div class="row"><div><label>Date</label><input type="date" id="day"></div><div><label>Hook</label><select id="hook"></select></div></div>
-      <div class="row"><div><label>Quality</label><select id="q"><option value="720">720p (fast)</option><option value="1080" selected>1080p</option></select></div><div><label>Avatar (duel / end)</label><select id="av"><option value="ace">Ace</option><option value="nova">Nova</option><option value="ronin">Cyber Ronin</option><option value="astro">Astro Queen</option></select></div></div>
+      <div class="row"><div><label>Quality</label><select id="q"><option value="hd1080" selected>1080p HD — sharpest (renders frame by frame)</option><option value="hd720">720p HD</option><option value="rt720">720p quick (real-time)</option></select></div><div><label>Avatar (duel / end)</label><select id="av"><option value="ace">Ace</option><option value="nova">Nova</option><option value="ronin">Cyber Ronin</option><option value="astro">Astro Queen</option></select></div></div>
       <div class="row" style="margin-top:12px"><button class="ghost" id="prev">▶ Preview (with sound)</button><button id="make">● Make this video</button></div>
     </div>
     <div class="card"><b class="k">SAVE ON THIS LAPTOP</b>
@@ -163,19 +164,19 @@ function featCaps(f) {
 let cur = 0, curVar = 1;
 $('styles').innerHTML = STY.map((s, i) => `<button class="sty ${i ? '' : 'on'}" data-i="${i}"><b>${i + 1}. ${s.name}</b><small>${s.sub}</small></button>`).join('');
 $('styles').onclick = e => { const b = e.target.closest('.sty'); if (!b) return; cur = +b.dataset.i; if (STY[cur].id === 'spot' && $('feat').value === 'auto') $('feat').value = 'booster:xray'; syncUI(); };
+$('feat').addEventListener('change', () => { if ($('feat').value === 'auto' && STY[cur].id === 'spot') cur = 0; });
 $('day').value = new Date().toISOString().slice(0, 10);
 const dayNo = d => D.dbeatNo(new Date(d + 'T12:00:00'));
 function hooksFor(si, f) { return STY[si].id === 'spot' && f ? featHooks(f) : STY[si].hooks; }
 function syncUI() {
   let fk = $('feat').value; const f0 = featureObj(fk);
-  /* boosters, events and challenges are shown in the Spotlight style; skins work in every style */
-  if (f0 && f0.kind !== 'skin' && STY[cur].id !== 'spot') cur = STY.findIndex(s => s.id === 'spot');
+  /* any style works with any feature; only the Spotlight style needs one */
   if (STY[cur].id === 'spot' && !f0) { $('feat').value = 'booster:xray'; fk = 'booster:xray'; }
   document.querySelectorAll('.sty').forEach((x, i) => x.classList.toggle('on', i === cur));
   const f = featureObj($('feat').value, dayNo($('day').value));
-  $('featTip').textContent = !f ? 'Game only. Each variation plays in a different shop skin.' : f.kind === 'skin' ? `The whole video plays in the ${f.name} skin (any style).` : `${f.name} is shown in the Feature Spotlight style.`;
+  $('featTip').textContent = !f ? 'Game only. Each variation plays in a different shop skin.' : f.kind === 'skin' ? `The whole video plays in the ${f.name} skin.` : STY[cur].id === 'spot' ? `Feature Spotlight: the whole video is about ${f.name}.` : f.kind === 'booster' ? `${STY[cur].name} + ${f.name}: the booster bar is live and ${f.name} is tapped right before the big moment.` : `${STY[cur].name} + ${f.name}: badge in the video and the outro invites to it.`;
   const hs = hooksFor(cur, f); $('hook').innerHTML = hs.map((h, i) => `<option value="${i}">${h.join(' ')}</option>`).join(''); $('hook').value = dayNo($('day').value) % hs.length;
-  caption(); thumbs();
+  caption(); thumbs(); drawTL();
 }
 function spec(o = {}) {
   const si = o.si != null ? o.si : cur, s = STY[si], d = o.day || $('day').value, fk = o.fk != null ? o.fk : $('feat').value, v = o.v != null ? o.v : curVar;
@@ -184,10 +185,19 @@ function spec(o = {}) {
   const av = o.av || $('av').value, len = 7 + (seed % 3);
   const sp = { style: s.id, seed, variation: v, hook1: h[0], hook2: h[1], len, avatar: `img/av/${av}.webp`, youName: { ace: 'ACE', nova: 'NOVA', ronin: 'RONIN', astro: 'ASTRO' }[av], footer: `Daily Beat #${dayNo(d)} · same pattern for the whole world`, playerWins: seed % 2 === 0 };
   if (s.id === 'rush') sp.words = h;
-  if (f) { if (f.kind === 'skin') sp.skin = f.id; if (s.id === 'spot') { sp.feature = f; sp.footer = '500+ LEVELS · 15 BOOSTERS · LIVE EVENTS'; } }
+  if (f) {
+    if (f.kind === 'skin') sp.skin = f.id;
+    if (s.id === 'spot') { sp.feature = f; sp.footer = '500+ LEVELS · 15 BOOSTERS · LIVE EVENTS'; }
+    else if (f.kind !== 'skin') { sp.feature = f; sp.endTitle = { booster: 'GET THE EDGE', event: 'JOIN THE EVENT', challenge: f.id === 'imp' ? 'BEAT MY SCORE' : 'GET ALL 30 STARS' }[f.kind]; }
+  }
   return sp;
 }
-function captionFor(sp) { const s = STY.find(x => x.id === sp.style), list = sp.feature ? featCaps(sp.feature) : s.cap; return list[sp.seed % list.length].replace(/\{n\}/g, sp.len) + TAGS; }
+function captionFor(sp) {
+  const s = STY.find(x => x.id === sp.style), spot = sp.style === 'spot', list = spot && sp.feature ? featCaps(sp.feature) : s.cap;
+  let c = list[sp.seed % list.length].replace(/\{n\}/g, sp.len);
+  if (!spot && sp.feature) { const f = sp.feature; c += f.kind === 'booster' ? `\nSecret weapon: ${f.name} 😎` : f.kind === 'event' ? `\nLive now: ${f.name} 🏆` : `\nTry it: ${f.name} ⭐`; }
+  return c + TAGS;
+}
 const TAGS = '\n\nPlay free: Beat Sanx on Google Play 🎮\n\n#memorytest #brainteaser #braingames #puzzle #beatsanx #memorychallenge #mobilegame #mindgames';
 function caption() { $('cap').value = captionFor(spec()); }
 /* ---------- variation thumbnails ---------- */
@@ -206,15 +216,28 @@ async function thumbs() {
   if (job === thumbJob) showStill();
 }
 async function showStill() { if (busy) return; const sp = spec(), at = { climb: 4.4, play: 7.5, duel: 10, rush: 4.5, close: 6, spot: 6.5 }[sp.style] || 6; try { await CLIP.still(sp, $('cv'), at, 540, 960); } catch (e) { } }
-$('vars').onclick = e => { const b = e.target.closest('.var'); if (!b) return; curVar = +b.dataset.v; document.querySelectorAll('.var').forEach(x => x.classList.toggle('on', x === b)); $('vname').textContent = `Look ${curVar}: ${CLIP.lookName(STY[cur].id, curVar)}`; caption(); showStill(); };
+$('vars').onclick = e => { const b = e.target.closest('.var'); if (!b) return; curVar = +b.dataset.v; document.querySelectorAll('.var').forEach(x => x.classList.toggle('on', x === b)); $('vname').textContent = `Look ${curVar}: ${CLIP.lookName(STY[cur].id, curVar)}`; caption(); showStill(); drawTL(); };
 $('feat').onchange = syncUI; $('day').onchange = syncUI; $('hook').onchange = () => { caption(); thumbs(); }; $('av').onchange = () => { caption(); showStill(); };
 let busy = false, pv = null, MUS = null;
 syncUI();
 /* ---------- music ---------- */
 const mmss = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
-$('mus').onchange = async e => { const f = e.target.files[0]; if (!f) return; $('musInfo').textContent = 'Listening to the song: tempo, bars, drop, key…'; SND.unlock(); try { MUS = await CLIP.loadMusic(f); $('musInfo').innerHTML = `<span class="ok">✓ ${MUS.name}</span>\n${MUS.bpm.toFixed(1)} BPM · ${MUS.key.name} · drop at ${mmss(MUS.drops[0] || 0)} · ${mmss(MUS.secs)} long\nTiles, taps and cuts follow this beat · the big moment lands on the drop · tile notes play in ${MUS.key.name}.`; } catch (err) { MUS = null; $('musInfo').textContent = 'Could not read this file. Try an MP3 or WAV.'; } };
-$('musClear').onclick = () => { MUS = null; $('mus').value = ''; $('musInfo').textContent = 'No song selected · the game\'s own beat is used.'; };
+$('mus').onchange = async e => { const f = e.target.files[0]; if (!f) return; $('musInfo').textContent = 'Listening to the song: tempo, bars, drop, key…'; SND.unlock(); try { MUS = await CLIP.loadMusic(f); $('musInfo').innerHTML = `<span class="ok">✓ ${MUS.name}</span>\n${MUS.bpm.toFixed(1)} BPM · ${MUS.key.name} · drop at ${mmss(MUS.drops[0] || 0)} · ${mmss(MUS.secs)} long\nAuto-edit: the song is cut on its bars and rebuilt for every video — build-up under the hook, drop on the big moment, cut on fails, clean ending. Tile notes play in ${MUS.key.name}.`; drawTL(); } catch (err) { MUS = null; $('musInfo').textContent = 'Could not read this file. Try an MP3 or WAV.'; } };
+$('musClear').onclick = () => { MUS = null; $('mus').value = ''; $('musInfo').textContent = 'No song selected · the game\'s own beat is used.'; drawTL(); };
 const withMusic = sp => { if (MUS) { sp.bpm = MUS.bpm; sp.sync = true; } return sp; };
+function drawTL() {
+  if (!MUS) { $('tlWrap').style.display = 'none'; return; }
+  let P; try { P = CLIP.planFor(withMusic(spec()), MUS); } catch (e) { return; }
+  if (!P || !P.segs) { $('tlWrap').style.display = 'none'; return; }
+  $('tlWrap').style.display = 'block'; const c = $('musTL'), x = c.getContext('2d'), W2 = c.width, H2 = c.height, k = W2 / P.total;
+  x.clearRect(0, 0, W2, H2);
+  const col = { groove: '#4c2a99', build: '#743ae8', drop: '#9a6df5', outro: '#5b3fa6', cut: '#ff2d5a' };
+  for (const sg of P.segs) { x.fillStyle = col[sg.type] || '#4c2a99'; x.fillRect(sg.v0 * k, sg.type === 'drop' ? 6 : 16, Math.max(1, (sg.v1 - sg.v0) * k - 1), sg.type === 'drop' ? H2 - 12 : H2 - 32); }
+  x.fillStyle = '#fff'; x.fillRect(P.drop * k - 1, 0, 3, H2); x.font = '900 18px Inter'; x.fillText('DROP', P.drop * k + 6, 22);
+  for (const tf of P.fails) { x.fillStyle = '#ff2d5a'; x.fillRect(tf * k - 1, 0, 3, H2); }
+  const jumps = P.segs.filter((sg, i) => i && !sg.mute && !P.segs[i - 1].mute).length;
+  $('tlKey').textContent = `Build-up → drop on the big moment${P.fails.length ? ` · music cuts on ${P.fails.length} fail${P.fails.length > 1 ? 's' : ''}` : ''} · ${jumps} bar-perfect cut${jumps === 1 ? '' : 's'} · fades out on the outro`;
+}
 $('crGo').onclick = () => { const n = encodeURIComponent(($('crName').value || '').trim()), hk = encodeURIComponent(($('crHook').value || '').trim()); window.open(`index.html?creator=1${n ? '&name=' + n : ''}${hk ? '&hook=' + hk : ''}`, '_blank'); };
 /* busy guard that can never get stuck: always released, thumbnails catch up afterwards */
 function done() { busy = false; $('prev').disabled = $('make').disabled = $('batch').disabled = false; $('prev').textContent = '▶ Preview (with sound)'; if (thumbsLater) { thumbsLater = false; thumbs(); } }
@@ -256,18 +279,27 @@ function listVideo(blob, name, capText, secs) {
 const NEED_AAC = () => !MediaRecorder.isTypeSupported('video/mp4;codecs=avc1,mp4a.40.2');
 let FFM = null;
 async function toAAC(blob) {
-  if (!window.FFmpegWASM) await new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'ffmpeg/ffmpeg.js'; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
-  if (!FFM) { FFM = new FFmpegWASM.FFmpeg(); await FFM.load({ coreURL: new URL('ffmpeg/ffmpeg-core.js', location.href).href, wasmURL: new URL('ffmpeg/ffmpeg-core.wasm', location.href).href }); }
+  await getFF();
   await FFM.writeFile('in.mp4', new Uint8Array(await blob.arrayBuffer()));
   await FFM.exec(['-i', 'in.mp4', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', 'out.mp4']);
   const data = await FFM.readFile('out.mp4'); try { await FFM.deleteFile('in.mp4'); await FFM.deleteFile('out.mp4'); } catch (e) { }
   return new Blob([data.buffer], { type: 'video/mp4' });
 }
+async function getFF() {
+  if (!window.FFmpegWASM) await new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'ffmpeg/ffmpeg.js'; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+  if (!FFM) { FFM = new FFmpegWASM.FFmpeg(); await FFM.load({ coreURL: new URL('ffmpeg/ffmpeg-core.js', location.href).href, wasmURL: new URL('ffmpeg/ffmpeg-core.wasm', location.href).href }); }
+  return FFM;
+}
 async function makeOne(sp, capText, idx) {
-  const q = +$('q').value, sname = STY.find(s => s.id === sp.style).name;
-  $('log').textContent = `${idx ? `Video ${idx} · ` : ''}Recording ${sname}${sp.feature ? ' · ' + sp.feature.name : ''} · look ${sp.variation} — "${sp.hook1} ${sp.hook2 || ''}" …`;
-  const out = await CLIP.make(withMusic(sp), { w: q === 1080 ? 1080 : 720, h: q === 1080 ? 1920 : 1280, canvas: $('cv'), music: MUS, musicVol: +$('mv').value, sfxVol: +$('sv').value, onProgress: p => { $('pg').style.width = Math.round(p * 100) + '%'; } });
-  if (out.ext === 'mp4' && NEED_AAC()) { $('log').textContent += '\nMaking the sound Instagram-safe (AAC)…'; try { out.blob = await toAAC(out.blob); out.aac = true; } catch (e) { out.aac = false; } }
+  const qv = $('q').value, hd = qv.startsWith('hd') && CLIP.canHQ(), big = qv === 'hd1080', sname = STY.find(s => s.id === sp.style).name;
+  const head = `${idx ? `Video ${idx} · ` : ''}${sname}${sp.feature ? ' · ' + sp.feature.name : ''} · look ${sp.variation} — "${sp.hook1} ${sp.hook2 || ''}"`;
+  $('log').textContent = head + ' …';
+  const stages = { sound: '1/3 Recording the sound (real time)…', video: `2/3 Rendering ${big ? '1080p' : '720p'} HD frame by frame…`, mux: '3/3 Finishing the MP4 (AAC sound)…' };
+  const prog = p => { $('pg').style.width = Math.round(p * 100) + '%'; };
+  let out;
+  if (hd) out = await CLIP.makeHQ(withMusic(sp), { w: big ? 1080 : 720, h: big ? 1920 : 1280, canvas: $('cv'), music: MUS, musicVol: +$('mv').value, sfxVol: +$('sv').value, onProgress: prog, onStage: st => { $('log').textContent = head + '\n' + stages[st]; }, ffmpeg: getFF });
+  else out = await CLIP.make(withMusic(sp), { w: 720, h: 1280, canvas: $('cv'), music: MUS, musicVol: +$('mv').value, sfxVol: +$('sv').value, onProgress: prog });
+  if (!out.aac && out.ext === 'mp4' && NEED_AAC()) { $('log').textContent += '\nMaking the sound Instagram-safe (AAC)…'; try { out.blob = await toAAC(out.blob); out.aac = true; } catch (e) { out.aac = false; } }
   const tag = sp.feature ? '-' + sp.feature.id : sp.skin ? '-' + sp.skin : '';
   const base = `beat-sanx-${$('day').value}-${idx ? String(idx).padStart(2, '0') + '-' : ''}${sp.style}${tag}-v${sp.variation}`;
   const where = await save(out.blob, `${base}.${out.ext}`);
@@ -277,7 +309,7 @@ async function makeOne(sp, capText, idx) {
 }
 $('make').onclick = async () => {
   if (busy) return; start(); $('prev').disabled = true; SND.unlock();
-  try { const sp = spec(), out = await makeOne(sp, $('cap').value, 0); $('log').innerHTML = `<span class="ok">✓ Saved to ${out.where === 'folder' ? 'your folder' : 'Downloads'}</span> · ${Math.round(out.secs)} s · ${(out.blob.size / 1e6).toFixed(1)} MB · ${out.ext.toUpperCase()}` + (out.ext === 'webm' ? '\nThis browser made WEBM. Use Chrome on a laptop for MP4.' : ''); }
+  try { const sp = spec(), out = await makeOne(sp, $('cap').value, 0); $('log').innerHTML = `<span class="ok">✓ Saved to ${out.where === 'folder' ? 'your folder' : 'Downloads'}</span> · ${Math.round(out.secs)} s · ${(out.blob.size / 1e6).toFixed(1)} MB · ${out.hq ? 'HD MP4 (H.264 + AAC)' : out.ext.toUpperCase()}` + (out.ext === 'webm' ? '\nThis browser made WEBM. Use Chrome on a laptop for MP4.' : ''); }
   catch (e) { $('log').textContent = 'Could not record: ' + e.message; }
   done();
 };
@@ -289,8 +321,9 @@ function batchPlan(N, d) {
   const pools = [boosters, skins, events, chals];
   for (let i = 0; i < N; i++) {
     const r = base + i; let si, key = null;
-    if (fixed) { const f = featureObj(fixed); si = f.kind === 'skin' ? r % 5 : STY.findIndex(s => s.id === 'spot'); key = fixed; }
+    if (fixed) { si = i % 3 === 2 ? STY.findIndex(s => s.id === 'spot') : r % 5; if (fixed.startsWith('skin:') && si === 5) si = r % 5; key = fixed; }
     else if (i % 3 === 2) { si = STY.findIndex(s => s.id === 'spot'); const pool = pools[Math.floor(i / 3) % 4]; key = pool[(r * 7) % pool.length]; if (key.startsWith('skin:')) si = r % 5; }
+    else if (i % 3 === 1) { si = (r + Math.floor(i / 3)) % 5; const pool = pools[(Math.floor(i / 3) + 1) % 4]; key = pool[(r * 5 + 3) % pool.length]; }
     else { si = (r + Math.floor(i / 3)) % 5; }
     const v = 1 + ((i * 4 + base) % 9), av = avs[(i + base) % 4], hs = hooksFor(si, featureObj(key));
     out.push({ si, fk: key || 'auto', v, av, hi: Math.floor(r / 5) % hs.length, salt: i });

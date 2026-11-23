@@ -88,7 +88,7 @@ const CLIP = (() => {
   /* ================= TIMELINE ================= */
   let SYNC = false;
   function TL(bpm) {
-    const T = { segs: [], cues: [], cams: [{ t: 0, z: 1, x: 0, y: 0, d: 0 }], shakes: [], flashes: [], trs: [], beat: 60 / bpm, bpm, end: 0, P: { kick: 0, pulse: 0 }, sync: SYNC };
+    const T = { segs: [], cues: [], cams: [{ t: 0, z: 1, x: 0, y: 0, d: 0 }], shakes: [], flashes: [], trs: [], fails: [], beat: 60 / bpm, bpm, end: 0, P: { kick: 0, pulse: 0 }, sync: SYNC };
     T.tr = t => T.trs.push(t);
     /* with a song every flash and tap sits on the song's beat grid (half beats at the fastest) */
     T.q = d => !T.sync ? d : Math.max(T.beat / 2, Math.round(d / (T.beat / 2)) * (T.beat / 2));
@@ -401,9 +401,9 @@ const CLIP = (() => {
     const cy = 905;
     const rays = sprite('rays10', 2000, 2000, g => { g.translate(1000, 1000); const gl = g.createRadialGradient(0, 0, 40, 0, 0, 760); gl.addColorStop(0, 'rgba(154,109,245,.45)'); gl.addColorStop(0.5, 'rgba(116,58,232,.18)'); gl.addColorStop(1, 'rgba(116,58,232,0)'); g.fillStyle = gl; g.fillRect(-1000, -1000, 2000, 2000); for (let k = 0; k < 10; k++) { g.rotate(Math.PI / 5); const gr = g.createLinearGradient(0, 0, 0, -1000); gr.addColorStop(0, 'rgba(154,109,245,.12)'); gr.addColorStop(1, 'rgba(154,109,245,0)'); g.fillStyle = gr; g.beginPath(); g.moveTo(-20, 0); g.lineTo(20, 0); g.lineTo(130, -1000); g.lineTo(-130, -1000); g.closePath(); g.fill(); } }, 0.35);
     x.save(); x.globalCompositeOperation = 'lighter'; x.globalAlpha = clamp(u / 0.6); x.translate(W / 2, cy); x.rotate(u * 0.12); stamp(x, rays, -1000, -1000); x.restore();
-    if (A.logo) { const k = eBack(u / 0.5), s2 = 300 * k, h = s2 * A.logo.height / A.logo.width; x.globalAlpha = clamp(u / 0.2); x.drawImage(A.logo, (W - s2) / 2, 64, s2, h); x.globalAlpha = 1; }
-    if (u > 0.3) slam(x, o.title || 'CAN YOU BEAT IT?', t0 + 0.3, t, W / 2, 330, 90, 99);
-    if (u > 0.65) { x.globalAlpha = clamp((u - 0.65) / 0.3); sub(x, o.line || 'Think you can beat me?', W / 2, 398, 38, '#e9dcff', 700); x.globalAlpha = 1; }
+    if (A.logo) { const k = eBack(u / 0.5), s2 = 300 * k, h = s2 * A.logo.height / A.logo.width; x.globalAlpha = clamp(u / 0.2); x.drawImage(A.logo, (W - s2) / 2, 112, s2, h); x.globalAlpha = 1; }
+    if (u > 0.3) slam(x, o.title || 'CAN YOU BEAT IT?', t0 + 0.3, t, W / 2, 352, 88, 99);
+    if (u > 0.65) { x.globalAlpha = clamp((u - 0.65) / 0.3); sub(x, o.line || 'Think you can beat me?', W / 2, 418, 36, '#e9dcff', 700); x.globalAlpha = 1; }
     /* the phone slides up and settles at a slight angle */
     if (u > 0.35) {
       const k = eBack((u - 0.35) / 0.7), e = eOut((u - 0.35) / 0.7);
@@ -443,7 +443,7 @@ const CLIP = (() => {
     const R = { t0: o.only === 'input' ? -99 : t0, showEnd, inT0, taps, end, seq, show, wrongAt, g, wrongTile: wrongAt >= 0 ? (seq[wrongAt] + 1 + g) % (g * g) : null };
     if (o.only !== 'input') for (let k = 0; k < n; k++) T.cue(t0 + k * show, () => { SND.tile(seq[k], show * 0.6); P.kick = 1; });
     if (o.sound !== false) taps.forEach((tt, k) => T.cue(tt, () => { if (k === wrongAt) { SND.wrong(); SND.beat.drop(); } else { SND.tap(seq[k]); P.kick = 0.6; } }));
-    if (wrongAt >= 0 && o.sound !== false) { const tw = taps[wrongAt]; T.shake(tw, 30, 0.5); T.flash(tw, '#ff2d5a', 0.45, 0.5); }
+    if (wrongAt >= 0 && o.sound !== false) { const tw = taps[wrongAt]; T.shake(tw, 30, 0.5); T.flash(tw, '#ff2d5a', 0.45, 0.5); T.fails.push(tw); }
     return R;
   }
   function roundState(R, t) {
@@ -581,7 +581,7 @@ const CLIP = (() => {
       const RY = mk(yW, 0), RX = mk(xW, 0.13);
       RY.taps.forEach((tt, k) => T.cue(tt, () => { if (k === RY.wrongAt) { SND.wrong(); SND.beat.drop(); } else SND.tap(seq[k]); }));
       RX.taps.forEach((tt, k) => { if (k === RX.wrongAt) T.cue(tt, () => { SND.wrong(); SND.beat.drop(); }); });
-      [RY, RX].forEach(RR => { if (RR.wrongAt >= 0) { const tw = RR.taps[RR.wrongAt]; T.shake(tw, 26, 0.5); T.flash(tw, '#ff2d5a', 0.4, 0.35); T.cam(tw - 1.0, 1.06, 0, 0, 0.6); T.cam(tw + 0.4, 1, 0, 0, 0.4); } });
+      [RY, RX].forEach(RR => { if (RR.wrongAt >= 0) { const tw = RR.taps[RR.wrongAt]; T.fails.push(tw); T.shake(tw, 26, 0.5); T.flash(tw, '#ff2d5a', 0.4, 0.35); T.cam(tw - 1.0, 1.06, 0, 0, 0.6); T.cam(tw + 0.4, 1, 0, 0, 0.4); } });
       const end = Math.max(RY.end, RX.end) + 0.3;
       if (!last) { score[0]++; score[1]++; T.cue(end, () => { SND.step(); }); } else if (pw) score[0]++; else score[1]++;
       rounds.push({ intro, seq, RS, RY, RX, last, end, score: score.slice() });
@@ -718,16 +718,16 @@ const CLIP = (() => {
     if (A.fIcon) x.drawImage(A.fIcon, -s2 * 0.3, -s2 * 0.3, s2 * 0.6, s2 * 0.6);
     x.restore();
   }
-  function boostBar(x, A, t, slots, active, Y, appear, tapAt) {
-    const u = t - appear; if (u < 0) return; const k = eBack(u / 0.4), sz = 150;
+  function boostBar(x, A, t, slots, active, Y, appear, tapAt, sz = 150, labels = true) {
+    const u = t - appear; if (u < 0) return; const k = eBack(u / 0.4), ic = sz * 0.61;
     slots.forEach((sl, i) => {
-      const X = W / 2 + (i - 1) * 200, on = active != null && t >= active && i === 1, pr = tapAt != null ? Math.max(0, 1 - Math.abs(t - tapAt) / 0.12) : 0;
+      const X = W / 2 + (i - 1) * sz * 1.33, on = active != null && t >= active && i === 1, pr = tapAt != null ? Math.max(0, 1 - Math.abs(t - tapAt) / 0.12) : 0;
       x.save(); x.translate(X, Y + (1 - k) * 200); x.scale(1 - pr * 0.1, 1 - pr * 0.1);
       if (on) { x.shadowColor = '#c4a7ff'; x.shadowBlur = 50 + 20 * Math.sin(t * 8); }
       const g = x.createLinearGradient(0, -sz / 2, 0, sz / 2); g.addColorStop(0, on ? '#b794ff' : 'rgba(116,58,232,.55)'); g.addColorStop(1, on ? '#743ae8' : 'rgba(43,14,107,.75)');
-      x.fillStyle = g; rr(x, -sz / 2, -sz / 2, sz, sz, 36); x.fill(); x.shadowBlur = 0; x.strokeStyle = i === 1 ? '#e4d7ff' : 'rgba(196,167,255,.45)'; x.lineWidth = i === 1 ? 5 : 3; x.stroke();
-      if (sl.img) x.drawImage(sl.img, -46, -52, 92, 92);
-      x.font = F(800, 24); x.fillStyle = '#fff'; x.textAlign = 'center'; x.fillText(on ? 'ACTIVE' : sl.name, 0, sz / 2 + 38);
+      x.fillStyle = g; rr(x, -sz / 2, -sz / 2, sz, sz, sz * 0.24); x.fill(); x.shadowBlur = 0; x.strokeStyle = i === 1 ? '#e4d7ff' : 'rgba(196,167,255,.45)'; x.lineWidth = i === 1 ? 5 : 3; x.stroke();
+      if (sl.img) x.drawImage(sl.img, -ic / 2, -ic / 2 - sz * 0.02, ic, ic);
+      if (labels) { x.font = F(800, 24); x.fillStyle = '#fff'; x.textAlign = 'center'; x.fillText(on ? 'ACTIVE' : sl.name, 0, sz / 2 + 38); }
       x.restore();
     });
   }
@@ -939,6 +939,8 @@ const CLIP = (() => {
     const marks = [...T.trs, ...T.segs.map(g => g.a)].filter(t => t > 0.6 && t < T.total - 0.3).sort((a, b) => a - b);
     T.trs = marks.filter((t, i) => !i || t - marks[i - 1] > 0.6);
     T.drop = T.drop != null ? T.drop : (T.trs[1] || T.total * 0.4);
+    T.outro = T.segs.length ? T.segs[T.segs.length - 1].a : T.total - 4.6;
+    T.spec = spec;
     /* the screen breathes with the song's beat */
     if (T.sync) for (let t = 0; t < T.total; t += T.beat) T.cue(t, () => { T.P.pulse = 1; });
     return T;
@@ -960,7 +962,7 @@ const CLIP = (() => {
     if (T.look) LK = T.look;
     RS = scale;
     if (x.reset) x.reset(); else { x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 1; x.globalCompositeOperation = 'source-over'; x.shadowBlur = 0; x.filter = 'none'; }
-    x.setTransform(scale, 0, 0, scale, 0, 0);
+    x.setTransform(scale, 0, 0, scale, 0, 0); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
     T.P.kick *= Math.pow(0.86, dt * 30); T.P.pulse *= Math.pow(0.8, dt * 30);
     const c = Object.assign({}, camAt(T, t)), cm = LK.cam, tu = trAt(T, t), tk = tu == null ? 0 : 1 - Math.abs(tu);
     if (cm === 'calm') c.z = 1 + (c.z - 1) * 0.45;
@@ -975,6 +977,7 @@ const CLIP = (() => {
     /* one bad frame never stops the video: the scene is skipped for that frame only */
     for (const s of T.segs) if (t >= s.a && t < s.b) { x.save(); try { s.draw(x, t); } catch (e) { if ((frame.warned = (frame.warned || 0) + 1) < 20) console.warn('clip frame', t.toFixed(2), String(e)); } x.restore(); x.globalAlpha = 1; x.shadowBlur = 0; x.filter = 'none'; x.globalCompositeOperation = 'source-over'; }
     x.restore();
+    if (T.spec && T.spec.feature && T.spec.style !== 'spot') { try { featOverlay(x, A, T, t); } catch (e) { } }
     if (T.intro !== false) intro(x, A, t);
     if (LK.mood === 'midnight') { x.fillStyle = 'rgba(4,0,24,.16)'; x.fillRect(0, 0, W, H); }
     else if (LK.mood === 'electric') { x.save(); x.globalCompositeOperation = 'lighter'; x.fillStyle = 'rgba(116,58,232,.07)'; x.fillRect(0, 0, W, H); x.restore(); }
@@ -982,6 +985,23 @@ const CLIP = (() => {
     overlayFrame(x, LK.frame, t);
     for (const f of T.flashes) { const u = t - f.t; if (u >= 0 && u < f.d) { x.globalAlpha = f.a * (1 - u / f.d); x.fillStyle = f.col; x.fillRect(0, 0, W, H); x.globalAlpha = 1; } }
     if (tk) transition(x, LK.trans, tu, tk, scale);
+  }
+  /* any style + a feature: the booster bar is live in the run and the booster is tapped right before the
+     big moment; events and challenges get a badge. The outro title follows the feature. */
+  function featOverlay(x, A, T, t) {
+    const f = T.spec.feature, out = T.outro || T.total; if (t < 2.9 || t >= out) return;
+    if (f.kind === 'booster') {
+      const tap = Math.max(3.2, T.drop - 1.1), others = f.others || [];
+      const BY = T.spec.style === 'duel' ? 1850 : 1818;
+      boostBar(x, A, t, [{ img: A.oIcons[0], name: '' }, { img: A.fIcon, name: f.name }, { img: A.oIcons[1], name: '' }], tap, BY, 2.9, tap, 104, false);
+      if (t > tap - 0.6 && t < tap + 0.45) finger(x, W / 2 + 6, lerp(1990, BY + 14, eOut((t - tap + 0.6) / 0.5)), Math.max(0, 1 - Math.abs(t - tap) / 0.12), 0.8);
+      if (t >= tap && t < tap + 1.5) { const k = eBack((t - tap) / 0.35); x.save(); x.globalAlpha = clamp((tap + 1.5 - t) / 0.3); x.translate(W / 2, BY - 92); x.scale(k, k); chip(x, `⚡ ${f.name.toUpperCase()} ACTIVATED`, 0, 0, 34, 'rgba(116,58,232,.97)'); x.restore(); }
+      return;
+    }
+    if (f.kind === 'event' || f.kind === 'challenge') {
+      const lab = (f.kind === 'event' ? 'EVENT · ' : f.id === 'imp' ? '' : 'CHALLENGE · ') + f.name.toUpperCase(), k = eBack((t - 2.9) / 0.4);
+      x.save(); x.translate(W / 2, 1812); x.scale(k, k); chip(x, lab, 0, 0, 30, 'rgba(43,14,107,.92)'); x.restore();
+    }
   }
   /* a finishing frame on top of everything, different per variation */
   function overlayFrame(x, kind, t) {
@@ -995,8 +1015,8 @@ const CLIP = (() => {
       x.fillText('4K · 60', W - m - 20, m + 63); return;
     }
     if (kind === 'cinema') {
-      x.fillStyle = 'rgba(0,0,0,.88)'; x.fillRect(0, 0, W, 96); x.fillRect(0, H - 96, W, 96);
-      x.font = F(800, 22); x.fillStyle = 'rgba(214,196,255,.85)'; x.textAlign = 'center'; x.fillText('B E A T   S A N X   ·   M E M O R Y   G A M E', W / 2, H - 40);
+      x.fillStyle = 'rgba(0,0,0,.88)'; x.fillRect(0, 0, W, 76); x.fillRect(0, H - 76, W, 76);
+      x.font = F(800, 20); x.fillStyle = 'rgba(214,196,255,.85)'; x.textAlign = 'center'; x.fillText('B E A T   S A N X   ·   M E M O R Y   G A M E', W / 2, H - 31);
       return;
     }
     if (kind === 'glow') {
@@ -1046,7 +1066,7 @@ const CLIP = (() => {
     recd.start(250);
     const T0 = SND.beat.t0 || SND.now(), cues = T.cues.slice().sort((a, b) => a.t - b.t); let ci = 0, last = 0;
     if (music && music.key) SND.key(music.key.root, music.key.minor);
-    const mus = music ? SND.playBuffer(music.buffer, T0, musicStart(music, T), musicVol) : null;
+    const mus = music ? playMusic(music, T, T0, musicVol) : null;
     await new Promise(res => {
       const loop = () => {
         const t = SND.now() - T0;
@@ -1065,6 +1085,83 @@ const CLIP = (() => {
     const type = (recd.mimeType || mime || 'video/webm').split(';')[0];
     return { blob: new Blob(chunks, { type }), mime: type, ext: type.includes('mp4') ? 'mp4' : 'webm', secs: T.total };
   }
+  /* ================= HD RENDER (Studio) =================
+     Real 1080p: the sound is recorded first in real time (sample-exact capture of the game mix + song),
+     then every video frame is rendered OFFLINE at exactly 30 fps and encoded with a high-quality H.264
+     encoder (16 Mbps), then both are joined into an MP4 with AAC sound. No dropped frames on any laptop. */
+  const canHQ = () => !!(window.VideoEncoder && window.VideoFrame && window.AudioWorkletNode);
+  async function captureAudio(T, music, musicVol, sfxVol, onTick) {
+    const c = SND.ctx(); if (c.state !== 'running') await c.resume();
+    if (!captureAudio.ready) { const code = `class C extends AudioWorkletProcessor{process(i){const ch=i[0];if(ch&&ch.length){this.port.postMessage([ch[0].slice(0),(ch[1]||ch[0]).slice(0)]);}return true;}}registerProcessor('bs-cap',C);`; await c.audioWorklet.addModule(URL.createObjectURL(new Blob([code], { type: 'application/javascript' }))); captureAudio.ready = true; }
+    const cap = new AudioWorkletNode(c, 'bs-cap', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: 'explicit' });
+    const L = [], R = []; cap.port.onmessage = e => { L.push(e.data[0]); R.push(e.data[1]); };
+    SND.rec(true); const master = SND.masterNode(); master.connect(cap); cap.connect(c.destination);
+    /* sync spike: one full-scale sample at a known time, straight into the capture (never heard) */
+    const sb = c.createBuffer(1, 1, c.sampleRate); sb.getChannelData(0)[0] = 1; const sp = c.createBufferSource(); sp.buffer = sb; sp.connect(cap);
+    const tSpike = c.currentTime + 0.15; sp.start(tSpike);
+    await new Promise(r => setTimeout(r, 450));
+    SND.beat.stop(); SND.beat.lock(!!music); SND.beat.start(T.bpm, music ? 'still' : 'light'); SND.sfxVol(sfxVol);
+    if (music && music.key) SND.key(music.key.root, music.key.minor);
+    const T0 = SND.beat.t0 || SND.now(), cues = T.cues.slice().sort((a, b) => a.t - b.t); let ci = 0; captureAudio.T0 = T0;
+    const mus = music ? playMusic(music, T, T0, musicVol) : null;
+    await new Promise(res => { const loop = () => { const t = SND.now() - T0; while (ci < cues.length && cues[ci].t <= t + 0.12) { SND.at(T0 + cues[ci].t); try { cues[ci].fn(); } catch (e) { } SND.at(null); ci++; } if (onTick) onTick(Math.max(0, Math.min(t, T.total))); if (t >= T.total + 0.35) return res(); requestAnimationFrame(loop); }; requestAnimationFrame(loop); });
+    if (mus) mus.stop(); SND.beat.stop(); SND.beat.lock(false); SND.key(null); SND.setVol();
+    await new Promise(r => setTimeout(r, 120));
+    try { master.disconnect(cap); } catch (e) { } cap.disconnect(); cap.port.onmessage = null; SND.rec(false);
+    /* stitch, find the spike, cut exactly [T0, T0 + total] */
+    const n = L.reduce((a, b) => a + b.length, 0), l = new Float32Array(n), r = new Float32Array(n); let o = 0;
+    for (let i = 0; i < L.length; i++) { l.set(L[i], o); r.set(R[i], o); o += L[i].length; }
+    let si = 0; for (let i = 0; i < n; i++) if (l[i] > 0.97) { si = i; break; }
+    const sr = c.sampleRate, i0 = si + Math.round((T0 - tSpike) * sr), N = Math.round(T.total * sr);
+    const pcm = new Int16Array(N * 2);
+    for (let i = 0; i < N; i++) { const j = i0 + i, a = j >= 0 && j < n ? l[j] : 0, b = j >= 0 && j < n ? r[j] : 0; pcm[i * 2] = Math.max(-1, Math.min(1, a)) * 32767; pcm[i * 2 + 1] = Math.max(-1, Math.min(1, b)) * 32767; }
+    /* wav */
+    const hd = new DataView(new ArrayBuffer(44)), ws = (p2, t2) => [...t2].forEach((ch, k) => hd.setUint8(p2 + k, ch.charCodeAt(0)));
+    ws(0, 'RIFF'); hd.setUint32(4, 36 + pcm.byteLength, true); ws(8, 'WAVE'); ws(12, 'fmt '); hd.setUint32(16, 16, true); hd.setUint16(20, 1, true); hd.setUint16(22, 2, true); hd.setUint32(24, sr, true); hd.setUint32(28, sr * 4, true); hd.setUint16(32, 4, true); hd.setUint16(34, 16, true); ws(36, 'data'); hd.setUint32(40, pcm.byteLength, true);
+    return new Uint8Array(await new Blob([hd.buffer, pcm.buffer]).arrayBuffer());
+  }
+  async function makeHQ(spec, { w = 1080, h = 1920, fps = 30, music = null, musicVol = 0.8, sfxVol = 1, onProgress, onStage, canvas, ffmpeg } = {}) {
+    const A = await assets(spec), scale = w / W;
+    /* 1) sound, live (the preview canvas shows the video while it records) */
+    if (onStage) onStage('sound');
+    const T1 = build(spec, A), pv = canvas ? canvas.getContext('2d') : null; if (canvas) { canvas.width = 540; canvas.height = 960; }
+    let lastT = 0;
+    const wav = await captureAudio(T1, music, musicVol, sfxVol, t => { if (pv) { try { frame(pv, A, T1, t, 540 / W, Math.max(0.001, t - lastT)); } catch (e) { } lastT = t; } if (onProgress) onProgress(0.4 * t / T1.total); });
+    /* 2) video, offline: exact frames, high-quality encoder */
+    if (onStage) onStage('video');
+    const T = build(spec, A), big = document.createElement('canvas'); big.width = w; big.height = h; const x = big.getContext('2d');
+    const chunks = []; let err = null;
+    const enc = new VideoEncoder({ output: ch => { const b = new Uint8Array(ch.byteLength); ch.copyTo(b); chunks.push(b); }, error: e => { err = e; } });
+    let cfg = null;
+    for (const codec of ['avc1.640028', 'avc1.4d0028', 'avc1.42e028']) { const c2 = { codec, width: w, height: h, bitrate: w >= 1080 ? 16e6 : 9e6, framerate: fps, latencyMode: 'quality', avc: { format: 'annexb' } }; try { if ((await VideoEncoder.isConfigSupported(c2)).supported) { cfg = c2; break; } } catch (e) { } }
+    if (!cfg) throw new Error('HD encoder not available in this browser');
+    enc.configure(cfg);
+    const cues = T.cues.slice().sort((a, b) => a.t - b.t); let ci = 0; const N = Math.ceil(T.total * fps);
+    SND.silent(true);
+    try {
+      for (let i = 0; i <= N; i++) {
+        if (err) throw err;
+        const t = Math.min(T.total, i / fps);
+        while (ci < cues.length && cues[ci].t <= t) { try { cues[ci].fn(); } catch (e) { } ci++; }
+        try { frame(x, A, T, t, scale, 1 / fps); } catch (e) { }
+        const vf = new VideoFrame(big, { timestamp: Math.round(i * 1e6 / fps), duration: Math.round(1e6 / fps) });
+        enc.encode(vf, { keyFrame: i % (fps * 2) === 0 }); vf.close();
+        while (enc.encodeQueueSize > 4) await new Promise(r => setTimeout(r, 2));
+        if (i % 6 === 0) { if (pv) pv.drawImage(big, 0, 0, 540, 960); if (onProgress) onProgress(0.4 + 0.55 * i / N); await new Promise(r => setTimeout(r, 0)); }
+      }
+      await enc.flush();
+    } finally { SND.silent(false); try { enc.close(); } catch (e) { } }
+    if (err) throw err;
+    const n = chunks.reduce((a, b) => a + b.length, 0), h264 = new Uint8Array(n); let o = 0; for (const c3 of chunks) { h264.set(c3, o); o += c3.length; }
+    /* 3) join video + AAC sound into an MP4 */
+    if (onStage) onStage('mux');
+    const ff = await ffmpeg();
+    await ff.writeFile('v.h264', h264); await ff.writeFile('a.wav', wav);
+    await ff.exec(['-r', String(fps), '-i', 'v.h264', '-i', 'a.wav', '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest', '-movflags', '+faststart', 'out.mp4']);
+    const data = await ff.readFile('out.mp4'); for (const f of ['v.h264', 'a.wav', 'out.mp4']) { try { await ff.deleteFile(f); } catch (e) { } }
+    if (onProgress) onProgress(1);
+    return { blob: new Blob([data.buffer], { type: 'video/mp4' }), mime: 'video/mp4', ext: 'mp4', secs: T.total, aac: true, hq: true };
+  }
   /* live preview with sound (Studio) */
   async function preview(spec, canvas, w = 540, h = 960, withSound = true, music = null, musicVol = 0.8) {
     canvas.width = w; canvas.height = h; const x = canvas.getContext('2d'), A = await assets(spec), T = build(spec, A);
@@ -1072,7 +1169,7 @@ const CLIP = (() => {
     if (withSound) { SND.beat.stop(); SND.beat.lock(!!music); SND.beat.start(T.bpm, music ? 'still' : 'light'); }
     const T0 = withSound ? (SND.beat.t0 || SND.now()) : 0;
     if (withSound && music && music.key) SND.key(music.key.root, music.key.minor);
-    const mus = withSound && music ? SND.playBuffer(music.buffer, T0, musicStart(music, T), musicVol) : null;
+    const mus = withSound && music ? playMusic(music, T, T0, musicVol) : null;
     return {
       total: T.total,
       draw: tt => { const t = withSound ? SND.now() - T0 : tt; if (withSound) while (ci < cues.length && cues[ci].t <= t + 0.12) { SND.at(T0 + cues[ci].t); try { cues[ci].fn(); } catch (e) { } SND.at(null); ci++; } try { frame(x, A, T, Math.max(0, Math.min(t, T.total)), w / W, Math.max(0.001, t - last)); } catch (e) { console.warn('frame', e); } last = t; return t; },
@@ -1144,10 +1241,53 @@ const CLIP = (() => {
     for (let k = 2; k < bars.length - 2; k++) { const after = mean(k, k + 4), before = mean(k - 4, k), sc = (after - before) / maxBar + 0.6 * after / maxBar; drops.push({ t: bar0 + k * barLen, sc, k }); }
     drops.sort((a2, b3) => b3.sc - a2.sc);
     const top = []; for (const d of drops) { if (top.every(q => Math.abs(q.k - d.k) >= 8)) top.push(d); if (top.length >= 6) break; }
+    /* refine each drop to the exact beat where the energy jumps (bar lines can be a beat off) */
+    for (const d of top) { let bt = d.t, bs = -1; for (let j = -3; j <= 3; j++) { const t0 = d.t + j * P; if (t0 - 2 * P < 0 || t0 + 2 * P > buf.duration) continue; const sc = rmsAt(t0, t0 + 2 * P) - rmsAt(t0 - 2 * P, t0); if (sc > bs) { bs = sc; bt = t0; } } d.t = bt; }
     /* 5) key of the loudest part */
     const kd = top[0] ? top[0].t : buf.duration / 3, key = detectKey(full, sr, Math.max(0, kd - 10), Math.min(buf.duration, kd + 40));
-    return { buffer: buf, bpm: Math.round(bpm * 100) / 100, period: P, phase, bar0, barLen, offset: phase, drops: top.map(d => d.t), secs: buf.duration, name: file.name, key };
+    return { buffer: buf, bpm: Math.round(bpm * 100) / 100, period: P, phase, bar0, barLen, offset: phase, drops: top.map(d => d.t), bars, secs: buf.duration, name: file.name, key };
   }
+  /* ================= AUTO MUSIC EDIT =================
+     The song is cut into bars and re-assembled to fit THIS video: build-up under the hook and early
+     gameplay, the drop exactly on the video's big moment, the high-energy part looped if the song is
+     short, a one-bar cut on every fail (like the game), and a clean fade on the outro. Every cut is on
+     a bar line of the same song, so tempo and key always match. */
+  function musicPlan(m, T) {
+    if (!m || !m.bars || m.bars.length < 4 || !m.barLen) return null;
+    const L = m.barLen, nb = m.bars.length, mx = Math.max(...m.bars, 1e-6), lvl = k => m.bars[k] / mx;
+    const dT = m.drops && m.drops.length ? m.drops[0] : m.bar0;
+    let sd = Math.round((dT - m.bar0) / L); sd = Math.max(0, Math.min(nb - 1, sd));
+    const sh = dT - (m.bar0 + sd * L);                 // beat-exact drop (can be a beat off the bar grid)
+    const run = []; for (let k = sd; k < nb && run.length < 24 && (run.length < 4 || lvl(k) >= 0.42); k++) run.push(k);
+    const pre = []; for (let k = Math.max(0, sd - 8); k < sd; k++) pre.push(k);
+    const tD = T.drop, outro = T.outro != null ? T.outro : T.total - 4.6, segs = [];
+    const jmin = -Math.ceil(tD / L - 1e-6), jmax = Math.ceil((T.total + 0.3 - tD) / L);
+    for (let j = jmin; j < jmax; j++) {
+      const s0 = tD + j * L, v0 = Math.max(0, s0), v1 = Math.min(T.total + 0.3, s0 + L); if (v1 <= v0) continue;
+      let k;
+      if (j >= 0) k = j < run.length ? run[j] : run[j % run.length];
+      else if (sd + j >= 0) k = sd + j;
+      else k = pre.length ? pre[((pre.length + (j % pre.length)) % pre.length)] : run[((run.length + (j % run.length)) % run.length)];
+      const type = s0 >= outro - 0.01 ? 'outro' : j >= 0 ? 'drop' : j >= -2 ? 'build' : 'groove';
+      segs.push({ v0, v1, song: Math.max(0, m.bar0 + k * L + sh + (v0 - s0)), k, type });
+    }
+    /* fails: the music cuts out until the next bar line (silence hurts, like in the game) */
+    for (const tf of (T.fails || []).slice().sort((a, b) => a - b)) {
+      const i = segs.findIndex(sg => tf >= sg.v0 && tf < sg.v1 && !sg.mute); if (i < 0) continue;
+      const sg = segs[i], cut = { v0: tf, v1: sg.v1, song: sg.song + (tf - sg.v0), k: sg.k, type: 'cut', mute: true };
+      sg.v1 = tf; segs.splice(i + 1, 0, cut);
+    }
+    /* merge pieces that already play continuously in the song */
+    const out = []; for (const sg of segs) { const p = out[out.length - 1]; if (p && !p.mute && !sg.mute && p.type === sg.type && Math.abs(p.song + (p.v1 - p.v0) - sg.song) < 0.002) p.v1 = sg.v1; else if (sg.v1 - sg.v0 > 0.005) out.push(Object.assign({}, sg)); }
+    return out;
+  }
+  function playMusic(m, T, T0, vol) {
+    const plan = musicPlan(m, T);
+    if (plan) return SND.playSegs(m.buffer, T0, plan, vol, T.total, 1.4);
+    return SND.playBuffer(m.buffer, T0, musicStart(m, T), vol);
+  }
+  /* timeline for the Studio: what plays where (no assets needed) */
+  function planFor(spec, m) { const T = build(spec, {}); return { total: T.total, drop: T.drop, outro: T.outro, fails: T.fails.slice(), segs: musicPlan(m, T) }; }
   /* where to start the song so its beats sit on the video's grid and the drop lands on the video's climax */
   function musicStart(m, T) {
     if (!m || !m.period) return m ? m.offset || 0 : 0;
@@ -1158,6 +1298,6 @@ const CLIP = (() => {
     let st = m.bar0; while (st + T.total > m.secs && st - m.barLen >= 0) st -= m.barLen; return Math.max(0, st);
   }
   const setRS = v => { RS = v; };
-  const _ = { setRS, phone, gameScreen, board, bigText, slam, sub, hud, endCard, intro, assets, bg, vignette, chip, ripple, rr, clamp, eBack, eOut, finger, W, H };
-  return { _, make, preview, still, loadMusic, musicStart, look, lookName, lookSkin, canRecord, pickMime, STYLES: Object.keys(STYLES), COLORS };
+  const _ = { captureAudio, build, setRS, phone, gameScreen, board, bigText, slam, sub, hud, endCard, intro, assets, bg, vignette, chip, ripple, rr, clamp, eBack, eOut, finger, W, H };
+  return { _, make, makeHQ, canHQ, planFor, musicPlan, preview, still, loadMusic, musicStart, look, lookName, lookSkin, canRecord, pickMime, STYLES: Object.keys(STYLES), COLORS };
 })();
