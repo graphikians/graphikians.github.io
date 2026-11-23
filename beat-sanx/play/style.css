@@ -972,7 +972,7 @@ body.hasBanner #modal{padding-bottom:calc(var(--bnr,90px) + var(--navh,64px) + 1
 
 /* ===== v1.4 beat feel ===== */
 .boardWrap .board{transition:transform .09s ease-out}
-.boardWrap.kick .board{animation:kickP .22s ease-out}
+
 @keyframes kickP{0%{transform:scale(1.022)}100%{transform:scale(1)}}
 .board .tile.beatHit .tFx{animation:beatRing .3s ease-out forwards}
 @keyframes beatRing{0%{box-shadow:inset 0 0 0 4px #fff,inset 0 0 0 30px rgba(255,255,255,.35)}100%{box-shadow:inset 0 0 0 4px #fff,inset 0 0 0 0 rgba(255,255,255,0)}}
@@ -1059,3 +1059,31 @@ a.btn.getApp{display:flex;align-items:center;justify-content:center;gap:8px;text
 .avCard.t-legend em{background:linear-gradient(90deg,#9a6df5,#fff);color:#3b1580}.avCard.t-mythic em{background:#c4a7ff;color:#3b1580}
 .avSoon{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:16px;border:2px dashed var(--line);padding:10px;text-align:center}.avSoon b{font-size:13px}.avSoon small{font-size:10.5px;color:var(--mut)}
 .avBuy{width:120px;height:120px;border-radius:50%;margin:4px auto 8px;display:block;border:4px solid #c4a7ff}
+/* v1.5 merge: visible locks */
+.lkTag{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:900;letter-spacing:1px;padding:3px 8px;border-radius:8px;background:rgba(0,0,0,.35);color:#fff}.lkTag .ic{width:12px;height:12px}
+.lvRib.lock{background:rgba(0,0,0,.55)!important;color:#fff}.lvRib .ic{width:11px;height:11px;vertical-align:-1px}
+.liveCard.locked,.feat.locked{filter:saturate(.55) brightness(.85)}
+.evLocked .evCard,.evLocked .arenaGrid,.evLocked .tourCard{filter:saturate(.45) brightness(.8)}
+.evLocked .dailyRow,.evLocked .saveStreak{filter:none}
+#nav button.lockedNav .nvI{opacity:.6}
+.memCard{display:flex;align-items:center;gap:10px;width:100%;margin:10px 0 4px;padding:12px 14px;border-radius:18px;background:linear-gradient(130deg,#743ae8,#2b0e6b);border:1px solid rgba(196,167,255,.45);text-align:left}
+.memCard .mcL{flex:1;display:flex;flex-direction:column}.memCard small{font-size:10px;font-weight:900;letter-spacing:1.3px;color:#e4d7ff}.memCard b{font-size:20px}.memCard em{font-style:normal;font-size:12px;font-weight:700;color:#e4d7ff}
+.memCard .mcGo{display:flex;align-items:center;gap:5px;padding:8px 12px;border-radius:12px;background:#fff;color:#4a2499;font-weight:900;font-size:13px}.memCard .mcGo .ic{width:16px;height:16px}
+.lockedList .cCard{filter:saturate(.4) brightness(.8)}
+.bst.lockB{opacity:.55}.bst.lockB i{font-size:10px}.bsRow.lockRow{opacity:.6}
+.volRow{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:var(--card);border:1px solid var(--line);margin-top:8px}.volRow span{flex:1;font-weight:800;font-size:13.5px}.volRow input{width:46%;accent-color:#9a6df5}
+/* v1.5 reaction mode */
+.recTog{display:flex;align-items:center;gap:10px;width:100%;margin:8px 0 6px;padding:10px 12px;border-radius:14px;background:var(--card);border:1px solid var(--line);text-align:left}
+.recTog span:nth-child(2){flex:1;display:flex;flex-direction:column}.recTog b{font-size:13.5px}.recTog small{font-size:11px;color:var(--mut);font-weight:700}
+.recTog em{font-style:normal;font-weight:900;font-size:12px;padding:5px 10px;border-radius:10px;background:rgba(255,255,255,.08)}
+.recTog.on{border-color:#ff2d55;background:linear-gradient(120deg,rgba(255,45,85,.18),var(--card))}.recTog.on em{background:#ff2d55}
+.rcDot{width:14px;height:14px;border-radius:50%;background:#ff2d55;box-shadow:0 0 0 4px rgba(255,45,85,.25)}
+#recBubble{position:fixed;right:10px;top:calc(env(safe-area-inset-top) + 64px);width:84px;height:84px;border-radius:50%;overflow:hidden;z-index:9000;border:3px solid #ff2d55;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+#recBubble video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+#recBubble i{position:absolute;left:50%;bottom:4px;transform:translateX(-50%);font-style:normal;font-size:10px;font-weight:900;background:#ff2d55;color:#fff;padding:1px 6px;border-radius:6px}
+#recBubble.live i{animation:blink 1s infinite}
+/* creator mode on a laptop: app in a phone-width column */
+body.isCreator #app{max-width:480px;margin:0 auto;height:100%;box-shadow:0 0 0 1px rgba(154,109,245,.3),0 0 80px rgba(0,0,0,.6)}
+body.isCreator #nav{max-width:480px;left:50%;transform:translateX(-50%)}
+body.isCreator .screen,body.isCreator #sheet,body.isCreator #recBubble~*{left:max(0px,calc(50% - 240px));right:max(0px,calc(50% - 240px))}
+body.isCreator{background:#07041a}

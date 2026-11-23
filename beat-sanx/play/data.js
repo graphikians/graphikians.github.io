@@ -37,7 +37,7 @@ D.band = lv => { let a = 1; for (let i = 0; i < D.BANDS.length; i++) { const [to
    level x5 is a TWIST level in Classic (a surprise mode) from level 15 on. */
 D.levelLen = lv => D.band(lv).n + (lv % 10 === 0 ? 1 : 0);
 D.isRelief = lv => lv > 10 && (lv % 10 === 1 || lv % 10 === 2);
-D.TWISTS = ['reverse', 'chaos', 'ghost', 'speed', 'negative'];
+D.TWISTS = ['reverse', 'speed', 'chaos'];   /* v1.5: no ghost/negative surprises (tiles looked blank) */
 D.twistFor = lv => (lv >= 15 && lv % 10 === 5) ? D.TWISTS[Math.floor(lv / 10) % D.TWISTS.length] : null;
 /* beat tempo (BPM) of a level: rises slowly with the tile band, boss levels hit harder */
 D.bpmFor = lv => Math.min(150, 96 + D.band(lv).i * 5 + (lv % 10 === 0 ? 10 : 0) - (D.isRelief(lv) ? 6 : 0));
@@ -151,7 +151,9 @@ D.BOOST = Object.fromEntries(D.BOOSTERS.map(b => [b.id, b]));
 /* v1.4: only 6 boosters stay in the game (simple choice). Old ones are refunded as coins once. */
 D.BOOSTERS_ALL = D.BOOSTERS;
 D.BOOST_ACTIVE = ['slow', 'heart', 'double', 'shield', 'hint', 'xray'];
-D.BOOSTERS = D.BOOSTERS_ALL.filter(b => D.BOOST_ACTIVE.includes(b.id));
+/* v1.5 merge: all 15 boosters are back; they open with progress but are always visible */
+D.BOOST_ACTIVE = D.BOOSTERS_ALL.map(b => b.id);
+D.BOOST_LV = { slow: 1, heart: 1, double: 1, shield: 1, hint: 1, xray: 3, freeze: 6, second: 8, magnet: 10, lucky: 12, xp: 14, combo: 16, skip: 18, fog: 22, pass: 25 };
 
 /* ---------- v1.4 progressive unlock (classic level needed) ----------
    New players see a clean game; a new feature opens every few levels ("tomorrow something new"). */

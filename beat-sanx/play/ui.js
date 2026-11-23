@@ -33,9 +33,9 @@ const UI = (() => {
     cur = id;
     const tab = ['home', 'chall', 'events', 'shop', 'profile'].includes(id);
     $('nav').classList.toggle('hide', !tab || WEB);
-    document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.go === GROUP[id]));
+    document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.go === id));
     document.body.dataset.scr = id;
-    if (tab) { render(id); segBar(id); navLocks(); ADS.banner(id !== 'home'); SND.music(true); }
+    if (tab) { render(id); navLocks(); ADS.banner(id !== 'home'); SND.music(true); }
   }
   function segBar(id) {
     const g = GROUP[id]; if (!SEGS[g]) return; lastSub[g] = id;
@@ -47,7 +47,7 @@ const UI = (() => {
     if (g === 'compete') { if (!S.feat('duel')) return lockedToast('duel'); const t = lastSub.compete === 'events' && !S.feat('events') ? 'chall' : lastSub.compete; return show(t); }
     if (g === 'me') { if (lastSub.me === 'shop') SHOP.tab('home'); return show(lastSub.me); }
   }
-  function navLocks() { const b = document.querySelector('#nav [data-go=compete]'); if (b) b.classList.toggle('locked', !S.feat('duel')); }
+  function navLocks() { const b = document.querySelector('#nav [data-go=events]'); if (b) b.classList.toggle('lockedNav', !S.feat('events')); }
   function lockedToast(id) { const u = D.UNLOCK[id]; toast(`${u.name} unlocks at Level ${u.lv} · keep playing!`, 'lock'); }
   /* announce features that just opened */
   function announceUnlocks() {
@@ -75,39 +75,34 @@ const UI = (() => {
     if (WEB) return renderWeb();
     const st = S.st;
     if (!selMode || !S.unlocked(selMode)) selMode = st.lastMode && S.unlocked(st.lastMode) ? st.lastMode : 'classic';
-    const m = D.MODE[selMode], lv = S.lv(selMode);
+    const m = D.MODE[selMode], lv = S.lv(selMode), se = D.season();
     const qDone = st.quests.list.filter(q => q.done && !q.claimed).length;
     const spinRdy = st.spin.free > 0;
     const line = D.SANX.home[Math.floor(Date.now() / 9000) % D.SANX.home.length];
+    const live = EV.heroInfo();
     const pass = S.passTouch(), ptier = S.passTier(), pReady = Array.from({ length: ptier }, (_, i) => i).filter(i => !pass.got.includes(i)).length;
     const chalN = CH.pendingCount();
-    const db = S.dbeatToday(), sx = D.sanxScore(db.no);
-    const mb = S.memBest(), rk = D.memRank(mb), nx = D.memNext(mb);
-    const live = S.feat('events') ? EV.heroInfo() : null;
+    const evL = !S.feat('events'), impL = !S.feat('imp'), duL = !S.feat('duel');
+    const lk = id => `<span class="lkTag">${ART.ic('lock')} LEVEL ${D.UNLOCK[id].lv}</span>`;
     const lockQ = (id, act, ic, t, sub, dot) => S.feat(id) ? qa(act, ic, t, sub, dot) : `<button class="qa locked" data-act="locked:${id}">${ART.ic('lock')}<b>${t}</b><small>Lv ${D.UNLOCK[id].lv}</small></button>`;
     $('home').innerHTML = h`${topbar()}
-    <div class="hero sm">
+    <div class="hero">
       <div class="heroBg"></div>
       <div class="heroSanx">${ART.sanx('smug')}</div>
-      <div class="heroBubble">${db.done ? line : D.SANX.daily[db.no % D.SANX.daily.length].replace('{s}', sx)}</div>
+      <div class="heroBubble">${line}</div>
       <img class="heroLogo" src="img/logo.png" alt="Beat Sanx">
+      <button class="season" data-act="season">${ART.ic(se.icon)}<span><b>${se.name}</b> · ${se.desc}</span><em>${left(se.end)}</em></button>
     </div>
-    <div class="idRow">
-      <button class="dbCard ${db.done ? 'done' : ''}" data-act="dbeat">
-        <span class="dbK">DAILY BEAT #${db.no}</span>
-        ${db.done ? `<b class="dbScore">${db.score}<i>vs</i>${sx}</b><small>${db.win ? 'You beat Sanx!' : 'Sanx won today'} · ${ART.ic('share')} share</small>`
-                  : `<b class="dbScore">${sx}<i>tiles</i></b><small>Sanx's score today. Beat it!</small>`}
-        ${db.streak ? `<em class="dbFire">${ART.ic('fire')}${db.streak}</em>` : ''}
-        ${db.done ? '' : '<i class="dot"></i>'}
-      </button>
-      <button class="msCard" data-act="test">
-        <span class="dbK">MEMORY SCORE</span>
-        <b class="msN">${mb || '?'}</b>
-        <small>${mb ? `${rk.name}${nx ? ` · ${nx.min - mb} to ${nx.name}` : ''}` : 'Take the test'}</small>
-        <span class="msGo">${ART.ic('brain')} TEST</span>
-      </button>
+    <button class="liveCard th-${live.id} ${evL ? 'locked' : ''}" data-act="${evL ? 'locked:events' : live.act}" style="--la:${live.c1};--lb:${live.c2}">
+      <span class="lvRib ${evL ? 'lock' : live.rib.cls}">${evL ? `${ART.ic('lock')} LEVEL ${D.UNLOCK.events.lv}` : live.rib.t}</span>
+      <span class="lvIc">${ART.ic(live.icon)}</span>
+      <span class="lvTx"><small>${live.k}</small><b>${live.name}</b><em>${evL ? 'Events unlock at Level ' + D.UNLOCK.events.lv + ' · keep playing!' : live.sub}</em></span>
+      <span class="lvGo">${ART.ic(evL ? 'lock' : 'play')}</span>
+    </button>
+    <div class="featRow">
+      <button class="feat impF ${impL ? 'locked' : ''}" data-act="${impL ? 'locked:imp' : 'imp'}">${impL ? lk('imp') : '<span class="ftK">CHALLENGE</span>'}<b>IMPOSSIBLE <i>100</i></b><small>${st.imp.best ? 'Your best: ' + st.imp.best + ' tiles' : 'How much can you remember?'}</small>${ART.ic('brain', 'ftIc')}</button>
+      <button class="feat chF ${duL ? 'locked' : ''}" data-act="${duL ? 'locked:duel' : 'chal'}">${chalN && !duL ? `<i class="dot"></i>` : ''}${duL ? lk('duel') : `<span class="ftK">${chalN ? chalN + ' WAITING' : '2× COINS'}</span>`}<b>DUEL A FRIEND</b><small>Same pattern. Winner takes 2×</small>${ART.ic('swords', 'ftIc')}</button>
     </div>
-    ${db.lost && !db.done ? `<button class="saveStreak" data-act="dbSave">${ART.ic('fire')}<span><b>Your ${db.lost}-day streak broke!</b><small>Watch an ad to save it</small></span><em>${ART.ic('ad')} SAVE</em></button>` : ''}
     <div class="playZone">
       <button class="modePick" data-act="modes">
         <span class="mpIc">${ART.ic(m.icon)}</span>
@@ -117,17 +112,11 @@ const UI = (() => {
       </button>
       <button class="playBtn" data-act="ready"><span>${ART.ic('play')}PLAY</span><small>${selMode === 'blitz' ? '90 second race' : `Level ${lv} · ${D.levelLen(lv)} tiles · ${D.gridFor(lv)}×${D.gridFor(lv)}`}</small></button>
     </div>
-    ${S.feat('duel') ? `<button class="duelStrip" data-act="chal">${chalN ? `<i class="dot"></i>` : ''}${ART.ic('swords')}<span><b>${chalN ? chalN + ' duel' + (chalN > 1 ? 's' : '') + ' waiting' : 'Duel a friend'}</b><small>Same pattern · winner takes 2×</small></span>${ART.ic('next')}</button>` : nextUnlockStrip()}
-    ${live ? `<button class="liveCard th-${live.id}" data-act="${live.act}" style="--la:${live.c1};--lb:${live.c2}">
-      <span class="lvRib ${live.rib.cls}">${live.rib.t}</span>
-      <span class="lvIc">${ART.ic(live.icon)}</span>
-      <span class="lvTx"><small>${live.k}</small><b>${live.name}</b><em>${live.sub}</em></span>
-      <span class="lvGo">${ART.ic('play')}</span>
-    </button>` : ''}
     <div class="quick">
       ${lockQ('quests', 'quests', 'flag', 'Quests', `${st.quests.list.filter(q => q.claimed).length}/3`, qDone > 0)}
       ${lockQ('spin', 'spin', 'sparkle', 'Spin', spinRdy ? 'Free' : 'Ad', spinRdy)}
       ${lockQ('pass', 'pass', 'ticket', 'Pass', `Tier ${ptier}`, pReady > 0)}
+      ${qa('rank', 'bars', 'Ranking', 'Weekly', !!pendingLB())}
       ${qa('chests', 'gift', 'Chests', 'Loot', false)}
     </div>`;
   }
@@ -168,7 +157,7 @@ const UI = (() => {
   function readySheet(mode) {
     selMode = mode; const st = S.st, m = D.MODE[mode], lv = S.lv(mode);
     selBoosts = selBoosts.filter(b => (st.boosters[b] || 0) > 0);
-    const boosts = D.BOOSTERS.map(b => { const on = selBoosts.includes(b.id), n = (st.boosters[b.id] || 0) - (on ? 1 : 0); return `<button class="bst ${on ? 'sel' : ''} ${n <= 0 && !on ? 'empty' : ''}" data-boost="${b.id}">${on ? '<span class="minus">−1</span>' : ''}${ART.ic(b.icon)}<i>${n}</i><small>${b.name}</small></button>`; }).join('');
+    const boosts = D.BOOSTERS.map(b => { const on = selBoosts.includes(b.id), n = (st.boosters[b.id] || 0) - (on ? 1 : 0); if (!S.boostOpen(b.id)) return `<button class="bst lockB" data-act="lockB:${b.id}">${ART.ic('lock')}<i>Lv ${D.BOOST_LV[b.id]}</i><small>${b.name}</small></button>`; return `<button class="bst ${on ? 'sel' : ''} ${n <= 0 && !on ? 'empty' : ''}" data-boost="${b.id}">${on ? '<span class="minus">−1</span>' : ''}${ART.ic(b.icon)}<i>${n}</i><small>${b.name}</small></button>`; }).join('');
     const fbLeft = S.cap('freeBoost', D.ADCAP.freeBoost);
     sheet(h`<div class="rdHead"><span class="rdIc">${ART.ic(m.icon)}</span><div><small>${mode === 'blitz' ? 'BEST ' + (st.blitzBest || 0) + ' STEPS' : 'LEVEL ' + lv + ' · ' + D.world(lv).name.toUpperCase()}</small><b>${m.name}</b></div></div>
       <div class="rdBody"><div class="demo" id="demo" data-m="${mode}">${Array.from({ length: 9 }, (_, i) => `<i style="--c:${D.SKINS[0].colors[i]}"></i>`).join('')}</div>
@@ -176,6 +165,7 @@ const UI = (() => {
       <div class="shT sm">Boosters <span class="selN">${selBoosts.length} of ${D.MAX_BOOSTS} selected</span></div><div class="bGrid">${boosts}</div>
       <div class="bDesc" id="bDesc">${selBoosts.length ? selBoosts.map(b => `<b>${D.BOOST[b].name}</b>: ${D.BOOST[b].desc}`).join('<br>') : 'Tap to use (count goes down) · tap again to put back · max 3 per run'}</div>
       <div class="getB"><button data-act="shop:boost">${ART.coin(15)} Get more with coins</button>${freeBoost ? `<span class="fbOn">${ART.ic('check')} Free ${D.BOOST[freeBoost].name}</span>` : fbLeft > 0 ? `<button data-act="freeBoost"><span class="adt">AD</span> 1 free · ${fbLeft} left</button>` : `<span class="muted">Free boosters used today</span>`}</div>
+      ${typeof REC !== 'undefined' && REC.ok() ? `<button class="recTog ${recOn ? 'on' : ''}" data-act="recTog"><span class="rcDot"></span><span><b>Record my reaction</b><small>Your face + the game → auto-edited video</small></span><em>${recOn ? 'ON' : 'OFF'}</em></button>` : ''}
       <button class="btn big pulse" data-act="playSel">${ART.ic('play')} PLAY ${m.name.toUpperCase()}</button>`, 'ready');
     demoLoop(mode);
   }
@@ -549,20 +539,23 @@ const UI = (() => {
   function renderChall() {
     const st = S.st, tot = totalStars(), own = st.skins.includes('starlord');
     const cards = D.CHALLENGES.map((c, i) => {
-      const s = starsOf(c.id), best = (st.cstars[c.id] || {}).b || 0, lock = c.mode !== 'classic' && !S.unlocked(c.mode);
-      return `<button class="cCard ${lock ? 'locked' : ''} ${s === 3 ? 'full' : ''}" data-act="${lock ? 'none' : 'cplay:' + c.id}"><span class="ccN">${i + 1}</span><span class="ccIc">${ART.ic(lock ? 'lock' : c.icon)}</span>
+      const s = starsOf(c.id), best = (st.cstars[c.id] || {}).b || 0, chL0 = !S.feat('chall'), lock = chL0 || (c.mode !== 'classic' && !S.unlocked(c.mode));
+      return `<button class="cCard ${lock ? 'locked' : ''} ${s === 3 ? 'full' : ''}" data-act="${chL0 ? 'locked:chall' : lock ? 'none' : 'cplay:' + c.id}"><span class="ccN">${i + 1}</span><span class="ccIc">${ART.ic(lock ? 'lock' : c.icon)}</span>
         <span class="ccTx"><b>${c.name}</b><small>${lock ? 'Unlock ' + D.MODE[c.mode].name + ' first' : c.tag + ' · best ' + best + ' tiles'}</small><span class="ccSt">${c.stars.map((t, k) => `<i class="${k < s ? 'on' : ''}">${ART.ic('star')}<em>${t}</em></i>`).join('')}</span></span>${ART.ic('play', 'ccGo')}</button>`;
     }).join('');
     const impL = !S.feat('imp'), chL = !S.feat('chall');
-    $('chall').innerHTML = h`${topbar()}<div class="pgT">Duels & Challenges <span class="pgSub">${tot}/${D.STARS_FOR_SKIN} stars</span></div><div class="pgBody">
+    const duL = !S.feat('duel'), mb = S.memBest(), rk = D.memRank(mb), nx = D.memNext(mb);
+    $('chall').innerHTML = h`${topbar()}<div class="pgT">Challenges <span class="pgSub">${tot}/${D.STARS_FOR_SKIN} stars</span></div><div class="pgBody">
       <div class="featRow">
         ${impL ? `<button class="feat impF locked" data-act="locked:imp"><span class="ftK">${ART.ic('lock')} LEVEL ${D.UNLOCK.imp.lv}</span><b>IMPOSSIBLE <i>100</i></b><small>The ultimate memory test</small>${ART.ic('brain', 'ftIc')}</button>` : `<button class="feat impF" data-act="imp"><span class="ftK">CHALLENGE</span><b>IMPOSSIBLE <i>100</i></b><small>${st.imp.best ? 'Your best: ' + st.imp.best + ' tiles' : 'How much can you remember?'}</small>${ART.ic('brain', 'ftIc')}</button>`}
-        <button class="feat chF" data-act="chal">${CH.pendingCount() ? `<i class="dot"></i>` : ''}<span class="ftK">DUEL LADDER</span><b>DUEL A FRIEND</b><small>Same pattern. Winner takes 2×</small>${ART.ic('swords', 'ftIc')}</button>
+        <button class="feat chF ${duL ? 'locked' : ''}" data-act="${duL ? 'locked:duel' : 'chal'}">${CH.pendingCount() && !duL ? `<i class="dot"></i>` : ''}<span class="ftK">${duL ? ART.ic('lock') + ' LEVEL ' + D.UNLOCK.duel.lv : 'DUEL LADDER'}</span><b>DUEL A FRIEND</b><small>Same pattern. Winner takes 2×</small>${ART.ic('swords', 'ftIc')}</button>
       </div>
+      <button class="memCard" data-act="test"><span class="mcL"><small>MEMORY TEST · NO BOOSTERS</small><b>Memory Score ${mb || '?'}</b><em>${mb ? `${rk.name}${nx ? ` · ${nx.min - mb} tile${nx.min - mb > 1 ? 's' : ''} to ${nx.name}` : ''}` : 'How many tiles can you remember?'}</em></span><span class="mcGo">${ART.ic('brain')} TEST</span></button>
+      ${typeof REC !== 'undefined' && REC.ok() ? `<button class="recTog" data-act="testRec"><span class="rcDot"></span><span><b>Memory Test + record my reaction</b><small>Your face + the game → auto-edited video</small></span><em>${ART.ic('play')}</em></button>` : ''}
       <div class="starBar"><div class="sbTop">${ART.ic('star')}<b>${tot}/${D.STARS_FOR_SKIN}</b><span>Collect all stars to unlock the <b>Star Legend</b> animated skin</span></div><div class="bar"><i style="width:${tot / D.STARS_FOR_SKIN * 100}%"></i></div>
         ${own ? `<em class="ok">${ART.ic('check')} Star Legend unlocked</em>` : tot >= D.STARS_FOR_SKIN ? `<button class="btn sm pulse" data-act="cstarClaim">CLAIM SKIN</button>` : ''}</div>
       <div class="secT">Ladder challenges <span class="muted">pattern starts at 2 tiles, +1 every round</span></div>
-      ${chL ? `<div class="nextUnl big">${ART.ic('lock')}<span><b>10 ladder challenges + Star Legend skin</b><small>unlock at Level ${D.UNLOCK.chall.lv}</small></span></div>` : `<div class="cList">${cards}</div>`}</div>`;
+      ${chL ? `<div class="nextUnl big">${ART.ic('lock')}<span><b>Ladder challenges unlock at Level ${D.UNLOCK.chall.lv}</b><small>Collect 30 stars for the Star Legend skin</small></span></div>` : ''}<div class="cList ${chL ? 'lockedList' : ''}">${cards}</div></div>`;
   }
   function cPlay(id) {
     if (!NET.gate()) return; closeModal();
@@ -581,7 +574,7 @@ const UI = (() => {
     modal(h`<div class="rw2"><div class="rwRib"><span>${c.name}</span></div><div class="cStars">${c.stars.map((t, i) => `<i class="${i < k ? 'on' : ''} ${i >= old && i < k ? 'new' : ''}" style="--d:${i * 220}ms">${ART.ic('star')}</i>`).join('')}</div>
       <div class="erBig"><span>${r.tiles}</span><small>tiles remembered</small></div><div class="mdS">${k === 3 ? 'All 3 stars!' : `Next star at ${c.stars[k]} tiles`}</div>
       ${g.coins || g.gems ? `<div class="rwItems">${rwItems(g)}</div>` : ''}
-      <button class="btn big collect" data-act="cplay:${c.id}">${ART.ic('refresh')} TRY AGAIN</button><button class="btn ghost" data-act="closeModal">Back</button></div>`, 'rw');
+      <button class="btn big collect" data-act="cplay:${c.id}">${ART.ic('refresh')} TRY AGAIN</button>${clipBtn(G.last)}<button class="btn ghost" data-act="closeModal">Back</button></div>`, 'rw');
     if (k > old) { SND.win(); FX.win('stars'); } else SND.lose();
     if (totalStars() >= D.STARS_FOR_SKIN && !st.skins.includes('starlord')) setTimeout(() => toast('30 stars! Claim the Star Legend skin', 'star'), 900);
   }
@@ -636,6 +629,8 @@ const UI = (() => {
       <div class="secT">Settings</div>
       <div class="setList">
         ${tog('sfx', 'sound', 'Sound effects')}${tog('music', 'music', 'Music')}${tog('vib', 'vibrate', 'Vibration')}
+        <div class="volRow">${ART.ic('music')}<span>Music volume</span><input type="range" class="volR" data-vol="musicVol" min="0" max="1" step="0.05" value="${st.set.musicVol == null ? 0.7 : st.set.musicVol}"></div>
+        <div class="volRow">${ART.ic('sound')}<span>Tile sound volume</span><input type="range" class="volR" data-vol="sfxVol" min="0" max="1" step="0.05" value="${st.set.sfxVol == null ? 1 : st.set.sfxVol}"></div>
         ${window.BS_PRIV ? `<button class="setRow" data-act="privOpts">${ART.ic('shield')}<span>Ad privacy choices</span>${ART.ic('next')}</button>` : ''}
         <button class="setRow" data-act="howto">${ART.ic('info')}<span>How to play</span>${ART.ic('next')}</button>
         <a class="setRow" href="https://graphikians.github.io/beat-sanx/privacy.html" target="_blank" rel="noopener">${ART.ic('lock')}<span>Privacy policy</span>${ART.ic('next')}</a>
@@ -774,7 +769,7 @@ const UI = (() => {
     lastRes = r;
   }
   /* ================= v1.4 SAVE CLIP: your run as a short game video ================= */
-  const clipBtn = r => r && r.clip && window.CLIP && CLIP.canRecord() ? `<button class="btn alt clipBtn" data-act="clip">${ART.ic('play')} SAVE CLIP <small>video for Reels / Shorts</small></button>` : '';
+  const clipBtn = r => r && r.clip && (typeof CLIP !== 'undefined') && CLIP.canRecord() ? `<button class="btn alt clipBtn" data-act="clip">${ART.ic('play')} SAVE CLIP <small>video for Reels / Shorts</small></button>` : '';
   async function saveClip(r) {
     if (!r || !r.clip) return;
     const n = r.tiles || r.clip.seq.length, mb = S.memBest();
@@ -790,7 +785,7 @@ const UI = (() => {
     if (v === 'share') SH.fileShare(out.blob, `beat-sanx-${n}-tiles.${out.ext}`, text);
   }
   /* ================= v1.4 AVATAR PICKER ================= */
-  let avSet = 'collection', avG = 'all';
+  let avSet = 'collection', avG = 'all', recOn = !!window.BS_CREATOR;
   function avatars() {
     const st = S.st, list = D.AVATARS.filter(a => a.set === avSet && (avG === 'all' || a.g === avG));
     const have = id => st.avOwned.includes(id), coming = D.AV_TOTAL[avSet] - D.AVATARS.filter(a => a.set === avSet).length;
@@ -889,7 +884,7 @@ const UI = (() => {
       ${pb ? `<div class="recTag">${ART.ic('trophy')} NEW PERSONAL BEST</div>` : ''}
       <div class="resRow">${g.coins ? `<span>${ART.coin(18)} <b>+${fmt(g.coins)}</b></span>` : ''}${g.gems ? `<span>${ART.gem(18)} <b>+${g.gems}</b></span>` : ''}${won ? '' : `<span>Goal <b>${t}</b></span>`}</div>
       <div class="resAds">${g.coins >= 25 ? `<button class="btn alt" data-act="impDouble:${g.coins}">${ART.ic('ad')} 2× coins <small>+${fmt(g.coins)}</small></button>` : ''}</div>
-      <div class="resBtns"><button class="btn big" data-act="imp">${ART.ic('refresh')} TRY AGAIN</button>
+      <div class="resBtns"><button class="btn big" data-act="imp">${ART.ic('refresh')} TRY AGAIN</button>${clipBtn(G.last)}
       <div class="row2"><button class="btn ghost" data-act="home">${ART.ic('home')} Home</button><button class="btn ghost" data-act="shareImp:${cleared}">${ART.ic('share')} Share</button></div></div></div>`;
     FX.countUp($('resN'), cleared, 900);
     if (won) FX.win('fireworks');
@@ -928,8 +923,8 @@ const UI = (() => {
     if (t.closest('#modal') && t.dataset.pick) return;
     SND.click();
     const d = t.dataset;
-    if (d.go) { if (GROUP[d.go] === undefined && SEGS[d.go] || d.go === 'home') { goGroup(d.go); return; } if (d.go === 'shop') SHOP.tab('home'); show(d.go); return; }
-    if (d.ev) { EV.open(d.ev); return; }
+    if (d.go) { if (d.go === 'events' && !S.feat('events')) { lockedToast('events'); } if (d.go === 'shop') SHOP.tab('home'); show(d.go); return; }
+    if (d.ev) { if (!S.feat('events')) { lockedToast('events'); return; } EV.open(d.ev); return; }
     if (d.mode) { if (!S.unlocked(d.mode)) { toast(`Reach level ${D.MODE[d.mode].unlock} to unlock`, 'lock'); return; } selMode = d.mode; renderHome(); readySheet(d.mode); return; }
     if (d.boost) {
       if (selBoosts.includes(d.boost)) selBoosts = selBoosts.filter(b => b !== d.boost);
@@ -947,6 +942,7 @@ const UI = (() => {
     const [k, v] = a.split(':');
     const GATE = { imp: 'imp', pass: 'pass', spin: 'spin', quests: 'quests', chal: 'duel' };
     if (GATE[k] && !S.feat(GATE[k])) { lockedToast(GATE[k]); return; }
+    if (!S.feat('events') && /^(ev|arena|ar[A-Z])/.test(k)) { lockedToast('events'); return; }
     switch (k) {
       case 'closeSheet': closeSheet(); break;
       case 'closeModal': closeModal(); if (modalAfter) { const f = modalAfter; modalAfter = null; f(); } break;
@@ -961,12 +957,15 @@ const UI = (() => {
       case 'shop': if (v) SHOP.tab(v === 'gems' ? 'free' : v); show('shop'); break;
       case 'modes': modeSheet(); break;
       case 'ready': readySheet(selMode); break;
-      case 'play': case 'playSel': play(selMode); break;
+      case 'play': case 'playSel': if (k === 'playSel' && recOn && !REC.armed) { if (!(await REC.arm(new URLSearchParams(location.search).get('name')))) { recOn = false; break; } } play(selMode); break;
+      case 'recTog': recOn = !recOn; readySheet(selMode); break;
+      case 'testRec': recOn = true; if (!(await REC.arm())) { recOn = false; break; } startTest(); break;
       case 'freeBoost': { if (S.cap('freeBoost', D.ADCAP.freeBoost) <= 0) break; if (!(await ADS.rewarded('freeBoost'))) break; S.useCap('freeBoost'); freeBoost = D.BOOSTERS[Math.floor(Math.random() * D.BOOSTERS.length)].id; toast(`Free ${D.BOOST[freeBoost].name}!`, 'sparkle'); readySheet(selMode); break; }
       case 'season': { const se = D.season(); toast(`${se.name}: ${se.desc} · ends in ${left(se.end)}`, se.icon); break; }
       case 'daily': dbeat(false); break;
       case 'locked': lockedToast(v); break;
-      case 'clip': saveClip(lastRes); break;
+      case 'lockB': toast(`${D.BOOST[v].name} unlocks at Level ${D.BOOST_LV[v]}`, 'lock'); break;
+      case 'clip': saveClip(lastRes && lastRes.clip ? lastRes : G.last); break;
       case 'avatars': avatars(); break;
       case 'avSet': avSet = v; avatars(); break;
       case 'avG': avG = v; avatars(); break;
@@ -1047,10 +1046,11 @@ const UI = (() => {
 
   function init() {
     document.body.addEventListener('click', onClick);
-    $('nav').innerHTML = [['home', 'home', 'Play'], ['compete', 'trophy', 'Compete'], ['me', 'user', 'Me']].map(([id, ic, t]) => `<button data-go="${id}" class="${id === 'compete' ? 'mid' : ''}"><span class="nvI">${ART.ic(ic)}</span><span>${t}</span><i class="nvDot"></i></button>`).join('');
+    document.body.addEventListener('input', e => { const r = e.target.closest && e.target.closest('.volR'); if (!r) return; S.st.set[r.dataset.vol] = +r.value; SND.setVol(); S.save(); if (r.dataset.vol === 'sfxVol') SND.tile(4, 0.2); });
+    $('nav').innerHTML = [['home', 'home', 'Play'], ['chall', 'target', 'Challenges'], ['events', 'trophy', 'Events'], ['shop', 'cart', 'Shop'], ['profile', 'user', 'Me']].map(([id, ic, t]) => `<button data-go="${id}" class="${id === 'events' ? 'mid' : ''}"><span class="nvI">${ART.ic(ic)}</span><span>${t}</span><i class="nvDot"></i></button>`).join('');
     S.on(() => { if (['home', 'chall', 'shop', 'profile', 'events'].includes(cur)) { document.querySelectorAll('.curs .cur b').forEach((b, i) => b.textContent = short([S.st.coins, S.st.gems, S.st.shields][i % 3])); } });
     setInterval(() => { if (cur === 'home' && !$('sheet').classList.contains('on') && !$('modal').classList.contains('on')) renderHome(); }, 30000);
   }
 
-  return { init, show, render, refresh, sheet, closeSheet, modal, closeModal, ask, toast, achToast, reward, rwItems, chest, chestSvg, bossExtraChest, lucky, trialEnded, gameOver, runEnd, dailyEnd, dbeat, dbeatEnd, testEnd, startTest, pause, howto, loginModal, afterHome, comeback, play, fmt, short, esc, left, topbar, badge, impCheckpoint, impFail, impEnd, rulesModal, readySheet, get cur() { return cur; }, adProgress() { SHOP.adProgress(); } };
+  return { init, show, render, refresh, sheet, closeSheet, modal, closeModal, ask, toast, achToast, reward, rwItems, chest, chestSvg, bossExtraChest, lucky, trialEnded, gameOver, runEnd, dailyEnd, dbeat, dbeatEnd, testEnd, startTest, clipBtn, pause, howto, loginModal, afterHome, comeback, play, fmt, short, esc, left, topbar, badge, impCheckpoint, impFail, impEnd, rulesModal, readySheet, get cur() { return cur; }, adProgress() { SHOP.adProgress(); } };
 })();

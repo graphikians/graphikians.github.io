@@ -3,18 +3,23 @@
    from a pentatonic scale, so any sequence sounds like a melody. */
 'use strict';
 const SND = (() => {
-  let ctx = null, master = null, musicGain = null, musicTimer = null, musicOn = false;
+  let ctx = null, master = null, sfxBus = null, musicGain = null, musicTimer = null, musicOn = false;
   const NOTES = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25, 587.33, 659.25, 783.99]; // C D E G A C D E G
   /* 25 notes for bigger grids: pentatonic going down and up from the 9 base notes */
   const NOTE = i => { const PENT = [1, 9 / 8, 5 / 4, 3 / 2, 5 / 3]; const k = i < 9 ? i : i - 9; if (i < 9) return NOTES[i]; const o = Math.floor(k / 5), d = k % 5; return i < 17 ? 130.81 * PENT[d] * Math.pow(2, o % 2) : 1046.5 * PENT[d] * (k >= 13 ? 1.12 : 1); };
   let force = false;   // clip recording: always audible
-  const opt = () => force ? { sfx: true, music: true, vib: false } : (window.S && S.st) ? S.st.set : { sfx: true, music: true, vib: true };
+  const vol = (k, d) => { try { const v = S.st.set[k]; return v == null ? d : v; } catch (e) { return d; } };
+  const opt = () => force ? { sfx: true, music: true, vib: false } : ((typeof S !== 'undefined') && S.st) ? S.st.set : { sfx: true, music: true, vib: true };
 
   function ac() {
     if (!ctx) {
       const C = window.AudioContext || window.webkitAudioContext; if (!C) return null;
       ctx = new C(); master = ctx.createGain(); master.gain.value = 0.55; master.connect(ctx.destination);
+      sfxBus = ctx.createGain(); sfxBus.gain.value = vol('sfxVol', 1); sfxBus.connect(master);
       musicGain = ctx.createGain(); musicGain.gain.value = 0.0; musicGain.connect(master);
+      /* v1.5: phones suspend audio after ads / app switch -> wake it up again */
+      document.addEventListener('visibilitychange', () => { if (!document.hidden && ctx && ctx.state !== 'running') ctx.resume().catch(() => { }); });
+      ['pointerdown', 'touchstart'].forEach(e => document.addEventListener(e, () => { if (ctx && ctx.state !== 'running') ctx.resume().catch(() => { }); }, { passive: true }));
     }
     if (ctx.state === 'suspended') ctx.resume().catch(() => { });
     return ctx;
@@ -27,7 +32,7 @@ const SND = (() => {
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur + release);
     let node = o;
     if (lp) { const fl = c.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = lp; o.connect(fl); node = fl; }
-    node.connect(g); g.connect(dest || master); o.start(t0); o.stop(t0 + dur + release + 0.05);
+    node.connect(g); g.connect(dest || sfxBus || master); o.start(t0); o.stop(t0 + dur + release + 0.05);
   }
   let noiseBuf = null;
   function noise(t0, dur, { vol = 0.2, hp = 800, lp2 = 0 } = {}) {
@@ -36,7 +41,7 @@ const SND = (() => {
     const s = c.createBufferSource(); s.buffer = noiseBuf;
     const f = c.createBiquadFilter(); f.type = lp2 ? 'lowpass' : 'highpass'; f.frequency.value = lp2 || hp;
     const g = c.createGain(); g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    s.connect(f); f.connect(g); g.connect(master); s.start(t0); s.stop(t0 + dur + 0.05);
+    s.connect(f); f.connect(g); g.connect(sfxBus || master); s.start(t0); s.stop(t0 + dur + 0.05);
   }
   /* sound packs (shop): how one tile sounds */
   const PACKS = {
@@ -52,14 +57,19 @@ const SND = (() => {
     glass: (f, t) => { tone(f * 2, t, 0.05, { vol: 0.22, release: 1.0 }); tone(f * 5.4, t, 0.03, { vol: 0.04, release: 0.6 }); },
     storm: (f, t, d) => { noise(t, 0.35, { vol: 0.16, lp2: 600 }); tone(f / 2, t, d, { type: 'triangle', vol: 0.26, release: 0.3 }); }
   };
-  const packNow = () => { try { return (window.S && S.active) ? S.active('sound') : 'synth'; } catch (e) { return 'synth'; } };
-  const sfx = fn => { if (!opt().sfx) return; const c = ac(); if (!c) return; fn(c.currentTime); };
+  const packNow = () => { try { return ((typeof S !== 'undefined') && S.active) ? S.active('sound') : 'synth'; } catch (e) { return 'synth'; } };
+  /* if the audio was asleep, play the sound right after it wakes up (no more missing tile notes) */
+  const sfx = fn => { if (!opt().sfx) return; const c = ac(); if (!c) return; if (c.state !== 'running') { c.resume().then(() => fn(c.currentTime + 0.01)).catch(() => { }); return; } fn(c.currentTime); };
+  /* the groove ducks under every tile note so the tile is always clear */
+  const BEAT_LEVEL = () => 0.42 * vol('musicVol', 0.7);
+  const duck = () => { if (!B.gain || !ctx) return; const g = B.gain.gain, t = ctx.currentTime; g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(BEAT_LEVEL() * 0.3, t + 0.02); g.linearRampToValueAtTime(BEAT_LEVEL(), t + 0.38); };
 
   const api = {
     unlock() { ac(); },
-    tile(i, dur = 0.28, pack) { sfx(t => { const f = NOTE(i % 25); (PACKS[pack || packNow()] || PACKS.synth)(f, t, dur, i); }); },
+    tile(i, dur = 0.28, pack) { dur = Math.max(0.22, dur); duck(); sfx(t => { const f = NOTE(i % 25); (PACKS[pack || packNow()] || PACKS.synth)(f, t, dur, i); }); },
     preview(pack) { sfx(t => [0, 2, 4, 7].forEach((n, k) => (PACKS[pack] || PACKS.synth)(NOTE(n), t + k * 0.2, 0.18, n))); },
-    tap(i) { api.tile(i, 0.16); },
+    tap(i) { api.tile(i, 0.22); },
+    setVol() { if (sfxBus) sfxBus.gain.value = vol('sfxVol', 1); if (B.gain) B.gain.gain.value = BEAT_LEVEL(); },
     wrong() { sfx(t => { tone(220, t, 0.28, { type: 'sawtooth', vol: 0.16, to: 90 }); tone(160, t + 0.05, 0.3, { type: 'square', vol: 0.07, to: 70 }); }); },
     decoy() { sfx(t => tone(140, t, 0.08, { type: 'square', vol: 0.05 })); },
     step() { sfx(t => { tone(783.99, t, 0.08, { vol: 0.12 }); tone(1046.5, t + 0.07, 0.12, { vol: 0.12 }); }); },
@@ -99,7 +109,7 @@ const SND = (() => {
      so the game timing is the same for everybody. */
   const B = { on: false, bpm: 100, t0: 0, step: 0, next: 0, timer: null, mode: 'full', gain: null, dropUntil: 0, fill: false, onKick: null, onBeat: null, bar: 0 };
   const ROOTS = [0, 5, 3, 4];                     // C  A  G  ->  scale degrees of NOTES (C D E G A ...)
-  const bGain = () => { const c = ac(); if (!c) return null; if (!B.gain) { B.gain = c.createGain(); B.gain.gain.value = 0.9; B.gain.connect(master); } return B.gain; };
+  const bGain = () => { const c = ac(); if (!c) return null; if (!B.gain) { B.gain = c.createGain(); B.gain.gain.value = BEAT_LEVEL(); B.gain.connect(master); } return B.gain; };
   const kick = (t, v = 0.9) => { const c = ac(), o = c.createOscillator(), g = c.createGain(); o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.14); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32); o.connect(g); g.connect(bGain()); o.start(t); o.stop(t + 0.35); };
   const hat = (t, v = 0.07, open = false) => { const c = ac(); if (!noiseBuf) noise(t, 0.001, { vol: 0.0001 }); const s = c.createBufferSource(); s.buffer = noiseBuf; const f = c.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7000; const g = c.createGain(); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + (open ? 0.22 : 0.05)); s.connect(f); f.connect(g); g.connect(bGain()); s.start(t); s.stop(t + 0.3); };
   const clap = (t, v = 0.22) => { const c = ac(); if (!noiseBuf) noise(t, 0.001, { vol: 0.0001 }); [0, 0.012, 0.024].forEach(d => { const s = c.createBufferSource(); s.buffer = noiseBuf; const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1500; f.Q.value = 0.8; const g = c.createGain(); g.gain.setValueAtTime(v, t + d); g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.14); s.connect(f); f.connect(g); g.connect(bGain()); s.start(t + d); s.stop(t + d + 0.2); }); };
@@ -132,12 +142,13 @@ const SND = (() => {
       B.bpm = bpm; B.mode = mode; B.fill = false;
       if (B.on) return;
       B.on = true; B.step = 0; B.t0 = c.currentTime + 0.06; B.next = B.t0;
-      if (B.gain) { B.gain.gain.cancelScheduledValues(c.currentTime); B.gain.gain.setValueAtTime(0.9, c.currentTime); }
+      if (B.gain) { B.gain.gain.cancelScheduledValues(c.currentTime); B.gain.gain.setValueAtTime(BEAT_LEVEL(), c.currentTime); }
       clearInterval(B.timer); B.timer = setInterval(tick, 25); tick();
     },
     /* change tempo without losing the groove: re-anchor the clock on the next 16th */
     tempo(bpm) { if (!B.on || !ctx || bpm === B.bpm) { B.bpm = bpm; return; } const t = B.next; B.bpm = bpm; B.t0 = t; B.step = 0; B.next = t; },
-    mode(m) { B.mode = m; },
+    mode(m) { if (!B.locked) B.mode = m; },
+    lock(on) { B.locked = !!on; if (on) B.mode = 'still'; },
     stop(slow) {
       if (!B.on) return; B.on = false; clearInterval(B.timer); B.timer = null;
       if (slow && ctx && opt().music) { tone(160, ctx.currentTime, 0.6, { type: 'sawtooth', vol: 0.1, to: 30, lp: 600 }); }
@@ -169,6 +180,11 @@ const SND = (() => {
   /* v1.4 clip recorder: route the whole mix into a MediaStream as well */
   let recDest = null;
   api.now = () => (ac() ? ctx.currentTime : 0);
+  api.ctx = () => ac();
+  api.masterNode = () => { ac(); return master; };
+  /* play an uploaded music file (Studio) through the main mix so it is recorded too */
+  api.playBuffer = (buf, when = 0, offset = 0, vol = 0.8) => { const c = ac(); if (!c || !buf) return null; const s = c.createBufferSource(), g = c.createGain(); s.buffer = buf; g.gain.value = vol; s.connect(g); g.connect(master); s.start(Math.max(c.currentTime, when), offset); return { stop: () => { try { s.stop(); } catch (e) { } }, gain: g }; };
+  api.sfxVol = v => { ac(); if (sfxBus) sfxBus.gain.value = v; };
   api.rec = on => {
     const c = ac(); if (!c) return null;
     if (on) { force = true; recDest = recDest || c.createMediaStreamDestination(); master.connect(recDest); return recDest.stream; }

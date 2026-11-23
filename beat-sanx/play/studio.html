@@ -43,6 +43,17 @@
       <div class="row"><div><label>Variation</label><select id="var"></select></div><div><label>Avatar (duel / end)</label><select id="av"><option value="ace">Ace</option><option value="nova">Nova</option><option value="ronin">Cyber Ronin</option><option value="astro">Astro Queen</option></select></div></div>
       <div class="row" style="margin-top:12px"><button class="ghost" id="prev">▶ Preview (with sound)</button><button id="make">● Make this video</button></div>
     </div>
+    <div class="card"><b class="k">MUSIC (OPTIONAL)</b>
+      <div class="tip">Use your own song (MP3/WAV). The tool finds its beat and cuts the video on it. Use royalty-free music (YouTube Audio Library, Pixabay Music). For trending songs: export with game sounds only and add the song inside Instagram.</div>
+      <div class="row" style="margin-top:8px"><div><label>Song</label><input type="file" id="mus" accept="audio/*"></div><div><label>Music volume</label><input type="range" id="mv" min="0" max="1" step="0.05" value="0.8"></div><div><label>Tile sound volume</label><input type="range" id="sv" min="0" max="1" step="0.05" value="1"></div></div>
+      <div class="log" id="musInfo">No song selected · the game's own beat is used.</div>
+      <div class="row" style="margin-top:6px"><button class="ghost" id="musClear">Remove song</button></div>
+    </div>
+    <div class="card"><b class="k">🎥 CREATOR MODE — YOUR FACE + THE GAME</b>
+      <div class="tip">Opens the real game with your webcam. Play any mode and talk; when the run ends the tool auto-edits one video: game on top, your face below, slow-motion replay of the big moment, intro + DOWNLOAD FREE outro, under 50 s. Works for every team member on their own laptop — nothing is uploaded.</div>
+      <div class="row" style="margin-top:8px"><div><label>Creator name</label><input id="crName" maxlength="14" placeholder="RAHUL"></div><div><label>Hook text</label><input id="crHook" maxlength="26" placeholder="CAN I BEAT LEVEL 20?"></div></div>
+      <div class="row" style="margin-top:10px"><button id="crGo">🎥 Open Creator Mode</button></div>
+    </div>
     <div class="card"><b class="k">3 · CAPTION (AUTO)</b><textarea id="cap"></textarea><div class="row" style="margin-top:8px"><button class="ghost" id="copy">Copy caption</button></div></div>
     <div class="card"><b class="k">BATCH — MANY UNIQUE VIDEOS IN ONE CLICK</b>
       <div class="tip">Every video in a batch is different: a different style, pattern, hook, avatar and caption, so the platforms never see duplicates. Keep this tab open and in front while it records (each video records in real time, 20–40 s).</div>
@@ -95,10 +106,14 @@ function captionFor(si, seed, n) { const s = STY[si]; return s.cap[seed % s.cap.
 function caption() { const sp = spec(); $('cap').value = captionFor(cur, sp.seed, sp.len); }
 ['hook', 'var', 'av'].forEach(id => $(id).onchange = caption); $('day').onchange = fill;
 fill();
-let busy = false, pv = null;
+let busy = false, pv = null, MUS = null;
+$('mus').onchange = async e => { const f = e.target.files[0]; if (!f) return; $('musInfo').textContent = 'Reading the song…'; SND.unlock(); try { MUS = await CLIP.loadMusic(f); $('musInfo').textContent = `${MUS.name} · ${MUS.bpm} BPM · ${Math.round(MUS.secs)} s — cuts will follow this beat.`; } catch (err) { MUS = null; $('musInfo').textContent = 'Could not read this file. Try an MP3.'; } };
+$('musClear').onclick = () => { MUS = null; $('mus').value = ''; $('musInfo').textContent = 'No song selected · the game\'s own beat is used.'; };
+$('crGo').onclick = () => { const n = encodeURIComponent(($('crName').value || '').trim()), hk = encodeURIComponent(($('crHook').value || '').trim()); window.open(`index.html?creator=1${n ? '&name=' + n : ''}${hk ? '&hook=' + hk : ''}`, '_blank'); };
+const withMusic = sp => { if (MUS) sp.bpm = MUS.bpm; return sp; };
 $('prev').onclick = async () => {
   if (busy) return; busy = true; SND.unlock();
-  pv = await CLIP.preview(spec(), $('cv'), 540, 960, true);
+  pv = await CLIP.preview(withMusic(spec()), $('cv'), 540, 960, true, MUS, +$('mv').value);
   const loop = () => { const t = pv.draw(); $('pg').style.width = Math.min(100, t / pv.total * 100) + '%'; if (t < pv.total + 0.2) requestAnimationFrame(loop); else { pv.stop(); busy = false; } };
   loop();
 };
@@ -118,7 +133,7 @@ async function toAAC(blob) {
 async function makeOne(sp, si, capText, idx) {
   const q = +$('q').value;
   $('log').textContent = `${idx ? `Video ${idx} · ` : ''}Recording ${STY[si].name} — "${sp.hook1} ${sp.hook2 || ''}" …`;
-  const out = await CLIP.make(sp, { w: q === 1080 ? 1080 : 720, h: q === 1080 ? 1920 : 1280, canvas: $('cv'), onProgress: p => { $('pg').style.width = Math.round(p * 100) + '%'; } });
+  const out = await CLIP.make(withMusic(sp), { w: q === 1080 ? 1080 : 720, h: q === 1080 ? 1920 : 1280, canvas: $('cv'), music: MUS, musicVol: +$('mv').value, sfxVol: +$('sv').value, onProgress: p => { $('pg').style.width = Math.round(p * 100) + '%'; } });
   if (out.ext === 'mp4' && NEED_AAC()) { $('log').textContent += '\nMaking the sound Instagram-safe (AAC)…'; try { out.blob = await toAAC(out.blob); out.aac = true; } catch (e) { out.aac = false; } }
   const base = `beat-sanx-${$('day').value}-${idx ? String(idx).padStart(2, '0') + '-' : ''}${sp.style}`;
   download(out.blob, `${base}.${out.ext}`);

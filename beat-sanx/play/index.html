@@ -30,7 +30,7 @@
 <div id="sheet"></div>
 <div id="modal"></div>
 <div id="toasts"></div>
-<script>window.BS_WEB=1</script>
+<script>window.BS_CREATOR=/[?&]creator=/.test(location.search);window.BS_WEB=!window.BS_CREATOR</script>
 <script src="data.js"></script>
 <script src="art.js"></script>
 <script src="audio.js"></script>
@@ -49,6 +49,7 @@
 <script src="chal.js"></script>
 <script src="share.js"></script>
 <script src="clip.js"></script>
+<script src="react.js"></script>
 <script src="main.js"></script>
 </body>
 </html>

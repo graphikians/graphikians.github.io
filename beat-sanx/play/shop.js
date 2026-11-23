@@ -144,7 +144,7 @@ const SHOP = (() => {
   }
   function boostTab() {
     const st = S.st;
-    return D.BOOSTERS.map(b => `<div class="bsRow"><span class="bsIc">${ART.ic(b.icon)}</span><div class="bsTx"><b>${b.name} <em>×${st.boosters[b.id] || 0}</em></b><small>${b.desc}</small></div>
+    return D.BOOSTERS.map(b => !S.boostOpen(b.id) ? `<div class="bsRow lockRow"><span class="bsIc">${ART.ic('lock')}</span><div class="bsTx"><b>${b.name}</b><small>${b.desc}</small></div><span class="lkTag">${ART.ic('lock')} LEVEL ${D.BOOST_LV[b.id]}</span></div>` : `<div class="bsRow"><span class="bsIc">${ART.ic(b.icon)}</span><div class="bsTx"><b>${b.name} <em>×${st.boosters[b.id] || 0}</em></b><small>${b.desc}</small></div>
         <div class="bsBtns"><button class="btn sm" data-buyb="${b.id}:coins">${ART.coin(14)} ${b.coins}</button><button class="btn sm ghost" data-buyb="${b.id}:gems">${ART.gem(14)} ${b.gems}</button></div></div>`).join('')
       + `<div class="bsRow"><span class="bsIc">${ART.shieldC(26)}</span><div class="bsTx"><b>Shield <em>×${st.shields}</em></b><small>Revive with full hearts after game over</small></div><div class="bsBtns"><button class="btn sm" data-act="shShield:coins">${ART.coin(14)} 400</button><button class="btn sm ghost" data-act="shShield:gems">${ART.gem(14)} ${D.SHIELD_GEMS}</button></div></div>
         <button class="freeHint" data-tab="free">${ART.ic('ad')} Get boosters free in the Free tab</button>`;

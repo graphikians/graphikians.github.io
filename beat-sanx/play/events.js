@@ -122,9 +122,11 @@ const EV = (() => {
     const dc = s.daily.done;
     const fc = fs ? (fs.live ? `<button class="festCard" data-act="ev:fest:${fs.f.id}" style="--la:${fs.f.theme[0]};--lb:${fs.f.theme[1]}"><span class="lvRib fest">FESTIVAL · ${UI.left(fs.end)} LEFT</span><span class="fcIc">${ART.ic(fs.f.icon)}</span><span class="evTx"><small>${fs.f.fest.toUpperCase()}</small><b>${fs.f.name}</b><span>${fs.f.tag}</span></span>${ART.ic('next')}</button>`
       : `<div class="festCard soon" style="--la:${fs.f.theme[0]};--lb:${fs.f.theme[1]}"><span class="fcIc">${ART.ic(fs.f.icon)}</span><span class="evTx"><small>COMING SOON · ${fs.f.fest.toUpperCase()}</small><b>${fs.f.name}</b><span>Starts in ${UI.left(fs.start)} · win the ${D.skin(fs.f.skin).name} skin</span></span><button class="evInfo" data-act="rules:${fs.f.id}">${ART.ic('info')}</button></div>`) : '';
-    $('events').innerHTML = `${UI.topbar()}<div class="pgT">Events <span class="pgSub">${badgeCount()} live</span></div><div class="pgBody">
+    const evL = !S.feat('events');
+    $('events').innerHTML = `${UI.topbar()}<div class="pgT">Events <span class="pgSub">${evL ? ART.ic('lock') + ' Level ' + D.UNLOCK.events.lv : badgeCount() + ' live'}</span></div><div class="pgBody ${evL ? 'evLocked' : ''}">
+      ${evL ? `<div class="nextUnl big">${ART.ic('lock')}<span><b>All events unlock at Level ${D.UNLOCK.events.lv}</b><small>Daily Beat is open for everyone · play it now!</small></span></div>` : ''}
       ${fc}
-      ${(() => { const db = S.dbeatToday(); return `<div class="dailyRow"><button class="dailyCard ${db.done ? 'off' : ''}" data-act="dbeat"><div class="dcL"><small>DAILY BEAT #${db.no}</small><b>${db.done ? `You ${db.score} · Sanx ${D.sanxScore(db.no)}` : 'Same pattern for the whole world'}</b><span>${db.done ? 'New pattern at midnight' : `Sanx got ${D.sanxScore(db.no)} today. One try.`}</span></div><div class="dcR">${db.done ? ART.ic('check') : ART.ic('play')}</div></button><button class="evInfo" data-act="rules:daily">${ART.ic('info')}</button></div>`; })()}
+      ${(() => { const db = S.dbeatToday(); return `${db.lost && !db.done ? `<button class="saveStreak" data-act="dbSave">${ART.ic('fire')}<span><b>Your ${db.lost}-day Daily Beat streak broke!</b><small>Watch an ad to save it</small></span><em>${ART.ic('ad')} SAVE</em></button>` : ''}<div class="dailyRow"><button class="dailyCard ${db.done ? 'off' : ''}" data-act="dbeat"><div class="dcL"><small>DAILY BEAT #${db.no}</small><b>${db.done ? `You ${db.score} · Sanx ${D.sanxScore(db.no)}` : 'Same pattern for the whole world'}</b><span>${db.done ? 'New pattern at midnight' : `Sanx got ${D.sanxScore(db.no)} today. One try.`}</span></div><div class="dcR">${db.done ? ART.ic('check') : ART.ic('play')}</div></button><button class="evInfo" data-act="rules:daily">${ART.ic('info')}</button></div>`; })()}
       ${cards}
       <div class="secT">Arena <span class="muted">Premium daily challenges</span></div>
       ${!S.feat('arena') ? `<div class="nextUnl big">${ART.ic('lock')}<span><b>5 Arena events</b><small>unlock at Level ${D.UNLOCK.arena.lv}</small></span></div>` : ''}
@@ -449,7 +451,7 @@ const EV = (() => {
     const sv = o.fest || String(o.id).startsWith('ar:') ? null : status(o.id);
     const nudge = sv && sv.left > 0 ? `<div class="nudge">${ART.ic('fire')} ${sv.left} ${sv.left === 1 ? 'try' : 'tries'} left · go again!</div>` : next ? `<button class="nudge" data-act="ev:goto:${next.id}">${ART.ic(next.icon)} Next: <b>${next.name}</b> ${ART.ic('next')}</button>` : '';
     UI.modal(`<div class="evRes"><div class="rwRays"></div><div class="erFace">${ART.sanx(o.mood)}</div><div class="mdK">${o.title}</div><div class="erBig"><span id="erN">${o.big}</span><small>${o.sub}</small></div><div class="mdS">${o.line}</div>${g}${nudge}
-      <button class="btn big" data-act="ev:back">CONTINUE</button><button class="btn ghost" data-act="ev:share">${ART.ic('share')} Share</button></div>`, 'evResM');
+      <button class="btn big" data-act="ev:back">CONTINUE</button>${UI.clipBtn(G.last)}<button class="btn ghost" data-act="ev:share">${ART.ic('share')} Share</button></div>`, 'evResM');
     if (o.g && o.g.coins) setTimeout(() => FX.flyCoins(document.querySelector('.evRes .rwI')), 400);
     lastEv = o;
   }

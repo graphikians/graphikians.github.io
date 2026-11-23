@@ -40,7 +40,6 @@ const S = (() => {
   /* v1.4 migration: retired boosters become coins; old players keep every feature unlocked */
   if (!st.v14) {
     let refund = 0;
-    for (const b of D.BOOSTERS_ALL) if (!D.BOOST_ACTIVE.includes(b.id) && st.boosters[b.id] > 0) { refund += st.boosters[b.id] * Math.round(b.coins * 0.8); st.boosters[b.id] = 0; }
     st.coins += refund; st.v14refund = refund;
     st.unlockSeen = Object.keys(D.UNLOCK).filter(k => Math.max(1, ...Object.values(st.bestLv || {}), ...Object.values(st.modeLv || {})) >= D.UNLOCK[k].lv);
     st.mem.best = Math.max(st.mem.best, ...(st.skill || [0]), (st.pass && st.pass.bestTiles) || 0, (st.imp && st.imp.best) || 0);
@@ -78,6 +77,7 @@ const S = (() => {
     best() { return Math.max(1, ...Object.values(st.bestLv), ...Object.values(st.modeLv)); },
     unlocked(mode) { return mode === 'zen' || api.best() >= D.MODE[mode].unlock; },
     /* v1.4 features that open with progress (classic level) */
+    boostOpen(id) { return api.best() >= (D.BOOST_LV[id] || 1); },
     feat(id) { const u = D.UNLOCK[id]; return !u || api.best() >= u.lv || st.unlockSeen.includes(id); },
     /* newly reached unlocks that were not announced yet */
     newUnlocks() { const out = Object.keys(D.UNLOCK).filter(k => api.best() >= D.UNLOCK[k].lv && !st.unlockSeen.includes(k)); if (out.length) { st.unlockSeen.push(...out); save(); } return out; },
@@ -120,7 +120,7 @@ const S = (() => {
         const def = D.QUESTS.find(x => x.id === q.id); if (!def || q.done) continue;
         if (def.k !== kind) continue;
         q.p = add ? q.p + val : Math.max(q.p, val);
-        if (q.p >= def.n) { q.p = def.n; q.done = true; if (window.UI) UI.toast(`Quest done: ${def.t}`, 'check'); }
+        if (q.p >= def.n) { q.p = def.n; q.done = true; if ((typeof UI !== 'undefined')) UI.toast(`Quest done: ${def.t}`, 'check'); }
         changed = true;
       }
       if (changed) { save(); emit(); }
@@ -144,7 +144,7 @@ const S = (() => {
         if (st.ach[a.id]) continue;
         if (api.achVal(a.k) >= a.n) {
           st.ach[a.id] = Date.now(); st.coins += a.c; save();
-          if (window.UI) setTimeout(() => UI.achToast(a), 400);
+          if ((typeof UI !== 'undefined')) setTimeout(() => UI.achToast(a), 400);
         }
       }
     },

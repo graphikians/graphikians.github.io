@@ -26,7 +26,7 @@ const NET = (() => {
   async function check() { if (!active) return true; if (checking) return ok; checking = true; try { ok = await probe(); } finally { checking = false; } sync(); return ok; }
   function sync() {
     if (!ov) return;
-    const playing = window.G && G.run && !G.run.ended;
+    const playing = (typeof G !== 'undefined') && G.run && !G.run.ended;
     const show = !ok && !playing;
     if (show && !ov.classList.contains('on')) { ov.classList.add('on'); try { SND.music(false); } catch (e) { } }
     else if (!show && ov.classList.contains('on')) { ov.classList.remove('on'); try { UI.toast('Back online. Let\'s go!', 'wifi'); } catch (e) { } }

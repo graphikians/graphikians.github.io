@@ -16,6 +16,8 @@ const CLIP = (() => {
   const eInOut = t => { t = clamp(t); return t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; };
   const eBack = t => { t = clamp(t); const c = 1.9; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
   const F = (w, s) => `${w} ${Math.round(s)}px Inter, system-ui, sans-serif`;
+  const FT = s => `${Math.round(s)}px 'Lilita One', Inter, sans-serif`;     // game display font (headlines)
+  const FN = s => `${Math.round(s)}px Anton, Inter, sans-serif`;            // numbers
   function rr(x, a, b, w, h, r) { r = Math.min(r, w / 2, h / 2); x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r); x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath(); }
   function mul(seed) { let t = seed >>> 0; return () => { t = (t + 0x6D2B79F5) >>> 0; let r = Math.imul(t ^ (t >>> 15), 1 | t); r ^= r + Math.imul(r ^ (r >>> 7), 61 | r); return ((r ^ (r >>> 14)) >>> 0) / 4294967296; }; }
   function makeSeq(rng, n, g) { const s = []; while (s.length < n) { const v = Math.floor(rng() * g * g); if (s.length && v === s[s.length - 1]) continue; s.push(v); } return s; }
@@ -46,35 +48,71 @@ const CLIP = (() => {
   }
 
   /* ================= DRAW PRIMITIVES ================= */
-  function bg(x, A, t, wash, energy = 0.5) {
-    const g = x.createRadialGradient(W / 2, H * 0.42, 40, W / 2, H * 0.45, H * 0.85);
-    g.addColorStop(0, '#41189a'); g.addColorStop(0.45, '#1c0a4f'); g.addColorStop(1, '#06021a');
-    x.fillStyle = g; x.fillRect(-300, -300, W + 600, H + 600);
+  /* five different "worlds" so the styles never look the same (all inside the brand purple) */
+  function bg(x, A, t, wash, energy = 0.5, world = 'studio', beat = 0.6) {
+    const base = x.createRadialGradient(W / 2, H * 0.42, 40, W / 2, H * 0.45, H * 0.9);
+    base.addColorStop(0, world === 'space' ? '#2b0e6b' : '#41189a'); base.addColorStop(0.5, world === 'club' ? '#14052f' : '#1c0a4f'); base.addColorStop(1, '#05011a');
+    x.fillStyle = base; x.fillRect(-300, -300, W + 600, H + 600);
     x.save(); x.globalCompositeOperation = 'lighter';
-    for (let k = 0; k < 4; k++) {
-      const ang = Math.sin(t * (0.3 + energy * 0.5) + k * 1.7) * 0.4 + (k - 1.5) * 0.42, cx = W / 2 + (k - 1.5) * W * 0.26;
-      x.save(); x.translate(cx, -120); x.rotate(ang);
-      const bgr = x.createLinearGradient(0, 0, 0, H * 1.2); bgr.addColorStop(0, `rgba(154,109,245,${0.14 + energy * 0.14})`); bgr.addColorStop(1, 'rgba(154,109,245,0)');
-      x.fillStyle = bgr; x.beginPath(); x.moveTo(-40, 0); x.lineTo(40, 0); x.lineTo(240, H * 1.2); x.lineTo(-240, H * 1.2); x.closePath(); x.fill(); x.restore();
+    if (world === 'arena') {
+      /* synthwave floor: perspective grid rushing toward the camera + horizon glow */
+      const hy = H * 0.64, sp = (t * 0.9) % 1;
+      const hg = x.createLinearGradient(0, hy - 260, 0, hy + 60); hg.addColorStop(0, 'rgba(154,109,245,0)'); hg.addColorStop(0.8, 'rgba(154,109,245,.45)'); hg.addColorStop(1, 'rgba(196,167,255,.0)');
+      x.fillStyle = hg; x.fillRect(0, hy - 260, W, 320);
+      x.strokeStyle = 'rgba(154,109,245,.55)'; x.lineWidth = 3;
+      for (let k = 0; k < 14; k++) { const z = (k + sp) / 14, y = hy + Math.pow(z, 2.2) * (H - hy); x.globalAlpha = z; x.beginPath(); x.moveTo(0, y); x.lineTo(W, y); x.stroke(); }
+      x.globalAlpha = 0.7; for (let k = -10; k <= 10; k++) { x.beginPath(); x.moveTo(W / 2 + k * 30, hy); x.lineTo(W / 2 + k * 260, H); x.stroke(); }
+      x.globalAlpha = 1;
+    } else if (world === 'versus') {
+      /* diagonal energy split */
+      x.save(); x.translate(W / 2, H / 2); x.rotate(-0.32);
+      const sg = x.createLinearGradient(-60, 0, 60, 0); sg.addColorStop(0, 'rgba(154,109,245,0)'); sg.addColorStop(0.5, `rgba(214,196,255,${0.35 + 0.25 * Math.sin(t * 8)})`); sg.addColorStop(1, 'rgba(154,109,245,0)');
+      x.fillStyle = sg; x.fillRect(-60, -H, 120, H * 2); x.restore();
+      for (let k = 0; k < 12; k++) { const y = ((k * 173 + t * 420) % (H + 200)) - 100; x.strokeStyle = 'rgba(196,167,255,.18)'; x.lineWidth = 6; x.beginPath(); x.moveTo(-50, y); x.lineTo(W + 50, y - 340); x.stroke(); }
+    } else if (world === 'club') {
+      /* light bars + equalizer pumping on the beat */
+      const ph = (t / beat) % 1, pump = Math.pow(1 - ph, 3);
+      for (let k = 0; k < 7; k++) { const xx = (k + 0.5) * W / 7, a = 0.08 + 0.22 * pump * ((k + Math.floor(t / beat)) % 2); const bg2 = x.createLinearGradient(0, 0, 0, H); bg2.addColorStop(0, `rgba(154,109,245,${a})`); bg2.addColorStop(1, 'rgba(154,109,245,0)'); x.fillStyle = bg2; x.fillRect(xx - 46, 0, 92, H); }
+      for (let k = 0; k < 24; k++) { const hh = 40 + (Math.sin(k * 1.7 + t * 6) * 0.5 + 0.5) * 220 * (0.4 + pump * 0.6); x.fillStyle = 'rgba(196,167,255,.28)'; rr(x, 20 + k * 43, H - hh - 20, 30, hh, 10); x.fill(); }
+    } else if (world === 'space') {
+      for (const d of A.stars) { const tw = 0.5 + 0.5 * Math.sin(t * d.s + d.x); x.fillStyle = `rgba(230,220,255,${d.a * tw})`; x.beginPath(); x.arc((d.x + t * d.v) % W, d.y, d.r, 0, 7); x.fill(); }
+      const nb = x.createRadialGradient(W * 0.7, H * 0.25, 10, W * 0.7, H * 0.25, 520); nb.addColorStop(0, 'rgba(154,109,245,.35)'); nb.addColorStop(1, 'rgba(154,109,245,0)'); x.fillStyle = nb; x.fillRect(0, 0, W, H);
+      const nb2 = x.createRadialGradient(W * 0.2, H * 0.8, 10, W * 0.2, H * 0.8, 600); nb2.addColorStop(0, 'rgba(116,58,232,.35)'); nb2.addColorStop(1, 'rgba(116,58,232,0)'); x.fillStyle = nb2; x.fillRect(0, 0, W, H);
+    } else {
+      for (let k = 0; k < 4; k++) {
+        const ang = Math.sin(t * (0.3 + energy * 0.5) + k * 1.7) * 0.4 + (k - 1.5) * 0.42, cx = W / 2 + (k - 1.5) * W * 0.26;
+        x.save(); x.translate(cx, -120); x.rotate(ang);
+        const bgr = x.createLinearGradient(0, 0, 0, H * 1.2); bgr.addColorStop(0, `rgba(154,109,245,${0.14 + energy * 0.14})`); bgr.addColorStop(1, 'rgba(154,109,245,0)');
+        x.fillStyle = bgr; x.beginPath(); x.moveTo(-40, 0); x.lineTo(40, 0); x.lineTo(240, H * 1.2); x.lineTo(-240, H * 1.2); x.closePath(); x.fill(); x.restore();
+      }
     }
-    for (const d of A.dust) { const y = ((d.y - t * d.s * (1 + energy)) % H + H) % H; x.fillStyle = `rgba(214,196,255,${d.a})`; x.beginPath(); x.arc(d.x + Math.sin(t + d.y) * 8, y, d.r, 0, 7); x.fill(); }
+    if (world !== 'space') for (const d of A.dust) { const y = ((d.y - t * d.s * (1 + energy)) % H + H) % H; x.fillStyle = `rgba(214,196,255,${d.a * 0.8})`; x.beginPath(); x.arc(d.x + Math.sin(t + d.y) * 8, y, d.r, 0, 7); x.fill(); }
     x.restore();
-    if (wash && wash.a > 0.01) { const w = x.createRadialGradient(W / 2, H * 0.52, 20, W / 2, H * 0.52, H * 0.62); w.addColorStop(0, wash.c + '66'); w.addColorStop(1, wash.c + '00'); x.globalAlpha = wash.a; x.fillStyle = w; x.fillRect(0, 0, W, H); x.globalAlpha = 1; }
+    if (wash && wash.a > 0.01) { const w = x.createRadialGradient(W / 2, H * 0.52, 20, W / 2, H * 0.52, H * 0.62); w.addColorStop(0, wash.c + '55'); w.addColorStop(1, wash.c + '00'); x.globalAlpha = wash.a; x.fillStyle = w; x.fillRect(0, 0, W, H); x.globalAlpha = 1; }
   }
   function vignette(x, red = 0) {
     const v = x.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.78); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, red ? `rgba(170,0,35,${0.5 * red + 0.35})` : 'rgba(0,0,0,.55)');
     x.fillStyle = v; x.fillRect(0, 0, W, H);
   }
   function bigText(x, t, X, Y, size, o = {}) {
-    const { w = 900, max = 960, c1 = '#ffffff', c2 = '#cbb2ff', depth = Math.round(size * 0.09), glow = 0.45, align = 'center' } = o;
-    let s = size; x.font = F(w, s); while (x.measureText(t).width > max && s > 20) { s -= 3; x.font = F(w, s); }
-    x.textAlign = align; x.textBaseline = 'alphabetic';
-    for (let k = depth; k > 0; k -= 2) { x.fillStyle = k > depth * 0.55 ? '#10042b' : '#3b1580'; x.fillText(t, X, Y + k); }
-    if (glow) { x.shadowColor = 'rgba(154,109,245,.9)'; x.shadowBlur = s * glow; }
-    const gr = x.createLinearGradient(0, Y - s, 0, Y); gr.addColorStop(0, c1); gr.addColorStop(1, c2);
-    x.fillStyle = gr; x.fillText(t, X, Y); x.shadowBlur = 0; x.shadowColor = 'transparent';
-    return s;
+    const { max = 940, c1 = '#ffffff', c2 = '#e3d4ff', glow = 0.35, align = 'center', font = 'title' } = o;
+    let sz = size; const fnt = v => font === 'num' ? FN(v) : FT(v);
+    x.font = fnt(sz); while (x.measureText(t).width > max && sz > 20) { sz -= 3; x.font = fnt(sz); }
+    x.textAlign = align; x.textBaseline = 'alphabetic'; x.lineJoin = 'round'; x.miterLimit = 2;
+    /* hard 3D drop */
+    x.fillStyle = '#12052f'; x.strokeStyle = '#12052f'; x.lineWidth = sz * 0.2;
+    x.strokeText(t, X, Y + sz * 0.1); x.fillText(t, X, Y + sz * 0.1);
+    /* outline */
+    if (glow) { x.shadowColor = 'rgba(154,109,245,.85)'; x.shadowBlur = sz * glow; }
+    x.strokeStyle = o.stroke || '#3b1580'; x.lineWidth = sz * 0.16; x.strokeText(t, X, Y);
+    x.shadowBlur = 0; x.shadowColor = 'transparent';
+    const gr = x.createLinearGradient(0, Y - sz * 0.85, 0, Y); gr.addColorStop(0, c1); gr.addColorStop(1, c2);
+    x.fillStyle = gr; x.fillText(t, X, Y);
+    /* glossy top shine */
+    x.save(); x.beginPath(); x.rect(X - 2000, Y - sz * 0.9, 4000, sz * 0.42); x.clip(); x.fillStyle = 'rgba(255,255,255,.35)'; x.fillText(t, X, Y); x.restore();
+    return sz;
   }
+  function sub(x, t, X, Y, size, col = '#efe6ff', w = 800) { x.font = F(w, size); x.fillStyle = col; x.textAlign = 'center'; x.textBaseline = 'alphabetic'; x.shadowColor = 'rgba(0,0,0,.55)'; x.shadowBlur = 12; x.fillText(t, X, Y); x.shadowBlur = 0; }
   /* slam-in text: scale 2.1 -> 1 with a bounce, hold, fade out */
   function slam(x, txt, t0, t, X, Y, size, dur = 1.8, o = {}) {
     const u = t - t0; if (u < 0 || u > dur) return;
@@ -107,34 +145,43 @@ const CLIP = (() => {
     if (s.level != null) chip(x, s.boss ? `BOSS · LEVEL ${s.level}` : `LEVEL ${s.level}`, W / 2, y, 34, s.boss ? 'rgba(255,45,90,.9)' : 'rgba(116,58,232,.92)');
     coin(x, W - 230, y, 26); x.font = F(900, 40); x.fillStyle = '#fff'; x.textAlign = 'left'; x.fillText(Math.round(s.coins || 0).toLocaleString('en'), W - 194, y + 14);
   }
-  /* the board with 3D bevel tiles; returns tile centres */
+  /* the board: the SAME tiles as the game (skin colours + icons, dark veil, lit glow) */
   function board(x, A, t, st) {
-    const g = st.g || 3, size = st.size || 860, cx = st.cx || W / 2, cy = st.cy || 1010, gap = size * 0.034, ts = (size - gap * (g - 1)) / g;
-    const colors = st.colors || COLORS, pulse = 1 + (st.kick || 0) * 0.016, pos = [];
-    x.save(); x.translate(cx, cy); x.scale(pulse, pulse); x.rotate(Math.sin(t * 0.7) * 0.012); x.translate(-size / 2, -size / 2);
+    const g = st.g || 3, size = st.size || 860, cx = st.cx || W / 2, cy = st.cy || 1000, gap = size * (g >= 5 ? 0.024 : 0.032), pad = size * 0.04, ts = (size - gap * (g - 1)) / g;
+    const colors = A.colors, pos = [];
+    x.save(); x.translate(cx, cy); x.translate(-size / 2, -size / 2);
     x.globalAlpha = st.alpha == null ? 1 : st.alpha;
-    x.fillStyle = 'rgba(8,2,26,.62)'; rr(x, -gap * 1.8, -gap * 1.8, size + gap * 3.6, size + gap * 3.6, ts * 0.3); x.fill();
-    x.strokeStyle = st.wrong != null ? `rgba(255,45,90,${0.5 + 0.5 * (st.wrongA || 0)})` : 'rgba(154,109,245,.6)'; x.lineWidth = 4; x.stroke();
+    x.fillStyle = 'rgba(10,4,30,.62)'; rr(x, -pad, -pad, size + pad * 2, size + pad * 2, size * 0.075); x.fill();
+    x.strokeStyle = st.wrong != null ? `rgba(255,45,90,${0.5 + 0.5 * (st.wrongA || 0)})` : 'rgba(154,109,245,.55)'; x.lineWidth = 3; x.stroke();
     for (let i = 0; i < g * g; i++) {
-      const r = Math.floor(i / g), c = i % g, X = c * (ts + gap), Y = r * (ts + gap), col = colors[i % colors.length];
-      const L = (st.lit && st.lit[i]) || 0, P = (st.press && st.press[i]) || 0, isW = st.wrong === i ? Math.max(0.35, st.wrongA || 0) : 0;
-      pos[i] = { x: cx + (X + ts / 2 - size / 2) * pulse, y: cy + (Y + ts / 2 - size / 2) * pulse, s: ts };
-      const sc = 1 + L * 0.06 - P * 0.06;
+      const r = Math.floor(i / g), c = i % g, X = c * (ts + gap), Y = r * (ts + gap), k = i % 9, v = Math.floor(i / 9), col = colors[k];
+      const L = (st.lit && st.lit[i]) || 0, P = (st.press && st.press[i]) || 0, isW = st.wrong === i ? Math.max(0.35, st.wrongA || 0) : 0, on = Math.max(L, P);
+      pos[i] = { x: cx + X + ts / 2 - size / 2, y: cy + Y + ts / 2 - size / 2, s: ts };
+      const sc = 1 + L * 0.06 - P * 0.05, R = ts * 0.22;
       x.save(); x.translate(X + ts / 2, Y + ts / 2); x.scale(sc, sc); x.translate(-ts / 2, -ts / 2);
-      if (L > 0) { x.shadowColor = col; x.shadowBlur = ts * 0.6 * L; }
-      x.fillStyle = isW ? '#ff2d5a' : col; rr(x, 0, 0, ts, ts, ts * 0.22); x.fill(); x.shadowBlur = 0;
-      const dim = isW ? 0 : 0.7 * (1 - Math.max(L, P * 0.8));
-      x.fillStyle = `rgba(8,3,28,${dim})`; rr(x, 0, 0, ts, ts, ts * 0.22); x.fill();
-      const bv = x.createLinearGradient(0, 0, 0, ts); bv.addColorStop(0, 'rgba(255,255,255,.3)'); bv.addColorStop(0.16, 'rgba(255,255,255,0)'); bv.addColorStop(0.8, 'rgba(0,0,0,0)'); bv.addColorStop(1, 'rgba(0,0,0,.35)');
-      x.fillStyle = bv; rr(x, 0, 0, ts, ts, ts * 0.22); x.fill();
-      if (L > 0.4 || P > 0.4) { x.strokeStyle = `rgba(255,255,255,${Math.max(L, P)})`; x.lineWidth = ts * 0.045; rr(x, ts * 0.05, ts * 0.05, ts * 0.9, ts * 0.9, ts * 0.18); x.stroke(); }
-      if (st.newT === i && L > 0) chip(x, 'NEW', ts / 2, ts * 0.17, ts * 0.09, '#ffffff', '#4a2499');
+      if (v) x.filter = v === 1 ? 'hue-rotate(28deg) brightness(1.08)' : 'hue-rotate(-30deg) brightness(.92)';
+      if (L > 0) { x.shadowColor = col; x.shadowBlur = ts * 0.55 * L; }
+      x.fillStyle = isW ? '#ff2d5a' : col; rr(x, 0, 0, ts, ts, R); x.fill(); x.shadowBlur = 0;
+      x.save(); rr(x, 0, 0, ts, ts, R); x.clip();
+      /* inner bevel like the app: light top edge, dark bottom edge */
+      x.fillStyle = 'rgba(255,255,255,.25)'; x.fillRect(0, 0, ts, ts * 0.035);
+      x.fillStyle = 'rgba(0,0,0,.25)'; x.fillRect(0, ts - ts * 0.07, ts, ts * 0.07);
+      /* dark veil (tile is "off") */
+      x.fillStyle = `rgba(10,4,30,${0.66 * (1 - on) * (isW ? 0 : 1)})`; x.fillRect(0, 0, ts, ts);
+      /* icon */
+      const ic = A.icons[v ? 9 + ((i - 9) % 16) : k];
+      if (ic) { const s2 = ts * (g >= 5 ? 0.46 : 0.42); x.globalAlpha *= 0.55 + 0.45 * on; x.drawImage(ic, (ts - s2) / 2, (ts - s2) / 2, s2, s2); x.globalAlpha = st.alpha == null ? 1 : st.alpha; }
+      /* lit glow */
+      if (L > 0) { const gl = x.createRadialGradient(ts / 2, ts / 2, 0, ts / 2, ts / 2, ts * 0.8); gl.addColorStop(0, `rgba(255,255,255,${0.45 * L})`); gl.addColorStop(0.6, 'rgba(255,255,255,0)'); x.fillStyle = gl; x.fillRect(0, 0, ts, ts); }
+      if (P > 0.3 || L > 0.85) { x.strokeStyle = `rgba(255,255,255,${Math.max(P, L)})`; x.lineWidth = ts * 0.06; rr(x, ts * 0.03, ts * 0.03, ts * 0.94, ts * 0.94, R * 0.9); x.stroke(); }
+      x.restore(); x.filter = 'none';
+      if (st.newT === i && L > 0) { x.font = F(900, ts * 0.1); const tw = x.measureText('NEW').width + ts * 0.1; x.fillStyle = '#fff'; rr(x, ts / 2 - tw / 2, ts * 0.06, tw, ts * 0.15, ts * 0.04); x.fill(); x.fillStyle = '#743ae8'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('NEW', ts / 2, ts * 0.135); x.textBaseline = 'alphabetic'; }
       if (isW) { x.strokeStyle = '#fff'; x.lineWidth = ts * 0.07; x.lineCap = 'round'; x.beginPath(); x.moveTo(ts * 0.32, ts * 0.32); x.lineTo(ts * 0.68, ts * 0.68); x.moveTo(ts * 0.68, ts * 0.32); x.lineTo(ts * 0.32, ts * 0.68); x.stroke(); }
-      if (st.nums && st.nums[i] != null) { x.fillStyle = '#fff'; x.font = F(900, ts * (String(st.nums[i]).length > 3 ? 0.24 : 0.4)); x.textAlign = 'center'; x.textBaseline = 'middle'; x.shadowColor = 'rgba(0,0,0,.7)'; x.shadowBlur = 10; x.fillText(st.nums[i], ts / 2, ts / 2 + 3); x.shadowBlur = 0; x.textBaseline = 'alphabetic'; }
+      if (st.nums && st.nums[i] != null) { const txt = String(st.nums[i]); x.fillStyle = 'rgba(10,4,30,.55)'; rr(x, ts * 0.18, ts * 0.18, ts * 0.64, ts * 0.64, ts * 0.32); x.fill(); x.font = FN(ts * (txt.length > 3 ? 0.22 : 0.4)); x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(txt, ts / 2, ts / 2 + ts * 0.02); x.textBaseline = 'alphabetic'; }
       x.restore();
     }
     x.restore();
-    return { pos, top: cy - size / 2 - gap * 1.8, bottom: cy + size / 2 + gap * 1.8, ts };
+    return { pos, top: cy - size / 2 - pad, bottom: cy + size / 2 + pad, ts };
   }
   function ripple(x, X, Y, u, col = '#ffffff') { if (u < 0 || u > 0.45) return; const k = u / 0.45; x.strokeStyle = col; x.globalAlpha = 1 - k; x.lineWidth = 10 * (1 - k) + 2; x.beginPath(); x.arc(X, Y, 40 + k * 120, 0, 7); x.stroke(); x.globalAlpha = 1; }
   /* cartoon pointing hand (fingertip at 0,0) */
@@ -160,7 +207,7 @@ const CLIP = (() => {
   /* Sanx live in the corner: pops in, face changes, speech bubble */
   function sanx(x, A, t, s) {
     if (!s || t < s.t0) return;
-    const img = A.sanx[s.mood] || A.sanx.smug, k = eBack((t - s.t0) / 0.45), X = s.x || 170, Y = s.y || 1660, R = s.r || 118;
+    const img = A.sanx[s.mood] || A.sanx.smug, k = eBack((t - s.t0) / 0.45), X = s.x || 150, Y = s.y || 1710, R = s.r || 100;
     x.save(); x.translate(X, Y); x.scale(k, k);
     x.fillStyle = '#743ae8'; x.beginPath(); x.arc(0, 0, R, 0, 7); x.fill();
     x.save(); x.beginPath(); x.arc(0, 0, R - 6, 0, 7); x.clip(); if (img) x.drawImage(img, -R * 1.05, -R * 0.95, R * 2.1, R * 2.1 * img.height / img.width); x.restore();
@@ -196,15 +243,44 @@ const CLIP = (() => {
     const pg = x.createLinearGradient(220, 0, 860, 0); pg.addColorStop(0, '#743ae8'); pg.addColorStop(1, '#c4a7ff'); x.fillStyle = pg; rr(x, 220, Y + 30, Math.max(22, 640 * clamp(done / n)), 22, 11); x.fill();
   }
   function label(x, txt, Y, col = '#fff', s = 56) { x.font = F(900, s); x.fillStyle = col; x.textAlign = 'center'; x.fillText(txt, W / 2, Y); }
+  /* PRO OUTRO: phone with the real game running, big DOWNLOAD FREE button that gets tapped, Play badge */
   function endCard(x, A, t, t0, o) {
     const u = t - t0; if (u < 0) return;
-    x.fillStyle = `rgba(6,2,26,${clamp(u / 0.4) * 0.6})`; x.fillRect(0, 0, W, H);
-    if (A.logo) { const s = 760 * eBack(u / 0.6), h = s * A.logo.height / A.logo.width; x.drawImage(A.logo, (W - s) / 2, 200, s, h); }
-    if (u > 0.5) slam(x, o.title || 'CAN YOU BEAT IT?', t0 + 0.5, t, W / 2, 880, 100, 99);
-    if (u > 0.9) sanx(x, A, t, { t0: t0 + 0.9, mood: o.mood || 'smug', x: 230, y: 1170, r: 130, line: o.line || 'Think you can beat me?' });
-    if (u > 1.4) { x.globalAlpha = clamp((u - 1.4) / 0.4); bigText(x, o.cta || 'PLAY FREE', W / 2, 1490, 84); if (A.gplay) { const gw = 520, gh = gw * A.gplay.height / A.gplay.width; x.drawImage(A.gplay, (W - gw) / 2, 1550, gw, gh); } if (o.footer) { x.font = F(800, 36); x.fillStyle = '#e4d7ff'; x.textAlign = 'center'; x.fillText(o.footer, W / 2, 1820); } x.globalAlpha = 1; }
+    x.fillStyle = `rgba(5,1,20,${clamp(u / 0.35) * 0.55})`; x.fillRect(0, 0, W, H);
+    /* light burst behind the phone */
+    x.save(); x.globalCompositeOperation = 'lighter'; x.translate(W / 2, 880); x.rotate(u * 0.25);
+    for (let k = 0; k < 12; k++) { x.rotate(Math.PI / 6); const g = x.createLinearGradient(0, 0, 0, -900); g.addColorStop(0, `rgba(154,109,245,${0.22 * clamp(u / 0.6)})`); g.addColorStop(1, 'rgba(154,109,245,0)'); x.fillStyle = g; x.beginPath(); x.moveTo(-26, 0); x.lineTo(26, 0); x.lineTo(110, -900); x.lineTo(-110, -900); x.closePath(); x.fill(); }
+    x.restore();
+    if (A.logo) { const k = eBack(u / 0.55), s2 = 560 * k, h = s2 * A.logo.height / A.logo.width; x.drawImage(A.logo, (W - s2) / 2, 110, s2, h); }
+    if (u > 0.35) slam(x, o.title || 'CAN YOU BEAT IT?', t0 + 0.35, t, W / 2, 450, 92, 99);
+    if (u > 0.7) { x.globalAlpha = clamp((u - 0.7) / 0.3); sub(x, o.line || 'Think you can beat me?', W / 2, 525, 40, '#e9dcff'); x.globalAlpha = 1; }
+    /* phone mockup */
+    if (u > 0.5) {
+      const k = eBack((u - 0.5) / 0.6), pw = 330 * k, ph = 640 * k, px = W / 2 - pw / 2, py = 900 - ph / 2;
+      x.save(); x.shadowColor = 'rgba(0,0,0,.6)'; x.shadowBlur = 60; x.fillStyle = '#0d0624'; rr(x, px - 14 * k, py - 14 * k, pw + 28 * k, ph + 28 * k, 56 * k); x.fill(); x.restore();
+      x.strokeStyle = '#9a6df5'; x.lineWidth = 5; rr(x, px - 14 * k, py - 14 * k, pw + 28 * k, ph + 28 * k, 56 * k); x.stroke();
+      x.save(); rr(x, px, py, pw, ph, 42 * k); x.clip();
+      const sg = x.createLinearGradient(0, py, 0, py + ph); sg.addColorStop(0, '#2b0e6b'); sg.addColorStop(1, '#0b0520'); x.fillStyle = sg; x.fillRect(px, py, pw, ph);
+      if (A.logo) { const lw = pw * 0.6, lh = lw * A.logo.height / A.logo.width; x.drawImage(A.logo, W / 2 - lw / 2, py + ph * 0.06, lw, lh); }
+      const lit = {}; const kk = Math.floor(u / 0.32) % 9; lit[[4, 0, 8, 2, 6, 1, 7, 3, 5][kk]] = 1;
+      board(x, A, t, { g: 3, size: pw * 0.84, cx: W / 2, cy: py + ph * 0.55, lit });
+      x.restore();
+      x.fillStyle = '#0d0624'; rr(x, W / 2 - 50 * k, py + 4 * k, 100 * k, 22 * k, 11 * k); x.fill();       // notch
+    }
+    /* DOWNLOAD FREE button, finger taps it */
+    if (u > 1.1) {
+      const tapT = t0 + 2.3, pr = Math.max(0, 1 - Math.abs(t - tapT) / 0.12), k = eBack((u - 1.1) / 0.45) * (1 + Math.sin(u * 7) * 0.025) * (1 - pr * 0.06);
+      const bw = 760 * k, bh = 150 * k, bx = W / 2 - bw / 2, by = 1300 - bh / 2;
+      x.save(); x.shadowColor = 'rgba(154,109,245,.9)'; x.shadowBlur = 50; const bgB = x.createLinearGradient(0, by, 0, by + bh); bgB.addColorStop(0, '#b794ff'); bgB.addColorStop(1, '#743ae8'); x.fillStyle = bgB; rr(x, bx, by, bw, bh, bh / 2); x.fill(); x.restore();
+      x.fillStyle = '#4a1fb8'; rr(x, bx, by + bh * 0.82, bw, bh * 0.18, bh * 0.09); x.globalAlpha = 0.5; x.fill(); x.globalAlpha = 1;
+      x.save(); rr(x, bx, by, bw, bh, bh / 2); x.clip(); const sx = bx + ((u * 500) % (bw + 400)) - 200; const sh = x.createLinearGradient(sx - 80, 0, sx + 80, 0); sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(0.5, 'rgba(255,255,255,.45)'); sh.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = sh; x.fillRect(bx, by, bw, bh); x.restore();
+      bigText(x, o.cta || 'DOWNLOAD FREE', W / 2, by + bh * 0.68, 76 * k, { glow: 0, stroke: '#2b0e6b' });
+      if (t > tapT - 0.6 && t < tapT + 0.8) { const fy = lerp(1560, 1330, eOut((t - tapT + 0.6) / 0.55)); finger(x, W / 2 + 200, fy, pr); ripple(x, W / 2 + 190, 1310, t - tapT); }
+      if (t >= tapT && t < tapT + 0.05) { }
+    }
+    if (u > 1.5 && A.gplay) { x.globalAlpha = clamp((u - 1.5) / 0.3); const gw = 420, gh = gw * A.gplay.height / A.gplay.width; x.drawImage(A.gplay, (W - gw) / 2, 1420, gw, gh); x.globalAlpha = 1; }
+    if (u > 1.8) { x.globalAlpha = clamp((u - 1.8) / 0.3); sub(x, o.footer || '500+ LEVELS · DUELS · DAILY BEAT', W / 2, 1610, 34, '#d9c8ff', 800); x.globalAlpha = 1; }
   }
-
   /* ================= GAMEPLAY =================
      round(): one watch phase (tiles flash on the beat) and/or one input phase (finger taps).
      o.only = 'show' | 'input' | undefined (both) */
@@ -259,7 +335,7 @@ const CLIP = (() => {
 
   /* 1) LEVEL CLIMB — fast gameplay montage, level 1 -> boss, fails on the last tile */
   STYLES.climb = (S, A, rng) => {
-    const T = TL(S.bpm || 104), b = T.beat;
+    const T = TL(S.bpm || 104), b = T.beat; T.world = 'arena';
     const levels = S.levels || [1, 5, 10, 15], rounds = [], hs = [];
     T.seg(0, 2.7, (x, t) => { slam(x, S.hook1 || 'LEVEL 1 → 15', -0.3, t, W / 2, 820, 150, 2.6, { c2: '#e6d8ff' }); slam(x, S.hook2 || 'HOW FAR CAN YOU GO?', 0.75, t, W / 2, 1000, 84, 1.95); sanx(x, A, t, { t0: 1.1, mood: 'smug', line: 'Bet you quit at level 7.' }); });
     T.cue(0.1, () => SND.boss()); T.cue(0.75, () => SND.whoosh()); T.cam(0, 1.15, 0, 0, 0); T.cam(0.1, 1, 0, 0, 1.4);
@@ -299,7 +375,7 @@ const CLIP = (() => {
 
   /* 2) PLAY ALONG — viewer plays: watch, freeze + timer, finger shows the answer, verdict */
   STYLES.play = (S, A, rng) => {
-    const T = TL(S.bpm || 100), b = T.beat, g = S.grid || 3, n = S.len || 8, seq = makeSeq(rng, n, g);
+    const T = TL(S.bpm || 100); T.world = 'studio'; const b = T.beat, g = S.grid || 3, n = S.len || 8, seq = makeSeq(rng, n, g);
     T.seg(0, T.snap(2.9), (x, t) => { slam(x, S.hook1 || 'ONLY 3% CAN', -0.3, t, W / 2, 840, 130, 2.7); slam(x, S.hook2 || 'REMEMBER THIS', 0.7, t, W / 2, 1010, 120, 2.1, { c2: '#e6d8ff' }); sanx(x, A, t, { t0: 1.2, mood: 'smug', line: `${n} tiles. No way you get all of them.` }); });
     T.cue(0.1, () => SND.boss()); T.cue(0.7, () => SND.whoosh()); T.cam(0, 1.2, 0, 0, 0); T.cam(0.1, 1, 0, 0, 1.6);
     const c0 = T.snap(2.9);
@@ -342,9 +418,9 @@ const CLIP = (() => {
 
   /* 3) DUEL — split screen: you vs Sanx, same pattern, 3 rounds, winner reveal */
   STYLES.duel = (S, A, rng) => {
-    const T = TL(S.bpm || 108), b = T.beat, g = 3, you = S.youName || 'YOU', pw = S.playerWins !== false;
+    const T = TL(S.bpm || 108); T.world = 'versus'; const b = T.beat, g = 3, you = S.youName || 'YOU', pw = S.playerWins !== false;
     T.seg(0, 3.0, (x, t) => {
-      const k = eBack(t / 0.45);
+      const k = eBack(clamp(0.5 + t / 0.6));
       avatarDisc(x, A.av, W / 2 - 250 * k, 760, 170, '#c4a7ff', you); avatarDisc(x, A.sanxDisc, W / 2 + 250 * k, 760, 170, '#ff3d6e', 'SANX');
       slam(x, 'VS', 0.5, t, W / 2, 815, 170, 2.6, { c2: '#ffb3c6' });
       slam(x, S.hook1 || 'MEMORY DUEL', 0.9, t, W / 2, 1200, 120, 2.2); slam(x, S.hook2 || 'WHO REMEMBERS MORE?', 1.3, t, W / 2, 1330, 70, 1.8);
@@ -400,7 +476,7 @@ const CLIP = (() => {
 
   /* 4) RHYTHM RUSH — music-video energy, 8th-note flashes, combo to x24, then a mini challenge */
   STYLES.rush = (S, A, rng) => {
-    const T = TL(S.bpm || 124), b = T.beat, g = S.grid || 3, words = S.words || ['REMEMBER', 'THE', 'BEAT'];
+    const T = TL(S.bpm || 124); T.world = 'club'; const b = T.beat, g = S.grid || 3, words = S.words || ['REMEMBER', 'THE', 'BEAT'];
     T.seg(0, T.snap(2.7) + 0.02, (x, t) => { words.forEach((w, i) => slam(x, w, i * b - 0.3, t, W / 2, 760 + i * 175, 150, 2.5 - i * b)); sanx(x, A, t, { t0: 1.4, mood: 'smug', line: 'Keep up if you can.' }); });
     words.forEach((w, i) => { T.cue(0.02 + i * b, () => SND.tick()); T.shake(i * b, 12, 0.2); });
     const r0 = T.snap(2.7), n = 24, half = b / 2, seq = makeSeq(rng, n, g);
@@ -431,7 +507,7 @@ const CLIP = (() => {
 
   /* 5) SO CLOSE — two painful fails on the last tile, the third try finally makes it */
   STYLES.close = (S, A, rng) => {
-    const T = TL(S.bpm || 104), b = T.beat, g = 3, n = S.len || 7, seq = makeSeq(rng, n, g);
+    const T = TL(S.bpm || 104); T.world = 'space'; const b = T.beat, g = 3, n = S.len || 7, seq = makeSeq(rng, n, g);
     T.seg(0, 2.8, (x, t) => { slam(x, S.hook1 || '1 TILE AWAY', -0.3, t, W / 2, 860, 150, 2.7, { c2: '#ffb3c6' }); slam(x, S.hook2 || 'EVERY. SINGLE. TIME.', 0.8, t, W / 2, 1030, 76, 2); sanx(x, A, t, { t0: 1.3, mood: 'laugh', line: 'This one is painful. Hehe.' }); });
     T.cue(0.1, () => SND.boss()); T.cam(0, 1.15, 0, 0, 0); T.cam(0.1, 1, 0, 0, 1.2);
     const atts = []; let t = T.snap(3.0);
@@ -467,7 +543,7 @@ const CLIP = (() => {
 
   /* 6) BRAG — the in-app Save Clip: your best pattern played by the finger, then your score */
   STYLES.brag = (S, A, rng) => {
-    const T = TL(S.bpm || 104), b = T.beat, seq = S.seq, n = seq.length, g = S.grid || 3;
+    const T = TL(S.bpm || 104); T.world = 'arena'; const b = T.beat, seq = S.seq, n = seq.length, g = S.grid || 3;
     T.seg(0, 2.6, (x, t) => { if (A.av) avatarDisc(x, A.av, W / 2, 560, 140 * eBack((t - 0.2) / 0.5)); slam(x, 'CAN YOU BEAT', -0.3, t, W / 2, 870, 130, 2.5); slam(x, 'MY MEMORY?', 0.65, t, W / 2, 1040, 140, 1.95, { c2: '#e6d8ff' }); if (S.name && t > 1) chip(x, S.name, W / 2, 1160, 40); });
     T.cue(0.1, () => SND.boss()); T.cue(0.65, () => SND.whoosh());
     const beat = n * b > 9 ? Math.max(0.32, 9 / n) : b;
@@ -490,9 +566,15 @@ const CLIP = (() => {
   /* ================= ASSETS + RENDER ================= */
   async function assets(spec) {
     try { await document.fonts.load(F(900, 40)); await document.fonts.load(F(800, 30)); } catch (e) { }
+    try { await document.fonts.load(FT(60)); await document.fonts.load(FN(60)); } catch (e) { }
     const sx = {}; for (const m of ['smug', 'laugh', 'shock', 'angry', 'sad']) sx[m] = await svgImg(ART.sanx(m));
     const rng = mul(77);
+    const skin = spec.skin ? D.skin(spec.skin) : (typeof S !== 'undefined' && S.active ? D.skin(S.active('skin')) : D.SKINS[0]);
+    const EXTRA = ['diamond', 'flame', 'drop', 'leaf', 'cloud', 'crown', 'plus', 'x', 'comet', 'planet', 'rocket', 'compass', 'chip', 'shield', 'square', 'skull'];
+    const icons = await Promise.all([...skin.icons, ...EXTRA].map(n => svgImg(ART.tileIc(n).replace('class="ti" ', 'width="96" height="96" '))));
     return {
+      colors: spec.colors && spec.colors.length >= 9 ? spec.colors : skin.colors, icons,
+      stars: Array.from({ length: 140 }, () => ({ x: rng() * W, y: rng() * H, r: 0.8 + rng() * 2.4, a: 0.3 + rng() * 0.7, s: 1 + rng() * 3, v: rng() * 6 })),
       logo: await load('img/logo.png'), gplay: await load('share/gplay.png'),
       digits: await Promise.all([...Array(10).keys()].map(d => load(`share/d${d}.png`))),
       sanx: sx, sanxDisc: sx.smug, av: spec.avatar ? await load(spec.avatar) : null,
@@ -501,6 +583,17 @@ const CLIP = (() => {
     };
   }
   function build(spec, A) { const T = (STYLES[spec.style] || STYLES.play)(spec, A, mul(spec.seed || 1)); T.total = T.end; return T; }
+  /* pro intro FX on top of every hook: light burst + logo slam with a shine sweep */
+  function intro(x, A, t) {
+    if (t > 2.4) return;
+    if (t < 0.9) { x.save(); x.globalCompositeOperation = 'lighter'; x.translate(W / 2, 900); const a = 1 - t / 0.9; for (let k = 0; k < 16; k++) { x.rotate(Math.PI / 8); const g = x.createLinearGradient(0, 0, 0, -1100 * eOut(t / 0.5)); g.addColorStop(0, `rgba(196,167,255,${0.5 * a})`); g.addColorStop(1, 'rgba(196,167,255,0)'); x.fillStyle = g; x.beginPath(); x.moveTo(-18, -160); x.lineTo(18, -160); x.lineTo(60, -1100); x.lineTo(-60, -1100); x.closePath(); x.fill(); } x.restore(); }
+    if (A.logo) {
+      const k = t < 0.3 ? lerp(1.8, 1, eOut(t / 0.3)) : 1, lw = 400 * k, lh = lw * A.logo.height / A.logo.width, lx = (W - lw) / 2, ly = 120;
+      x.globalAlpha = clamp(t / 0.1) * clamp((2.4 - t) / 0.3); x.drawImage(A.logo, lx, ly, lw, lh);
+      if (t > 0.3 && t < 1.1) { x.save(); x.beginPath(); x.rect(lx, ly, lw, lh); x.clip(); const sx = lx + (t - 0.3) / 0.8 * (lw + 300) - 150; const g = x.createLinearGradient(sx - 60, 0, sx + 60, 0); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.5, 'rgba(255,255,255,.6)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.globalCompositeOperation = 'lighter'; x.fillStyle = g; x.fillRect(lx, ly, lw, lh); x.restore(); }
+      x.globalAlpha = 1;
+    }
+  }
   function frame(x, A, T, t, scale, dt = 1 / 30) {
     x.setTransform(scale, 0, 0, scale, 0, 0);
     T.P.kick *= Math.pow(0.86, dt * 30);
@@ -508,13 +601,14 @@ const CLIP = (() => {
     let sx = 0, sy = 0; for (const s of T.shakes) { const u = t - s.t; if (u >= 0 && u < s.d) { const k = (1 - u / s.d) * s.amp; sx += Math.sin(u * 90) * k; sy += Math.cos(u * 77) * k; } }
     x.save(); x.translate(W / 2 + c.x + sx, H / 2 + c.y + sy); x.scale(c.z, c.z); x.translate(-W / 2, -H / 2);
     const wash = T.wash ? T.wash(t) : null;
-    bg(x, A, t, wash, wash ? 0.8 : 0.4);
+    bg(x, A, t, wash, wash ? 0.8 : 0.4, T.world || 'studio', T.beat);
     for (const s of T.segs) if (t >= s.a && t < s.b) s.draw(x, t);
     x.restore();
+    if (T.intro !== false) intro(x, A, t);
     vignette(x, T.red ? T.red(t) : 0);
     for (const f of T.flashes) { const u = t - f.t; if (u >= 0 && u < f.d) { x.globalAlpha = f.a * (1 - u / f.d); x.fillStyle = f.col; x.fillRect(0, 0, W, H); x.globalAlpha = 1; } }
   }
-  async function make(spec, { w = 720, h = 1280, fps = 30, onProgress, canvas } = {}) {
+  async function make(spec, { w = 720, h = 1280, fps = 30, onProgress, canvas, music = null, musicVol = 0.8, sfxVol = 1 } = {}) {
     if (!canRecord()) throw new Error('This phone cannot record video');
     const cv = canvas || document.createElement('canvas'); cv.width = w; cv.height = h;
     const x = cv.getContext('2d'), A = await assets(spec), T = build(spec, A), scale = w / W;
@@ -524,10 +618,11 @@ const CLIP = (() => {
     const recd = new MediaRecorder(stream, Object.assign({ videoBitsPerSecond: w >= 1080 ? 10e6 : 6e6, audioBitsPerSecond: 160000 }, mime ? { mimeType: mime } : {}));
     const chunks = []; recd.ondataavailable = e => e.data && e.data.size && chunks.push(e.data);
     const done = new Promise(res => { recd.onstop = res; });
-    SND.beat.stop(); SND.beat.start(T.bpm, 'light');
+    SND.beat.stop(); SND.beat.lock(!!music); SND.beat.start(T.bpm, music ? 'still' : 'light'); SND.sfxVol(sfxVol);
     frame(x, A, T, 0, scale);
     recd.start(250);
     const T0 = SND.beat.t0 || SND.now(), cues = T.cues.slice().sort((a, b) => a.t - b.t); let ci = 0, last = 0;
+    const mus = music ? SND.playBuffer(music.buffer, T0, music.offset || 0, musicVol) : null;
     await new Promise(res => {
       const loop = () => {
         const t = SND.now() - T0;
@@ -539,24 +634,38 @@ const CLIP = (() => {
       };
       requestAnimationFrame(loop);
     });
+    if (mus) mus.stop();
     recd.stop(); await done;
-    SND.beat.stop(); SND.rec(false);
+    SND.beat.stop(); SND.beat.lock(false); SND.rec(false); SND.setVol();
     const type = (recd.mimeType || mime || 'video/webm').split(';')[0];
     return { blob: new Blob(chunks, { type }), mime: type, ext: type.includes('mp4') ? 'mp4' : 'webm', secs: T.total };
   }
   /* live preview with sound (Studio) */
-  async function preview(spec, canvas, w = 540, h = 960, withSound = true) {
+  async function preview(spec, canvas, w = 540, h = 960, withSound = true, music = null, musicVol = 0.8) {
     canvas.width = w; canvas.height = h; const x = canvas.getContext('2d'), A = await assets(spec), T = build(spec, A);
     const cues = T.cues.slice().sort((a, b) => a.t - b.t); let ci = 0, last = 0;
-    if (withSound) { SND.beat.stop(); SND.beat.start(T.bpm, 'light'); }
+    if (withSound) { SND.beat.stop(); SND.beat.lock(!!music); SND.beat.start(T.bpm, music ? 'still' : 'light'); }
     const T0 = withSound ? (SND.beat.t0 || SND.now()) : 0;
+    const mus = withSound && music ? SND.playBuffer(music.buffer, T0, music.offset || 0, musicVol) : null;
     return {
       total: T.total,
       draw: tt => { const t = withSound ? SND.now() - T0 : tt; if (withSound) while (ci < cues.length && cues[ci].t <= t) { try { cues[ci].fn(); } catch (e) { } ci++; } frame(x, A, T, Math.max(0, Math.min(t, T.total)), w / W, Math.max(0.001, t - last)); last = t; return t; },
-      stop: () => { if (withSound) SND.beat.stop(); }
+      stop: () => { if (mus) mus.stop(); if (withSound) { SND.beat.stop(); SND.beat.lock(false); } }
     };
   }
   /* draw one frame at time t (for thumbnails / tests) */
   async function still(spec, canvas, t, w = 540, h = 960) { canvas.width = w; canvas.height = h; const x = canvas.getContext('2d'), A = await assets(spec), T = build(spec, A); frame(x, A, T, t, w / W); return T.total; }
-  return { make, preview, still, canRecord, pickMime, STYLES: Object.keys(STYLES), COLORS };
+  /* tempo of an uploaded song: energy onsets + autocorrelation (60-180 BPM) and the first strong beat */
+  async function loadMusic(file) {
+    const c = SND.ctx(), buf = await c.decodeAudioData(await file.arrayBuffer());
+    const d = buf.getChannelData(0), sr = buf.sampleRate, hop = Math.round(sr / 100), n = Math.min(Math.floor(d.length / hop), 100 * 60);
+    const env = new Float32Array(n); for (let i = 0; i < n; i++) { let e = 0; for (let j = 0; j < hop; j++) { const v = d[i * hop + j] || 0; e += v * v; } env[i] = Math.sqrt(e / hop); }
+    const on = new Float32Array(n); for (let i = 1; i < n; i++) on[i] = Math.max(0, env[i] - env[i - 1]);
+    let best = 0, bpm = 100; for (let b = 70; b <= 170; b++) { const lag = 6000 / b; let sc = 0; for (let i = 0; i + lag * 2 < n; i += 2) sc += on[i] * (on[Math.round(i + lag)] + 0.5 * on[Math.round(i + lag * 2)]); if (sc > best) { best = sc; bpm = b; } }
+    let first = 0, mx = 0; for (let i = 0; i < Math.min(n, 400); i++) if (on[i] > mx) { mx = on[i]; first = i; }
+    const period = 60 / bpm, off = (first / 100) % period;
+    return { buffer: buf, bpm, offset: off, secs: buf.duration, name: file.name };
+  }
+  const _ = { board, bigText, slam, sub, hud, endCard, intro, assets, bg, vignette, chip, ripple, rr, clamp, eBack, eOut, finger, W, H };
+  return { _, make, preview, still, loadMusic, canRecord, pickMime, STYLES: Object.keys(STYLES), COLORS };
 })();

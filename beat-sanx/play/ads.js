@@ -45,7 +45,7 @@ const ADS = (() => {
         st.adsTotal = (st.adsTotal || 0) + 1;
         if (!st.adDay || st.adDay.d !== d) st.adDay = { d, n: 0, got: [], offers: {} };
         st.adDay.n++; st.ads.lastReward = Date.now(); S.save();
-        if (window.UI) setTimeout(() => UI.adProgress(), 300);
+        if ((typeof UI !== 'undefined')) setTimeout(() => UI.adProgress(), 300);
       }
       return ok;
     },

@@ -217,6 +217,7 @@ const CH = (() => {
         ${o.paid ? `<div class="resRow"><span>${ART.coin(18)} <b>+${fmt(o.paid)}</b></span></div>` : ''}
         ${o.won && o.paid ? `<button class="btn alt" data-act="chBonus:${Math.round(o.paid * D.CHAL.winBonusAd)}">${ART.ic('ad')} +50% bonus <small>+${fmt(Math.round(o.paid * D.CHAL.winBonusAd))}</small></button>` : ''}
         ${FB.on || p.ghost ? `<div class="resNext">${p.ghost ? 'Random opponent duel.' : UI.esc(p.name) + ' sees the result automatically.'}</div>` : `<button class="btn big pulse" data-act="chResult:${p.id}">${ART.ic('share')} SEND RESULT TO ${UI.esc(p.name).toUpperCase()}</button>`}
+        ${UI.clipBtn(G.last)}
         ${!o.won ? `<button class="btn ghost" data-act="chRevenge:${p.id}">${ART.ic('ad')} Badla lo! Free rematch</button>` : ''}
         <div class="row2"><button class="btn ghost" data-act="chal">${ART.ic('swords')} Duels</button><button class="btn ghost" data-act="home">${ART.ic('home')} Home</button></div>`;
       if (o.won) FX.win('fireworks');
@@ -226,6 +227,7 @@ const CH = (() => {
         ${o.paid ? `<div class="resRow"><span>${ART.coin(18)} <b>+${fmt(o.paid)}</b></span><span>from Sanx Bank</span></div>` : o.won && o.limited ? `<div class="resNext">Daily limit with this friend reached: no coins this time</div>` : ''}
         ${o.won && o.paid ? `<button class="btn alt" data-act="chBonus:${Math.round(o.paid * D.CHAL.winBonusAd)}">${ART.ic('ad')} +50% bonus <small>+${fmt(Math.round(o.paid * D.CHAL.winBonusAd))}</small></button>` : ''}
         ${!o.won ? `<button class="btn big pulse" data-act="chRevengeMode:${o.mode}">${ART.ic('ad')} Badla lo! Free rematch</button>` : `<button class="btn big" data-act="chShareWin:${o.mine}:${o.theirs}">${ART.ic('share')} SHOW OFF</button>`}
+        ${UI.clipBtn(G.last)}
         <div class="row2"><button class="btn ghost" data-act="chal">${ART.ic('swords')} Duels</button><button class="btn ghost" data-act="home">${ART.ic('home')} Home</button></div>`;
       if (o.won) FX.win('coinrain');
     }

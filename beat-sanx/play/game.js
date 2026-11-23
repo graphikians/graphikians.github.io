@@ -94,7 +94,7 @@ const G = (() => {
       t.querySelector('.tFace').innerHTML = ART.tileIc(v ? EXTRA[(i - 9) % EXTRA.length] : sk.icons[k]);
     });
   }
-  function lit(idxs, on, cls = 'on') { tiles().forEach((t, i) => { if (idxs.includes(i)) t.classList.toggle(cls, on); }); }
+  function lit(idxs, on, cls = 'on') { tiles().forEach((t, i) => { if (idxs.includes(i)) t.classList.toggle(cls, on); }); if (cls === 'on' && typeof REC !== 'undefined' && REC.recording) REC.evt(on ? 'lit' : 'unlit', { i: idxs.slice() }); }
   function clearFx() { tiles().forEach(t => t.classList.remove('on', 'ok', 'bad', 'decoy', 'hintT', 'dark', 'newT', 'hole', 'xray', 'fogL')); }
   /* Sanx taunts never show during play (they distract). They are kept and shown in the
      between-level banner. Useful facts (eliminated, floor reached ...) use info(). */
@@ -107,6 +107,7 @@ const G = (() => {
   const msg = (t, cls = '') => { const m = $('gMsg'); m.textContent = t; m.className = 'gMsg ' + cls; };
   function hud() {
     if (!R) return;
+    if (typeof REC !== 'undefined' && REC.recording) { const k = [R.level, R.hearts, R.coins, gridN].join(); if (k !== R._recHud) { R._recHud = k; REC.evt('hud', { level: R.level, hearts: R.imp ? 3 : R.hearts, max: R.imp ? 3 : R.maxHearts, coins: R.coins, g: gridN }); } }
     const h = $('gHearts');
     if (R.imp) h.innerHTML = `<span class="impTag">${ART.ic('refresh')} ${D.IMP.continues(R.imp.target) - R.imp.cont} continues${R.imp.cp ? ` · ${ART.ic('flag')} ${R.imp.cp}` : ''}</span>`;
     else if (R.noHearts) h.innerHTML = R.mode === 'zen' ? `<span class="zenTag">${ART.ic('leaf')} No fail</span>` : '';
@@ -234,7 +235,8 @@ const G = (() => {
     $('gTimeAd').classList.add('hide');
     S.st.stats.played++; S.questMode(mode); S.save();
     UI.show('game'); ADS.banner(false); SND.music(false);
-    SND.beat.onKick = kickPulse;
+    if (typeof REC !== 'undefined' && REC.armed) REC.begin();
+    SND.beat.onKick = null;   /* v1.5: no board zoom on every beat (distracting) */
     SND.beat.start(bpmNow(), 'light');
     intro().then(() => { if (R && !R.ended) R.imp ? impRound(true) : beginLevel(true); });
   }
@@ -302,7 +304,7 @@ const G = (() => {
     if (R.ev && R.ev.modeAt) { R.mode = R.ev.modeAt(R.level, R); $('game').dataset.gm = R.mode; }
     let twist = null;
     if (isClassicRun()) {
-      twist = D.twistFor(R.level); R.mode = twist || 'classic'; $('game').dataset.gm = R.mode;
+      twist = D.twistFor(R.level); if (twist && !S.unlocked(twist)) twist = null; R.mode = twist || 'classic'; $('game').dataset.gm = R.mode;
       $('gMode').textContent = twist ? `TWIST · ${D.MODE[twist].name.toUpperCase()}` : 'CLASSIC';
     }
     const g = gridFor(R.level), grew = g !== gridN;
@@ -460,6 +462,7 @@ const G = (() => {
   }
 
   function good(tEl, i) {
+    if (typeof REC !== 'undefined' && REC.recording) REC.evt('tap', { i });
     R.correct++; S.st.stats.correct++; R.combo++; R.maxCombo = Math.max(R.maxCombo, R.combo);
     SND.tap(i); SND.vib(12);
     const hit = SND.beat.on && SND.beat.err(2) < 0.075;
@@ -518,6 +521,7 @@ const G = (() => {
   function prizeFly(c) { const f = $('gPrizeFly'); f.textContent = '+' + c; f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); const p = $('gPrize'); p.classList.remove('pop'); void p.offsetWidth; p.classList.add('pop'); }
 
   async function levelClear() {
+    if (typeof REC !== 'undefined' && REC.recording) REC.evt('clear', { lv: R.level, len: R.seq.length });
     const t = token; const lv = R.level, st = S.st;
     R.levelsDone++; st.stats.levelsTotal++; R.fails = 0; R.adapt = R.booster === 'slow' ? 1.3 : 1;
     if (R.lvWrong === 0) { R.perfectLv++; S.quest('perfect'); }
@@ -579,6 +583,7 @@ const G = (() => {
   }
 
   function wrong(i, why, exp) {
+    if (typeof REC !== 'undefined' && REC.recording) REC.evt('wrong', { i: i == null ? -1 : i });
     if (R.phase !== 'input') return;
     const t = token;
     clearInterval(R.stepClock); clearTimeout(R.xrayT);
@@ -737,7 +742,8 @@ const G = (() => {
     $('gCount').classList.add('hide');
     const st = S.st;
     if (R.ladder && R.maxLen) R.newMem = S.memAdd(R.maxLen, R.dbeat ? 'daily' : R.test ? 'test' : R.chal ? 'duel' : 'event');
-    const res = result(won, why);
+    const res = result(won, why); lastResult = res;
+    if (typeof REC !== 'undefined' && REC.recording) REC.end(res);
     st.stats.runs++; st.ads.runs++;
     if (!R.ev && !R.daily && !R.pure && !R.imp && R.levelsDone > st.stats.bestRun) st.stats.bestRun = R.levelsDone;
     if (R.blitz) { st.blitzBest = Math.max(st.blitzBest || 0, R.stepsDone); }
@@ -775,5 +781,6 @@ const G = (() => {
   }
   const pick = a => a[rnd(a.length)];
 
-  return { build, start, revive, doubleCoins, endFromOver, say, info, paintSkin, hash, mulberry, get run() { return R; }, quitSilently() { token++; SND.beat.stop(); if (R) { stopAll(); R.ended = true; } } };
+  let lastResult = null;
+  return { build, start, revive, doubleCoins, endFromOver, say, info, paintSkin, hash, mulberry, get run() { return R; }, get last() { return lastResult; }, quitSilently() { token++; SND.beat.stop(); if (typeof REC !== 'undefined' && REC.recording) REC.disarm(); if (R) { stopAll(); R.ended = true; } } };
 })();
