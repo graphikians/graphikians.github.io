@@ -67,6 +67,8 @@
     <div class="card"><b class="k">4 · DETAILS (AUTO — CHANGE ONLY IF YOU WANT)</b>
       <div class="row"><div><label>Date</label><input type="date" id="day"></div><div><label>Hook</label><select id="hook"></select></div></div>
       <div class="row"><div><label>Quality</label><select id="q"><option value="hd1080" selected>1080p HD — sharpest (renders frame by frame)</option><option value="hd720">720p HD</option><option value="rt720">720p quick (real-time)</option></select></div><div><label>Avatar (duel / end)</label><select id="av"><option value="ace">Ace</option><option value="nova">Nova</option><option value="ronin">Cyber Ronin</option><option value="astro">Astro Queen</option></select></div></div>
+      <div class="row"><div><label>Your name on the end card</label><input id="meName" maxlength="18" placeholder="@yourname"></div><div><label>Your photo (optional)</label><input type="file" id="mePic" accept="image/*"></div></div>
+      <div class="row" id="runRow" style="display:none"><div><label>My Run · level</label><input id="runLv" type="number" min="1" max="999" value="42"></div><div><label>Mode</label><select id="runMode"></select></div><div><label>Tiles</label><input id="runTiles" type="number" min="3" max="30" value="12"></div><div><label>Name</label><input id="runName" maxlength="14" placeholder="RAHUL"></div></div>
       <div class="row" style="margin-top:12px"><button class="ghost" id="prev">▶ Preview (with sound)</button><button id="make">● Make this video</button></div>
     </div>
     <div class="card"><b class="k">SAVE ON THIS LAPTOP</b>
@@ -102,20 +104,29 @@
 const $ = id => document.getElementById(id);
 const STY = [
   { id: 'climb', name: 'Level Climb', sub: 'Gameplay from level 1 to the boss, fails on the last tile',
-    hooks: [['LEVEL 1 → 15', 'HOW FAR CAN YOU GO?'], ['FROM EASY', 'TO IMPOSSIBLE'], ['THIS GAME GETS', 'HARDER AND HARDER'], ['I ALMOST', 'BEAT THE BOSS']],
+    hooks: [['LEVEL 1 → 15', 'HOW FAR CAN YOU GO?'], ['FROM EASY', 'TO IMPOSSIBLE'], ['THIS GAME GETS', 'HARDER AND HARDER'], ['I ALMOST', 'BEAT THE BOSS'], ['LEVEL 1 IS EASY', 'LEVEL 15 IS NOT'], ['WATCH ME', 'CLIMB TO THE BOSS'], ['EVERY LEVEL', 'ADDS ONE TILE'], ['WHERE WOULD', 'YOU FAIL?']],
     cap: ['Level 1 was easy. Level 15? Not so much 😤 How far would you get? 👇', 'From easy to impossible in 40 seconds 🧠 Where would you fail?', 'One tile away from beating the boss… again 😩'] },
   { id: 'play', name: 'Play Along', sub: 'Viewer plays: watch, timer, answer reveal',
-    hooks: [['ONLY 3% CAN', 'REMEMBER THIS'], ['99% FAIL', 'THIS TEST'], ['HOW OLD IS', 'YOUR BRAIN?'], ['GENIUS LEVEL', 'MEMORY TEST'], ['MOST PEOPLE', 'FAIL THIS']],
+    hooks: [['ONLY 3% CAN', 'REMEMBER THIS'], ['99% FAIL', 'THIS TEST'], ['HOW OLD IS', 'YOUR BRAIN?'], ['GENIUS LEVEL', 'MEMORY TEST'], ['MOST PEOPLE', 'FAIL THIS'], ['PAUSE IF', 'YOU NEED TO'], ['YOUR BRAIN VS', 'THIS PATTERN'], ['COMMENT', 'THE ORDER']],
     cap: ['Only 3% can remember all {n} 🧠 Comment your answer 👇', '99% fail this memory test. Did you? ✅ or ❌', 'Genius-level memory test: {n} tiles. Comment the order 👇'] },
   { id: 'duel', name: 'Beat Sanx Duel', sub: 'Split screen: player vs Sanx, 3 rounds',
-    hooks: [['MEMORY DUEL', 'WHO REMEMBERS MORE?'], ['ME VS SANX', 'SAME PATTERN'], ['CAN YOU', 'BEAT SANX?']],
+    hooks: [['MEMORY DUEL', 'WHO REMEMBERS MORE?'], ['ME VS SANX', 'SAME PATTERN'], ['CAN YOU', 'BEAT SANX?'], ['3 ROUNDS', 'ONE WINNER'], ['SANX NEVER', 'LOSES. RIGHT?'], ['TAG A FRIEND', 'YOU CAN BEAT'], ['SAME PATTERN', 'WHO CRACKS FIRST?'], ['THE BRAIN', 'BATTLE']],
     cap: ['Memory duel: same pattern, who wins? 🧠⚔️ Duel your friends in Beat Sanx', 'Me vs Sanx. Same pattern. One winner 👀', 'Think you can beat Sanx? Challenge a friend 👇'] },
   { id: 'rush', name: 'Rhythm Rush', sub: 'Music-video energy, combo x24, mini challenge',
-    hooks: [['REMEMBER', 'THE', 'BEAT'], ['FEEL', 'THE', 'RHYTHM'], ['DON\'T', 'LOSE', 'FOCUS']],
+    hooks: [['REMEMBER', 'THE', 'BEAT'], ['FEEL', 'THE', 'RHYTHM'], ['DON\'T', 'LOSE', 'FOCUS'], ['LAST', 'SIX', 'TILES'], ['EYES', 'ON', 'BEAT'], ['TAP', 'THE', 'DROP'], ['STAY', 'IN', 'SYNC'], ['ONE', 'MORE', 'BEAT']],
     cap: ['Satisfying memory rhythm 🎵 What were the last 6 tiles? Comment /6 👇', 'Watch till the end… then remember the last 6 🧠', 'Rhythm + memory = this 🔥 Score yourself /6'] },
   { id: 'close', name: 'So Close!', sub: 'Two painful fails on the last tile, then FINALLY',
-    hooks: [['1 TILE AWAY', 'EVERY. SINGLE. TIME.'], ['THE LAST TILE', 'IS ALWAYS THE HARDEST'], ['THIS GAME', 'HATES ME']],
+    hooks: [['1 TILE AWAY', 'EVERY. SINGLE. TIME.'], ['THE LAST TILE', 'IS ALWAYS THE HARDEST'], ['THIS GAME', 'HATES ME'], ['SO CLOSE', 'IT HURTS'], ['WHY IS IT', 'ALWAYS THE LAST ONE?'], ['ATTEMPT 1', 'ATTEMPT 2…'], ['I REFUSE', 'TO GIVE UP'], ['PAIN.', 'PURE PAIN.']],
     cap: ['The last tile is ALWAYS the hardest 😭 Could you do it first try?', 'One tile away… twice 😤 Your turn 👇', 'This game hates me. Bet you need 4 tries 😂'] },
+  { id: 'lose', name: 'So Much To Lose', sub: 'Streak, coins and level 100 at stake. Hearts drop. He loses it all',
+    hooks: [['HE HAD', 'EVERYTHING TO LOSE'], ['29-DAY STREAK', 'ON ONE TILE'], ['DO NOT', 'MESS THIS UP'], ['ONE MISTAKE', 'AND IT IS ALL GONE'], ['LEVEL 100', 'WAS RIGHT THERE'], ['THE MOST', 'PAINFUL LOSS'], ['WATCH HIM', 'LOSE IT ALL'], ['COULD YOU', 'HAVE SAVED IT?']],
+    cap: ['A 29-day streak, all his coins and level 100… gone on ONE tile 😱 Could you have saved it? 👇', 'Everything on the last tile. He missed it 💔 Would you?', 'The most painful loss in Beat Sanx 😭 Comment if you would have made it'] },
+  { id: 'myrun', name: 'My Run', sub: 'Type your level, mode, tiles and name. The finger plays your run',
+    hooks: [['CAN YOU', 'BEAT MY RUN?'], ['MY BEST', 'RUN EVER'], ['BEAT THIS', 'IF YOU CAN'], ['I REMEMBERED', 'ALL OF THIS'], ['MY BRAIN', 'ON A GOOD DAY'], ['NEW RECORD', 'UNLOCKED'], ['YOUR TURN', 'TO TRY'], ['TOP THIS', 'SCORE']],
+    cap: ['My best run in Beat Sanx 🧠 Can you beat {n} tiles? 👇', 'New personal record: {n} tiles 🔥 Your turn.', 'Beat my run and I will follow you 😎 {n} tiles.'] },
+  { id: 'dbeat', name: 'Daily Beat Card', sub: "Today's world pattern and Sanx's score: can you beat it?",
+    hooks: [['DAILY BEAT', 'SAME FOR EVERYONE'], ['TODAY\'S PATTERN', 'CAN YOU BEAT SANX?'], ['ONE PATTERN', 'THE WHOLE WORLD'], ['NEW DAY', 'NEW PATTERN'], ['SANX SCORED', 'CAN YOU TOP IT?'], ['ONE MISTAKE', 'AND IT ENDS'], ['DAILY', 'BRAIN CHECK'], ['COMMENT', 'YOUR SCORE']],
+    cap: ["Today's Daily Beat: same pattern for the whole world 🌍 Can you beat Sanx? 👇", 'New day, new pattern 🧠 Comment your score', 'Daily Beat is live. One mistake ends it 😤'] },
   { id: 'spot', name: 'Feature Spotlight', sub: 'A booster, skin, event or challenge in action', hooks: [], cap: [] }
 ];
 /* ---------- FEATURE FOCUS: real content from the game ---------- */
@@ -148,11 +159,11 @@ $('feat').innerHTML = `<option value="auto">Auto — game only (no feature)</opt
   <optgroup label="Challenges (${D.CHALLENGES.length + 1})"><option value="challenge:imp">Impossible 100</option>${D.CHALLENGES.map(c => `<option value="challenge:${c.id}">${c.name} — ${c.tag}</option>`).join('')}</optgroup>`;
 function featHooks(f) {
   const N = f.name.toUpperCase();
-  if (f.kind === 'booster') return [['THIS BOOSTER', 'IS ILLEGAL 😳'], ['STUCK ON A LEVEL?', 'USE THIS'], ['SECRET WEAPON:', N], ['THE BOSS HAD', 'NO CHANCE']];
-  if (f.kind === 'skin') return [['NEW SKIN', 'JUST DROPPED'], ['WHICH SKIN', 'IS YOUR VIBE?'], [N, 'SKIN UNLOCKED']];
-  if (f.kind === 'event') return [["TODAY'S EVENT", N], ['ONLY 1% WIN', 'THIS EVENT'], ['CAN YOU SURVIVE', N + '?']];
-  if (f.id === 'imp') return [['IMPOSSIBLE 100', 'HOW FAR CAN YOU GO?'], ['NOBODY HAS', 'REACHED 100'], ['100 TILES', 'ONE PATTERN']];
-  return [['CHALLENGE:', N], ['3 STARS?', 'GOOD LUCK'], ['ONLY GENIUSES', 'GET 3 STARS']];
+  if (f.kind === 'booster') return [['THIS BOOSTER', 'IS ILLEGAL 😳'], ['STUCK ON A LEVEL?', 'USE THIS'], ['SECRET WEAPON:', N], ['THE BOSS HAD', 'NO CHANCE'], ['NOBODY TALKS', 'ABOUT THIS'], ['PRO TIP:', N], ['THIS SAVED', 'MY RUN'], ['CHEAT CODE?', 'NO. ' + N]];
+  if (f.kind === 'skin') return [['NEW SKIN', 'JUST DROPPED'], ['WHICH SKIN', 'IS YOUR VIBE?'], [N, 'SKIN UNLOCKED'], ['SAME GAME', 'NEW VIBE'], ['RATE THIS', 'SKIN /10'], ['THE PRETTIEST', 'SKIN YET?'], ['UNLOCKED:', N], ['MY NEW', 'FAVOURITE LOOK']];
+  if (f.kind === 'event') return [["TODAY'S EVENT", N], ['ONLY 1% WIN', 'THIS EVENT'], ['CAN YOU SURVIVE', N + '?'], ['LIVE NOW:', N], ['THE HARDEST', 'EVENT YET'], ['WIN BIG IN', N], ['ARE YOU', 'IN OR OUT?'], ['LIMITED TIME:', N]];
+  if (f.id === 'imp') return [['IMPOSSIBLE 100', 'HOW FAR CAN YOU GO?'], ['NOBODY HAS', 'REACHED 100'], ['100 TILES', 'ONE PATTERN'], ['THE ULTIMATE', 'MEMORY TEST'], ['HOW MANY', 'BEFORE YOU BREAK?'], ['ONE PATTERN', 'GROWS FOREVER'], ['MY BRAIN', 'GAVE UP AT…'], ['TRY IT.', 'I DARE YOU']];
+  return [['CHALLENGE:', N], ['3 STARS?', 'GOOD LUCK'], ['ONLY GENIUSES', 'GET 3 STARS'], ['STAR ROAD:', N], ['CAN YOU GET', 'ALL 3 STARS?'], ['30 STARS =', 'LEGEND SKIN'], ['THIS ONE', 'BROKE ME'], ['HARDER THAN', 'IT LOOKS']];
 }
 function featCaps(f) {
   if (f.kind === 'booster') return [`${f.name}: ${f.desc.toLowerCase()} 😳 1 of 15 boosters in Beat Sanx. Which one would you pick? 👇`, `Stuck on the boss? ${f.name} says hi 😎 Comment your favourite booster 👇`, `This booster should be illegal 😂 ${f.name} in action.`];
@@ -161,7 +172,10 @@ function featCaps(f) {
   if (f.id === 'imp') return ['Impossible 100: one pattern, 100 tiles 🧠 How far would you get? 👇', 'Nobody has reached 100. Yet. 👀 Comment your best'];
   return [`${f.name}: ${f.desc} ⭐ Can you get 3 stars? 👇`, `3 stars on ${f.name}? Good luck 😂`];
 }
-let cur = 0, curVar = 1;
+let cur = 0, curVar = 1, ME_PIC = null;
+$('runMode').innerHTML = D.MODES.filter(m => !['blitz', 'zen'].includes(m.id)).map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+$('mePic').addEventListener('change', e => { const f = e.target.files[0]; if (!f) { ME_PIC = null; return; } const r = new FileReader(); r.onload = () => { const im = new Image(); im.onload = () => { const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d'), m = Math.min(im.width, im.height); g.drawImage(im, (im.width - m) / 2, (im.height - m) / 2, m, m, 0, 0, 256, 256); ME_PIC = c.toDataURL('image/jpeg', 0.9); syncUI(); }; im.src = r.result; }; r.readAsDataURL(f); });
+['meName', 'runLv', 'runMode', 'runTiles', 'runName'].forEach(k => $(k).addEventListener('change', () => syncUI()));
 $('styles').innerHTML = STY.map((s, i) => `<button class="sty ${i ? '' : 'on'}" data-i="${i}"><b>${i + 1}. ${s.name}</b><small>${s.sub}</small></button>`).join('');
 $('styles').onclick = e => { const b = e.target.closest('.sty'); if (!b) return; cur = +b.dataset.i; if (STY[cur].id === 'spot' && $('feat').value === 'auto') $('feat').value = 'booster:xray'; syncUI(); };
 $('feat').addEventListener('change', () => { if ($('feat').value === 'auto' && STY[cur].id === 'spot') cur = 0; });
@@ -173,6 +187,7 @@ function syncUI() {
   /* any style works with any feature; only the Spotlight style needs one */
   if (STY[cur].id === 'spot' && !f0) { $('feat').value = 'booster:xray'; fk = 'booster:xray'; }
   document.querySelectorAll('.sty').forEach((x, i) => x.classList.toggle('on', i === cur));
+  $('runRow').style.display = STY[cur].id === 'myrun' ? '' : 'none';
   const f = featureObj($('feat').value, dayNo($('day').value));
   $('featTip').textContent = !f ? 'Game only. Each variation plays in a different shop skin.' : f.kind === 'skin' ? `The whole video plays in the ${f.name} skin.` : STY[cur].id === 'spot' ? `Feature Spotlight: the whole video is about ${f.name}.` : f.kind === 'booster' ? `${STY[cur].name} + ${f.name}: the booster bar is live and ${f.name} is tapped right before the big moment.` : `${STY[cur].name} + ${f.name}: badge in the video and the outro invites to it.`;
   const hs = hooksFor(cur, f); $('hook').innerHTML = hs.map((h, i) => `<option value="${i}">${h.join(' ')}</option>`).join(''); $('hook').value = dayNo($('day').value) % hs.length;
@@ -185,6 +200,10 @@ function spec(o = {}) {
   const av = o.av || $('av').value, len = 7 + (seed % 3);
   const sp = { style: s.id, seed, variation: v, hook1: h[0], hook2: h[1], len, avatar: `img/av/${av}.webp`, youName: { ace: 'ACE', nova: 'NOVA', ronin: 'RONIN', astro: 'ASTRO' }[av], footer: `Daily Beat #${dayNo(d)} · same pattern for the whole world`, playerWins: seed % 2 === 0 };
   if (s.id === 'rush') sp.words = h;
+  const me = $('meName').value.trim(); if (me) sp.meName = me; if (ME_PIC) sp.meImg = ME_PIC;
+  if (s.id === 'lose') { sp.level = 99; sp.streak = 14 + seed % 40; sp.stake = 4000 + (seed * 37) % 26000; }
+  if (s.id === 'myrun') { sp.level = +$('runLv').value || 42; sp.modeName = (D.MODE[$('runMode').value] || D.MODE.classic).name; sp.len = Math.max(3, Math.min(30, +$('runTiles').value || 12)); sp.name = $('runName').value.trim() || me || ''; }
+  if (s.id === 'dbeat') { const no = dayNo(d); sp.dayNo = no; sp.sanxScore = D.sanxScore(no); }
   if (f) {
     if (f.kind === 'skin') sp.skin = f.id;
     if (s.id === 'spot') { sp.feature = f; sp.footer = '500+ LEVELS · 15 BOOSTERS · LIVE EVENTS'; }
@@ -321,10 +340,11 @@ function batchPlan(N, d) {
   const pools = [boosters, skins, events, chals];
   for (let i = 0; i < N; i++) {
     const r = base + i; let si, key = null;
-    if (fixed) { si = i % 3 === 2 ? STY.findIndex(s => s.id === 'spot') : r % 5; if (fixed.startsWith('skin:') && si === 5) si = r % 5; key = fixed; }
-    else if (i % 3 === 2) { si = STY.findIndex(s => s.id === 'spot'); const pool = pools[Math.floor(i / 3) % 4]; key = pool[(r * 7) % pool.length]; if (key.startsWith('skin:')) si = r % 5; }
-    else if (i % 3 === 1) { si = (r + Math.floor(i / 3)) % 5; const pool = pools[(Math.floor(i / 3) + 1) % 4]; key = pool[(r * 5 + 3) % pool.length]; }
-    else { si = (r + Math.floor(i / 3)) % 5; }
+    const SP = STY.findIndex(s => s.id === 'spot'), BS = STY.map((s, k) => k).filter(k => !['spot', 'myrun'].includes(STY[k].id)), bs = n => BS[n % BS.length];
+    if (fixed) { si = i % 3 === 2 ? SP : bs(r); if (fixed.startsWith('skin:') && si === SP) si = bs(r); key = fixed; }
+    else if (i % 3 === 2) { si = SP; const pool = pools[Math.floor(i / 3) % 4]; key = pool[(r * 7) % pool.length]; if (key.startsWith('skin:')) si = bs(r); }
+    else if (i % 3 === 1) { si = bs(r + Math.floor(i / 3)); const pool = pools[(Math.floor(i / 3) + 1) % 4]; key = pool[(r * 5 + 3) % pool.length]; }
+    else { si = bs(r + Math.floor(i / 3)); }
     const v = 1 + ((i * 4 + base) % 9), av = avs[(i + base) % 4], hs = hooksFor(si, featureObj(key));
     out.push({ si, fk: key || 'auto', v, av, hi: Math.floor(r / 5) % hs.length, salt: i });
   }

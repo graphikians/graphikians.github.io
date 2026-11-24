@@ -59,7 +59,7 @@ const CLIP = (() => {
   const hashS = st => Math.abs([...String(st)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7));
   /* every variation also plays in a real shop skin (variation 1 keeps the player's / default skin) */
   const lookSkin = (style, v) => (v | 0) > 1 ? LOOKS.skins[(v - 2 + hashS(style)) % LOOKS.skins.length] : null;
-  const S0 = { climb: 'arena', play: 'studio', duel: 'versus', rush: 'club', close: 'space', spot: 'studio', brag: 'arena' };
+  const S0 = { climb: 'arena', play: 'studio', duel: 'versus', rush: 'club', close: 'space', spot: 'studio', brag: 'arena', lose: 'tunnel', myrun: 'arena', dbeat: 'aurora' };
   function lookName(style, v) { const L = look(style, v, S0[style] || 'studio'), sk = lookSkin(style, v); return [NAMES[L.world], sk ? D.skin(sk).name + ' skin' : 'Classic skin', NAMES[L.frame], NAMES[L.type], NAMES[L.trans]].join(' · '); }
 
   /* ================= SPRITE CACHE =================
@@ -424,7 +424,16 @@ const CLIP = (() => {
     }
     if (u > 1.4 && A.gplay) { x.globalAlpha = clamp((u - 1.4) / 0.3); const gw = 380, gh = gw * A.gplay.height / A.gplay.width; x.drawImage(A.gplay, (W - gw) / 2, 1580, gw, gh); x.globalAlpha = 1; }
     if (u > 1.7) { x.globalAlpha = clamp((u - 1.7) / 0.3); sub(x, o.footer || '500+ LEVELS · DUELS · DAILY BEAT', W / 2, 1775, 32, '#d9c8ff', 700); x.globalAlpha = 1; }
+    /* v1.6: the creator's own name + avatar on every end card */
+    if (END_ME.name && u > 0.9) {
+      const k = eBack((u - 0.9) / 0.45), nm = '@' + END_ME.name.replace(/^@/, '').slice(0, 18);
+      x.save(); x.globalAlpha = clamp((u - 0.9) / 0.3); x.font = F(800, 34); const tw = x.measureText(nm).width, pw = tw + (A.me ? 120 : 60), px = W / 2 - pw / 2 * k, py = 1860;
+      x.fillStyle = 'rgba(20,6,58,.82)'; rr(x, px, py - 40, pw * k, 80, 40); x.fill(); x.strokeStyle = 'rgba(196,167,255,.6)'; x.lineWidth = 3; x.stroke();
+      if (A.me && k > 0.5) avatarDisc(x, A.me, px + 44, py, 30);
+      x.fillStyle = '#fff'; x.textAlign = 'left'; x.textBaseline = 'middle'; if (k > 0.6) x.fillText(nm, px + (A.me ? 90 : 30), py + 2); x.textBaseline = 'alphabetic'; x.restore();
+    }
   }
+  const END_ME = { name: '' };
   /* ================= GAMEPLAY =================
      round(): one watch phase (tiles flash on the beat) and/or one input phase (finger taps).
      o.only = 'show' | 'input' | undefined (both) */
@@ -686,6 +695,70 @@ const CLIP = (() => {
     return T;
   };
 
+  /* 8) SO MUCH TO LOSE — fear of loss: the stakes are shown, hearts drop, slow-mo last tile, he loses */
+  STYLES.lose = (S, A, rng) => {
+    const T = TL(S.bpm || 100); T.world = 'tunnel'; const b = T.beat, g = 3, n = S.len || 8, seq = makeSeq(rng, n, g);
+    const lv = S.level || 99, streak = S.streak || 29, stake = S.stake || 12480;
+    const stakes = [[`${streak}-DAY STREAK`, 'flame'], [`${stake.toLocaleString('en')} COINS`, 'coins'], [`LEVEL ${lv + 1} · ONE STEP AWAY`, 'crown']];
+    T.seg(0, 3.4, (x, t) => {
+      slam(x, S.hook1 || 'HE HAD', -0.3, t, W / 2, 520, 120, 3.3); slam(x, S.hook2 || 'EVERYTHING TO LOSE', 0.5, t, W / 2, 660, 86, 2.9, { c2: '#ffb3c6' });
+      stakes.forEach(([s2, ic], i) => { if (t > 1.0 + i * 0.35) { x.globalAlpha = clamp((t - 1.0 - i * 0.35) / 0.25); chip(x, s2, W / 2, 900 + i * 130, 46); x.globalAlpha = 1; } });
+    });
+    T.cue(0.1, () => SND.boss()); [1.0, 1.35, 1.7].forEach(c => T.cue(c, () => SND.tick()));
+    const atts = []; let t = T.snap(3.6);
+    [[2, 'HEART 1 GONE'], [n - 2, 'LAST HEART…'], [n - 1, '']].forEach(([wrongAt, word], i) => {
+      const intro = t; T.tr(intro); T.cue(intro, () => { SND.whoosh(); SND.beat.mode(i === 2 ? 'still' : 'full'); });
+      const R = round(T, { seq, beat: b, start: intro + 0.9, g, wrongAt, slowLast: i === 2, showBeat: b * (i ? 0.7 : 0.85), tapBeat: b * 0.8 });
+      const tl = R.taps[R.taps.length - 1];
+      if (i === 2) { T.drop = R.t0; T.cam(tl - 2.2, 1.3, 0, -30, 1.6); T.cam(tl + 0.2, 1, 0, 0, 0.35); T.cue(tl + 0.05, () => { SND.crash(); SND.lose(); SND.beat.mode('still'); }); T.shake(tl, 22, 0.6); T.flash(tl, '#ff2d5a', 0.5, 0.6); }
+      else { T.cue(tl + 0.05, () => SND.lose()); T.shake(tl, 10, 0.3); }
+      atts.push({ R, intro, i, tl, word }); t = R.end + (i === 2 ? 2.6 : 1.6);
+    });
+    T.seg(3.4, t, (x, t2) => {
+      const cur = atts.filter(a => t2 >= a.intro).pop() || atts[0], R = cur.R, lost = atts.filter(a => t2 >= a.tl).length;
+      hud(x, A, { max: 3, hearts: 3 - lost, level: lv, coins: stake, boss: true });
+      if (t2 < R.t0) { board(x, A, t2, { g, alpha: 0.4 }); slam(x, cur.i === 2 ? 'LAST CHANCE' : `ROUND ${cur.i + 1}`, cur.intro, t2, W / 2, 1040, 120, 1.0, cur.i === 2 ? { c2: '#ffb3c6' } : undefined); return; }
+      const { b: bd, st } = drawRound(x, A, T, R, t2);
+      if (st.phase === 'show') progress(x, st.cur + 1, n, bd.bottom + 110);
+      else if (t2 < cur.tl + 0.1) { const tense = cur.i === 2 && R.taps.length > 1 && t2 > R.taps[R.taps.length - 2]; label(x, tense ? 'EVERYTHING ON THIS TILE…' : `${Math.min(n, R.taps.filter(tt => t2 >= tt).length)} / ${n}`, bd.bottom + 110, tense ? '#ffb3c6' : '#fff', tense ? 50 : 60); }
+      const f = fingerAt(R, t2, bd.pos); if (f && t2 < cur.tl + 0.4) finger(x, f.x, f.y, f.press);
+      if (t2 >= cur.tl && cur.i < 2) slam(x, cur.word, cur.tl + 0.1, t2, W / 2, 820, 104, 1.4, { c2: '#ffb3c6' });
+      if (t2 >= cur.tl && cur.i === 2) {
+        const u = t2 - cur.tl; x.fillStyle = `rgba(30,0,12,${clamp(u / 0.4) * 0.7})`; x.fillRect(0, 0, W, H);
+        slam(x, 'GAME OVER', cur.tl + 0.15, t2, W / 2, 560, 150, 99, { c2: '#ffb3c6' });
+        stakes.forEach(([s2], k) => { if (u > 0.7 + k * 0.35) { const v = clamp((u - 0.7 - k * 0.35) / 0.3); x.globalAlpha = v; chip(x, s2, W / 2, 820 + k * 130, 44, 'rgba(120,10,40,.85)'); x.strokeStyle = '#ff6b8a'; x.lineWidth = 7; x.beginPath(); x.moveTo(W / 2 - 330 * v, 820 + k * 130); x.lineTo(W / 2 + 330 * v, 820 + k * 130); x.stroke(); x.globalAlpha = 1; } });
+        if (u > 2.0) { x.globalAlpha = clamp((u - 2.0) / 0.3); sub(x, 'ALL GONE. ONE TILE.', W / 2, 1300, 52, '#ffd0db', 900); x.globalAlpha = 1; }
+      }
+    });
+    const q0 = t; T.cue(q0, () => SND.whoosh());
+    T.seg(q0, q0 + 2.4, (x, t2) => { board(x, A, t2, { g, alpha: 0.15 }); slam(x, 'COULD YOU', q0, t2, W / 2, 820, 140, 99); slam(x, 'HAVE SAVED IT?', q0 + 0.4, t2, W / 2, 990, 110, 99, { c2: '#e6d8ff' }); sanx(x, A, t2, { t0: q0 + 0.8, mood: 'laugh', line: 'I bet you could not.' }); });
+    const e0 = q0 + 2.4; T.cue(e0, () => SND.beat.mode('full'));
+    T.seg(e0, e0 + 4.6, (x, t2) => endCard(x, A, t2, e0, { title: S.endTitle || 'COULD YOU SAVE IT?', line: S.sanxLine || 'Play it. Do not lose it all.', mood: 'laugh', footer: S.footer }));
+    T.wash = t2 => { const cur = atts.filter(a => t2 >= a.intro).pop(); return cur ? washOf(cur.R, t2) : null; };
+    T.red = t2 => { const a = atts.find(a => t2 >= a.tl && t2 < a.tl + (a.i === 2 ? 3 : 1.4)); return a ? clamp(1 - (t2 - a.tl) / (a.i === 2 ? 3 : 1.4)) * (a.i === 2 ? 1 : 0.7) : 0; };
+    return T;
+  };
+  /* 9) MY RUN — the creator types level, mode, tiles and name; the finger plays that run */
+  STYLES.myrun = (S, A, rng) => {
+    const g = S.grid || (S.len >= 12 ? 4 : 3);
+    const S2 = Object.assign({}, S, { seq: S.seq || makeSeq(rng, Math.max(3, Math.min(30, S.len || 9)), g), grid: g, score: S.len, name: S.name ? S.name.toUpperCase() : null, rank: `${(S.modeName || 'CLASSIC').toUpperCase()} · LEVEL ${S.level || 1}`, endTitle: S.endTitle || 'BEAT MY RUN' });
+    return STYLES.brag(S2, A, rng);
+  };
+  /* 10) DAILY BEAT CARD — today's world pattern, Sanx's score, "can you beat it?" */
+  STYLES.dbeat = (S, A, rng) => {
+    const T = TL(S.bpm || 104); T.world = 'aurora'; const b = T.beat, no = S.dayNo || 1, sc = S.sanxScore || 9, n = Math.max(5, Math.min(12, sc)), g = 3, seq = makeSeq(rng, n, g);
+    T.seg(0, 3.0, (x, t) => { slam(x, `DAILY BEAT #${no}`, -0.3, t, W / 2, 600, 104, 2.9); slam(x, 'SAME PATTERN', 0.45, t, W / 2, 760, 90, 2.5, { c2: '#e6d8ff' }); slam(x, 'FOR THE WHOLE WORLD', 0.85, t, W / 2, 870, 70, 2.1); if (t > 1.2) chip(x, `SANX SCORE: ${sc}`, W / 2, 1040, 50, 'rgba(255,45,111,.85)'); sanx(x, A, t, { t0: 1.5, mood: 'smug', line: `I got ${sc}. Your move.` }); });
+    T.cue(0.1, () => SND.boss()); T.cue(1.2, () => SND.whoosh());
+    const R = round(T, { seq, beat: b * 0.85, start: 3.2, g, only: 'show' }); T.drop = R.t0;
+    T.seg(3.0, R.end + 0.6, (x, t) => { hud(x, A, { max: 1, hearts: 1, level: null, coins: 0 }); chip(x, `DAILY BEAT #${no} · ONE MISTAKE ENDS IT`, W / 2, 340, 30); const { b: bd, st } = drawRound(x, A, T, R, t); if (st.phase === 'show') progress(x, st.cur + 1, n, bd.bottom + 110); });
+    const q0 = R.end + 0.6; T.cue(q0, () => { SND.beat.fill(); SND.crash(); });
+    T.seg(q0, q0 + 2.6, (x, t) => { board(x, A, t, { g, alpha: 0.2 }); slam(x, `${n} TILES.`, q0, t, W / 2, 760, 150, 99); slam(x, 'GOT THEM ALL?', q0 + 0.45, t, W / 2, 940, 100, 99, { c2: '#e6d8ff' }); if (t > q0 + 1.0) sub(x, 'Comment the order 👇', W / 2, 1080, 46, '#efe6ff', 800); });
+    const e0 = q0 + 2.6; T.cue(e0, () => SND.beat.mode('full'));
+    T.seg(e0, e0 + 4.6, (x, t) => endCard(x, A, t, e0, { title: S.endTitle || `BEAT SANX'S ${sc}`, line: S.sanxLine || 'New pattern every day.', footer: S.footer }));
+    T.wash = t => washOf(R, t);
+    return T;
+  };
+
   /* 6) BRAG — the in-app Save Clip: your best pattern played by the finger, then your score */
   STYLES.brag = (S, A, rng) => {
     const T = TL(S.bpm || 104); T.world = 'arena'; const b = T.beat, seq = S.seq, n = seq.length, g = S.grid || 3;
@@ -900,7 +973,7 @@ const CLIP = (() => {
   /* assets are loaded once per skin / avatar / feature and reused (changing looks stays instant) */
   const ACACHE = new Map();
   function assets(spec) {
-    const f = spec.feature, key = [spec.skin || lookSkin(spec.style, spec.variation || 1) || 'player', spec.avatar || '', f ? f.kind + f.id + (f.others || []).map(o => o.icon).join() : '', (spec.colors || []).join()].join('|');
+    const f = spec.feature, key = [spec.skin || lookSkin(spec.style, spec.variation || 1) || 'player', spec.avatar || '', spec.meImg ? spec.meImg.length + spec.meImg.slice(-40) : '', spec.meName ? 1 : 0, f ? f.kind + f.id + (f.others || []).map(o => o.icon).join() : '', (spec.colors || []).join()].join('|');
     if (!ACACHE.has(key)) { if (ACACHE.size > 40) ACACHE.clear(); ACACHE.set(key, assets0(spec).catch(e => { ACACHE.delete(key); throw e; })); }
     return ACACHE.get(key);
   }
@@ -920,7 +993,7 @@ const CLIP = (() => {
       stars: Array.from({ length: 140 }, () => ({ x: rng() * W, y: rng() * H, r: 0.8 + rng() * 2.4, a: 0.3 + rng() * 0.7, s: 1 + rng() * 3, v: rng() * 6 })),
       logo: await load('img/logo.png'), gplay: await load('share/gplay.png'),
       digits: await Promise.all([...Array(10).keys()].map(d => load(`share/d${d}.png`))),
-      sanx: sx, sanxDisc: sx.smug, av: spec.avatar ? await load(spec.avatar) : null,
+      sanx: sx, sanxDisc: sx.smug, av: spec.avatar ? await load(spec.avatar) : null, me: spec.meImg ? await load(spec.meImg) : (spec.meName && spec.avatar ? await load(spec.avatar) : null),
       fIcon: spec.feature && spec.feature.icon ? await svgImg(icSvg(spec.feature.icon)) : null,
       oIcons: spec.feature && spec.feature.others ? await Promise.all(spec.feature.others.map(o => svgImg(icSvg(o.icon)))) : [],
       dust: Array.from({ length: 50 }, () => ({ x: rng() * W, y: rng() * H, r: 1.5 + rng() * 3, s: 10 + rng() * 30, a: 0.15 + rng() * 0.35 })),
@@ -934,6 +1007,7 @@ const CLIP = (() => {
     SYNC = !!spec.sync;
     const T = (STYLES[spec.style] || STYLES.play)(spec, A, mul(spec.seed || 1)); SYNC = false;
     T.total = T.end;
+    END_ME.name = spec.meName || '';
     T.look = look(spec.style, spec.variation || 1, T.world || 'studio'); T.world = T.look.world;
     /* cuts: every segment start + the style's own marks, at least 0.6 s apart */
     const marks = [...T.trs, ...T.segs.map(g => g.a)].filter(t => t > 0.6 && t < T.total - 0.3).sort((a, b) => a - b);

@@ -26,38 +26,24 @@ const G = (() => {
     const el = $('game');
     el.innerHTML = `
     <div class="gFx" id="gFx"></div>
-    <div class="gTop">
-      <button class="iconBtn" id="gQuit" aria-label="Pause">${ART.ic('close')}</button>
-      <div class="gTitle"><div id="gMode">CLASSIC</div><div id="gWorld">Rookie Plains</div></div>
-      <div class="gCoins">${ART.coin(18)}<b id="gCoins">0</b></div>
-    </div>
-    <div class="gRow2">
+    <div class="gHud">
+      <button class="gPause" id="gQuit" aria-label="Pause">${ART.ic('menu')}</button>
       <div id="gHearts" class="hearts"></div>
-      <div id="gLevel" class="gLevel">Level 1</div>
+      <div id="gLevel" class="gPill">LEVEL 1</div>
+      <div class="gCoins" id="gCoinsBox">${ART.coin(18)}<b id="gCoins">0</b></div>
     </div>
-    <div id="gPrize" class="gPrize"><span class="gpC">${ART.coin(30)}</span><div><small>LEVEL PRIZE</small><b id="gPrizeN">0</b></div><em id="gPrizeFly"></em></div>
+    <div class="gHide"><span id="gMode"></span><span id="gWorld"></span></div>
     <div id="gTimer" class="gTimer hide"><i id="gTimerFill"></i><span id="gTimerTxt"></span></div>
-    <div id="gMsg" class="gMsg">WATCH</div>
-    <div id="gTileCt" class="gTileCt"><b id="gTileTx">GET READY</b><div class="gProg"><i id="gProgFill"></i></div></div>
+    <div class="gMsgBox"><div id="gMsg" class="gMsg"></div></div>
     <div id="gBoardWrap" class="boardWrap"><div id="gBoard" class="board"></div></div>
-    <div id="gDots" class="dots hide"></div>
-    <div class="gBottom">
-      <div id="gCombo" class="combo"><i id="gComboFill"></i><span id="gComboTxt"></span></div>
-      <button id="gHint" class="hintBtn hide">${ART.ic('bulb')}<span>Hint</span></button>
-      <button id="gXray" class="hintBtn hide">${ART.ic('eye')}<span>X-Ray <b id="gXrayN">2</b></span></button>
-      <button id="gSkip" class="hintBtn hide">${ART.ic('next')}<span>Skip</span></button>
-      <button id="gReplay" class="hintBtn adB hide">${ART.ic('ad')}<span>See again</span></button>
-      <button id="gTimeAd" class="hintBtn adB hide">${ART.ic('ad')}<span>+30s</span></button>
-    </div>
+    <div id="gTileCt" class="gTileCt"><b id="gTileTx">GET READY</b><div class="gProg"><i id="gProgFill"></i></div><div class="gRounds" id="gRounds"></div></div>
+    <div id="gBoosts" class="gBoosts"></div>
     <div id="gInfo" class="gInfo"></div>
     <div id="gBanner" class="gBanner hide"></div>
-    <div id="gCount" class="gCount hide"></div>`;
+    <div id="gCount" class="gCount hide"></div>
+    <div id="gCard" class="gCard hide"></div>`;
     $('gQuit').onclick = () => pause();
-    $('gHint').onclick = useHint;
-    $('gReplay').onclick = adReplay;
-    $('gTimeAd').onclick = adTime;
-    $('gXray').onclick = () => xray(true);
-    $('gSkip').onclick = skipLevel;
+    $('gBoosts').addEventListener('click', e => { const b = e.target.closest('[data-bs]'); if (b) boostTap(b.dataset.bs); });
     buildBoard(3);
   }
   function buildBoard(g) {
@@ -66,7 +52,7 @@ const G = (() => {
     const b = $('gBoard'); b.innerHTML = ''; b.style.setProperty('--g', g); b.dataset.g = g;
     for (let i = 0; i < g * g; i++) {
       const t = document.createElement('button'); t.className = 'tile'; t.dataset.i = i;
-      t.innerHTML = '<span class="tGlow"></span><span class="tFace"></span><span class="tFx"></span>';
+      t.innerHTML = '<span class="tGlow"></span><span class="tFace"></span><span class="tEye">' + ART.ic('eye') + '</span><span class="tFx"></span>';
       t.addEventListener('pointerdown', e => { e.preventDefault(); tap(i); });
       b.appendChild(t);
     }
@@ -94,8 +80,8 @@ const G = (() => {
       t.querySelector('.tFace').innerHTML = ART.tileIc(v ? EXTRA[(i - 9) % EXTRA.length] : sk.icons[k]);
     });
   }
-  function lit(idxs, on, cls = 'on') { tiles().forEach((t, i) => { if (idxs.includes(i)) t.classList.toggle(cls, on); }); if (cls === 'on' && typeof REC !== 'undefined' && REC.recording) REC.evt(on ? 'lit' : 'unlit', { i: idxs.slice() }); }
-  function clearFx() { tiles().forEach(t => t.classList.remove('on', 'ok', 'bad', 'decoy', 'hintT', 'dark', 'newT', 'hole', 'xray', 'fogL')); }
+  function lit(idxs, on, cls = 'on') { tiles().forEach((t, i) => { if (idxs.includes(i)) { t.classList.toggle(cls, on); if (on && cls === 'on' && typeof BG !== 'undefined') BG.pulse(getComputedStyle(t).getPropertyValue('--c')); } }); if (cls === 'on' && typeof REC !== 'undefined' && REC.recording) REC.evt(on ? 'lit' : 'unlit', { i: idxs.slice() }); }
+  function clearFx() { tiles().forEach(t => t.classList.remove('on', 'ok', 'bad', 'decoy', 'hintT', 'dark', 'newT', 'hole', 'xray', 'fogL', 'eyeC', 'rev')); }
   /* Sanx taunts never show during play (they distract). They are kept and shown in the
      between-level banner. Useful facts (eliminated, floor reached ...) use info(). */
   function say(txt, mood = 'smug') { if (!R) return; R.taunt = { txt, mood }; }
@@ -104,36 +90,143 @@ const G = (() => {
     const el = $('gInfo'); el.textContent = txt; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
     clearTimeout(R.infoT); R.infoT = setTimeout(() => el.classList.remove('show'), 1600);
   }
-  const msg = (t, cls = '') => { const m = $('gMsg'); m.textContent = t; m.className = 'gMsg ' + cls; };
+  const msg = (t, cls = '') => { const m = $('gMsg'); m.textContent = t; m.className = 'gMsg ' + cls; if (t) { m.classList.remove('pop'); void m.offsetWidth; m.classList.add('pop'); } };
   function hud() {
     if (!R) return;
     if (typeof REC !== 'undefined' && REC.recording) { const k = [R.level, R.hearts, R.coins, gridN].join(); if (k !== R._recHud) { R._recHud = k; REC.evt('hud', { level: R.level, hearts: R.imp ? 3 : R.hearts, max: R.imp ? 3 : R.maxHearts, coins: R.coins, g: gridN }); } }
     const h = $('gHearts');
-    if (R.imp) h.innerHTML = `<span class="impTag">${ART.ic('refresh')} ${D.IMP.continues(R.imp.target) - R.imp.cont} continues${R.imp.cp ? ` · ${ART.ic('flag')} ${R.imp.cp}` : ''}</span>`;
-    else if (R.noHearts) h.innerHTML = R.mode === 'zen' ? `<span class="zenTag">${ART.ic('leaf')} No fail</span>` : '';
-    else { let s = ''; for (let i = 0; i < Math.max(R.maxHearts, R.hearts); i++) s += ART.heartC(22, i < R.hearts); h.innerHTML = s; }
-    const steps = R.steps;
-    if (R.imp) $('gLevel').innerHTML = `Tiles <b>${R.imp.len}</b> / ${R.imp.target}`;
-    else if (R.dbeat) $('gLevel').innerHTML = `Pattern <b>${R.seq.length || R.ladder.start}</b> tiles · Sanx ${D.sanxScore(R.dbeat.no)}`;
-    else if (R.test) $('gLevel').innerHTML = `Pattern <b>${R.seq.length || R.ladder.start}</b> tiles · best ${Math.max(S.memBest(), R.maxLen)}`;
-    else if (R.ladder) $('gLevel').innerHTML = R.chal && R.chal.role === 'play' ? `Beat <b>${R.chal.target}</b> tiles · best ${R.maxLen}` : `Pattern <b>${R.seq.length || R.ladder.start}</b> tiles · best ${R.maxLen}`;
-    else $('gLevel').innerHTML = R.blitz ? `Steps <b>${R.stepsDone}</b>` : `${R.boss ? '<span class="bossTag">BOSS</span> ' : R.bonus ? '<span class="bonusTag">BONUS ×3</span> ' : ''}Level <b>${R.level}</b> · Round ${R.stepIdx + 1}/${steps.length}`;
+    if (R.imp) h.innerHTML = `<span class="impTag">${ART.ic('refresh')} ${D.IMP.continues(R.imp.target) - R.imp.cont}${R.imp.cp ? ` · ${ART.ic('flag')} ${R.imp.cp}` : ''}</span>`;
+    else if (R.noHearts) h.innerHTML = R.mode === 'zen' ? `<span class="zenTag">${ART.ic('leaf')}</span>` : '';
+    else { let s2 = ''; for (let i = 0; i < Math.max(R.maxHearts, R.hearts); i++) s2 += ART.heartC(22, i < R.hearts); h.innerHTML = s2; }
+    /* one clear pill: what level, and what is special about it (boss / bonus / twist / mode) */
+    const L = $('gLevel'), m = R.mode, special = m !== 'classic' && (R.twist || R.evMode) ? `${ART.ic(D.MODE[m].icon)} ${D.MODE[m].name.toUpperCase()} · ` : '';
+    let txt, cls = 'gPill';
+    if (R.imp) txt = `TILES ${R.imp.len} / ${R.imp.target}`;
+    else if (R.dbeat) txt = `DAILY BEAT · ${R.seq.length || R.ladder.start} TILES`;
+    else if (R.test) txt = `MEMORY TEST · ${R.seq.length || R.ladder.start} TILES`;
+    else if (R.chal) txt = R.chal.role === 'play' ? `BEAT ${R.chal.target} TILES` : `DUEL · ${R.seq.length || R.ladder.start} TILES`;
+    else if (R.ladder) txt = `${special}${R.ev && R.ev.short ? R.ev.short : 'STAGE ' + (R.level - (R.startLevel || 1) + 1)}`;
+    else if (R.blitz) txt = `STEPS ${R.stepsDone}`;
+    else txt = `${R.boss ? 'BOSS · ' : R.bonus ? 'BONUS ×3 · ' : ''}${special}LEVEL ${R.level}`;
+    if (R.boss) cls += ' boss'; else if (R.bonus) cls += ' bonus'; else if (special) cls += ' twist';
+    if (L.innerHTML !== txt) L.innerHTML = txt;
+    L.className = cls;
     $('gCoins').textContent = R.coins.toLocaleString();
-    $('gPrizeN').textContent = (R.lvCoins || 0).toLocaleString();
-    $('gPrize').classList.toggle('hide', !!(R.imp || R.pure || R.daily));
-    $('gXray').classList.toggle('hide', !(R.xrayLeft > 0 && R.phase === 'input')); $('gXrayN').textContent = R.xrayLeft;
-    $('gSkip').classList.toggle('hide', !(R.skipLeft > 0 && !R.ladder && !R.ev && R.phase === 'input'));
-    const c = D.combo(R.combo), next = D.COMBO.find(x => x.min > R.combo);
-    $('gComboTxt').textContent = c.label || (R.combo >= 2 ? `Combo ${R.combo}` : 'Build a combo');
-    $('gComboFill').style.width = (next ? Math.min(100, (R.combo - c.min) / (next.min - c.min) * 100) : 100) + '%';
-    $('gCombo').classList.toggle('hot', c.mult > 1);
-    $('gReplay').classList.toggle('hide', !(R.phase === 'input' && !R.pure && !R.daily && R.mode !== 'zen' && R.replays < D.ADCAP.replay && !R.blitz));
+    rounds();
+    boosts();
+  }
+  /* 3 small dots under the counter = rounds of this level */
+  function rounds() {
+    const el = $('gRounds'); if (!R || R.ladder || R.imp || R.daily || R.blitz || !R.steps.length || R.steps.length > 6) { el.innerHTML = ''; return; }
+    el.innerHTML = R.steps.map((_, i) => `<i class="${i < R.stepIdx ? 'done' : i === R.stepIdx ? 'cur' : ''}"></i>`).join('');
+  }
+  /* ---------- v1.6 booster row: max 6 slots in one line ----------
+     up to 3 picked boosters (own count first, then an ad refills the slot)
+     + 3 ad boosters (X-Ray, Freeze Time, 2nd Chance), each once per level */
+  const BOOST_ON = () => R && !R.pure && !R.dbeat && !R.test && !R.imp && !(R.ev && /^ch_/.test(R.ev.id));
+  const hasClock = () => R && (R.blitz || R.mode === 'speed' || R.mode === 'rush' || (R.ev && (R.ev.timer || R.ev.stepTimer)));
+  const left = b => b === 'hint' ? R.hintLeft : b === 'xray' ? R.xrayLeft : b === 'skip' ? R.skipLeft : b === 'second' ? R.secondLeft : b === 'shield' ? (R.shieldAuto ? 1 : 0) : b === 'combo' ? R.comboKeep : b === 'freeze' ? (frozen() ? 1 : -1) : -1;
+  function slots() {
+    if (!BOOST_ON()) return [];
+    const own = R.boosts.slice(0, 3).map(b => ({ b, k: 'own' }));
+    const used = new Set(R.boosts), ad = [];
+    D.AD_BOOSTS.forEach(b => {
+      let x = b;
+      if (x === 'freeze' && !hasClock()) x = 'hint';
+      if (used.has(x)) x = D.AD_BOOST_ALT.find(a => !used.has(a) && !(a === 'freeze' && !hasClock()));
+      if (x === 'skip' && (R.ladder || R.ev)) x = null;
+      if (x) { used.add(x); ad.push({ b: x, k: 'ad' }); }
+    });
+    const out = own.concat(ad);
+    if (R.showTimeAd && !R.timeAdUsed) out.push({ b: 'time', k: 'ad' });
+    return out.slice(0, 6);
+  }
+  function boosts() {
+    const el = $('gBoosts'); if (!el || !R) return;
+    const sl = slots();
+    if (!sl.length) { if (el.innerHTML) el.innerHTML = ''; el.classList.add('none'); return; }
+    el.classList.remove('none');
+    const html = sl.map(({ b, k }) => {
+      if (b === 'time') return `<button class="bs ad" data-bs="ad:time">${ART.ic('clock')}<small>+30s</small><em>${ART.ic('ad')}</em></button>`;
+      const B = D.BOOST[b], n = left(b), tapable = D.TAP_BOOSTS.includes(b);
+      if (k === 'own') {
+        if (n > 0) return `<button class="bs own ${tapable ? 'tap' : 'on'}" data-bs="own:${b}">${ART.ic(B.icon)}<small>${tapable ? B.name.split(' ')[0] : 'ON'}</small><em class="n">${n}</em></button>`;
+        if (n === -1) return `<button class="bs own on" data-bs="none">${ART.ic(B.icon)}<small>ACTIVE</small></button>`;
+        if ((R.adB[b] || 0) >= 1) return `<button class="bs used" data-bs="none">${ART.ic(B.icon)}<small>USED</small></button>`;
+        return `<button class="bs ad" data-bs="ad:${b}">${ART.ic(B.icon)}<small>Refill</small><em>${ART.ic('ad')}</em></button>`;
+      }
+      if (R.adB[b]) { const act = b === 'freeze' ? frozen() : b === 'second' ? R.secondLeft > 0 && R.adB[b] === 1 : false; return `<button class="bs ${act ? 'on' : 'used'}" data-bs="none">${ART.ic(B.icon)}<small>${act ? 'ACTIVE' : 'USED'}</small></button>`; }
+      return `<button class="bs ad" data-bs="ad:${b}">${ART.ic(B.icon)}<small>${B.name.split(' ')[0]}</small><em>${ART.ic('ad')}</em></button>`;
+    }).join('');
+    if (el.innerHTML !== html) el.innerHTML = html;
+  }
+  function useOwn(b) {
+    if (b === 'hint') return useHint();
+    if (b === 'xray') return xray(true);
+    if (b === 'skip') return skipLevel();
+  }
+  async function boostTap(key) {
+    if (!R || R.ended || key === 'none') return;
+    const [k, b] = key.split(':');
+    if (k === 'own') { if (R.phase !== 'input') return info('Use it on your turn'); return useOwn(b); }
+    if (b === 'time') return adTime();
+    if (R.phase !== 'input') return info('Use it on your turn');
+    if (R.adB[b]) return;
+    const sq = R.seq; R.phase = 'wait'; clearTimeout(R.xrayT);
+    let ok = false;
+    const go = await midRun(async () => { ok = await ADS.rewarded('boost'); return ok; });
+    if (!go || !R) return;
+    if (!ok) { info('Ad not ready. Try again'); R.phase = 'input'; boosts(); return; }
+    R.adB[b] = 1; R.phase = 'input';
+    if (R.seq !== sq) return;
+    if (b === 'xray') { R.xrayLeft++; xray(true); }
+    else if (b === 'freeze') { R.frozenUntil = Date.now() + 8000; info('Time frozen for 8s'); drawClock(); setTimeout(() => { if (R) { hud(); drawClock(); } }, 8100); }
+    else if (b === 'second') { R.secondLeft++; info('2nd Chance ready'); }
+    else if (b === 'hint') { R.hintLeft++; useHint(); }
+    else if (b === 'skip') { R.skipLeft++; skipLevel(); }
+    else if (b === 'combo') { R.comboKeep++; }
+    else if (b === 'shield') { R.shieldAuto = true; }
+    hud();
+  }
+  /* ---------- v1.6 mode / twist card: demo + GOT IT (first 3 times), short banner later ---------- */
+  function modeCard(m, kicker) {
+    const M = D.MODE[m], H = D.MODE_HOW[m] || { demo: 'same', txt: M.tag };
+    const seen = (S.st.modeSeen = S.st.modeSeen || {});
+    if ((seen[m] || 0) >= 3 || R.pure) return banner(`<div class="bnK">${kicker}</div><div class="bnT bnIc">${ART.ic(M.icon)}</div><div class="bnS big">${M.name} · ${M.tag}</div>`, 'bonus', 1500);
+    seen[m] = (seen[m] || 0) + 1; S.save();
+    const t = token; R.paused = true; SND.beat.pause();
+    return new Promise(res => {
+      const c = $('gCard');
+      c.innerHTML = `<div class="gcIn"><div class="gcK">${kicker}</div><div class="gcT">${ART.ic(M.icon)} ${M.name.toUpperCase()}</div>
+        <div class="gcDemo" data-d="${H.demo}">${Array.from({ length: 9 }, (_, i) => `<i data-i="${i}"><b>${H.demo === 'eye' ? ART.ic('eye') : ''}</b></i>`).join('')}</div>
+        <div class="gcTx">${H.txt}</div><button class="btn big pulse" id="gcOk">${ART.ic('check')} GOT IT</button></div>`;
+      c.className = 'gCard show';
+      const cells = [...c.querySelectorAll('.gcDemo i')], pat = [1, 5, 6, 2];
+      let alive = true;
+      (async () => {
+        while (alive) {
+          cells.forEach(x => x.className = '');
+          const p = H.demo === 'rush' ? [0, 4, 8, 3, 1, 5] : pat;
+          for (const i of p) { if (!alive) return; cells[i].classList.add('on'); await sleep(H.demo === 'rush' ? 260 : 420); cells[i].classList.remove('on'); await sleep(120); }
+          await sleep(350); if (!alive) return;
+          const ans = H.demo === 'rev' ? p.slice().reverse() : H.demo === 'rush' ? p.slice(-3) : p;
+          if (H.demo === 'eye') cells.forEach(x => x.classList.add('eye'));
+          for (const [k, i] of ans.entries()) { if (!alive) return; cells[i].classList.remove('eye'); cells[i].classList.add('tap'); cells[i].dataset.n = k + 1; await sleep(480); }
+          await sleep(900);
+        }
+      })();
+      $('gcOk').onclick = async () => {
+        alive = false; c.className = 'gCard hide'; c.innerHTML = '';
+        if (t !== token || !R) return res();
+        R.paused = false; SND.beat.resume(); res();
+      };
+    });
   }
   /* big "TILE 3 OF 5" counter + progress bar (replaces the old dots) */
   function dots(total, done) {
     if (!R) return;
     const w = R.phase === 'show';
-    $('gTileTx').innerHTML = w ? `<span>${done}</span> / ${total} TILES` : `TILE <span>${Math.min(done + 1, total)}</span> OF ${total}`;
+    $('gTileTx').innerHTML = w ? `TILE <span>${done}</span> / ${total}` : `<span>${Math.min(done, total)}</span> / ${total}`;
     if (!w && done >= total) $('gTileTx').innerHTML = 'DONE!';
     $('gProgFill').style.width = (total ? done / total * 100 : 0) + '%';
     $('gTileCt').classList.toggle('watch', w);
@@ -163,8 +256,10 @@ const G = (() => {
     let adShown = false;
     try { adShown = !!(await fn()); } catch (e) { }
     if (t !== token || !R) return false;
-    R.paused = false; UI.show('game'); SND.beat.resume();
+    UI.show('game'); ADS.banner(false);
     if (adShown) await countdown();
+    if (t !== token || !R) return false;
+    R.paused = false; SND.beat.resume();
     return t === token;
   }
 
@@ -192,6 +287,11 @@ const G = (() => {
     };
     if (pure && D.CHAL.ladder.hearts) { R.hearts = R.maxHearts = D.CHAL.ladder.hearts; }
     R.test = !!cfg.test; R.dbeat = cfg.dbeat || null;
+    if (ev && mode === 'classic' && !ev.modeAt && !ev.modeAtRound && !/^ch_/.test(ev.id) && !ev.timePenalty && !ev.pureMode) {
+      /* v1.6 event mode ladder: easy classic start, new modes join as the player nears the win */
+      if (ladCfg) ev.modeAtRound = i => { const k = Math.floor(i / 2); return k < D.EV_LADDER.length ? D.EV_LADDER[k] : D.EV_MIX[Math.floor(Math.random() * D.EV_MIX.length)]; };
+      else ev.modeAt = lv => { const k = lv - (ev.startLevel || 1); return k < D.EV_LADDER.length ? D.EV_LADDER[k] : D.EV_MIX[(k * 7) % D.EV_MIX.length]; };
+    }
     if (cfg.hearts) { R.hearts = R.maxHearts = cfg.hearts; }
     R.startLevel = R.level;
     R.seed = pure ? cfg.chal.seed : R.dbeat ? hash('dbeat', R.dbeat.no) : 0;
@@ -230,9 +330,7 @@ const G = (() => {
     buildBoard(gridFor(R.level)); paintSkin(); clearFx();
     if (blitz || (ev && ev.timer)) { R.timeLeft = blitz ? D.BLITZ_SECS : ev.timer; R.timeMax = R.timeLeft; startClock(); }
     else $('gTimer').classList.add('hide');
-    $('gPrizeN').textContent = '0';
-    $('gHint').classList.toggle('hide', !R.hintLeft);
-    $('gTimeAd').classList.add('hide');
+    R.adB = {}; R.twistFree = R.twistFree || {};
     S.st.stats.played++; S.questMode(mode); S.save();
     UI.show('game'); ADS.banner(false); SND.music(false);
     if (typeof REC !== 'undefined' && REC.armed) REC.begin();
@@ -278,16 +376,18 @@ const G = (() => {
     const t0 = token;
     R.timer = setInterval(() => {
       if (!R || t0 !== token || R.paused || R.ended) return;
-      if (R.phase === 'show' && !R.blitz && !(R.ev && R.ev.timerRunsAlways)) { drawClock(); return; }
+      if ((R.phase === 'show' && !R.blitz && !(R.ev && R.ev.timerRunsAlways)) || frozen()) { drawClock(); return; }
       R.timeLeft = Math.max(0, R.timeLeft - 0.1); drawClock();
       if (R.timeLeft <= 10 && Math.abs(R.timeLeft - Math.round(R.timeLeft)) < 0.05) SND.tick();
-      if (R.ev && R.ev.timeAd && !R.timeAdUsed && R.timeLeft < 15 && S.cap('bts30', 99) > 0) $('gTimeAd').classList.remove('hide');
+      if (R.ev && R.ev.timeAd && !R.timeAdUsed && R.timeLeft < 15 && S.cap('bts30', 99) > 0 && !R.showTimeAd) { R.showTimeAd = true; hud(); }
       if (R.ev && R.ev.onTick) R.ev.onTick(R);
       if (R.timeLeft <= 0) { clearInterval(R.timer); timeUp(); }
     }, 100);
   }
+  const frozen = () => R && R.frozenUntil && Date.now() < R.frozenUntil;
   function drawClock() {
     if (!R) return;
+    $('gTimer').classList.toggle('frozen', !!frozen());
     const max = R.stepTimer ? R.stepTimerMax : R.timeMax, left = R.stepTimer ? R.stepTimerLeft : R.timeLeft;
     $('gTimerFill').style.width = Math.max(0, left / max * 100) + '%';
     $('gTimer').classList.toggle('low', left < Math.min(R.imp ? 5 : 10, max * 0.25));
@@ -301,12 +401,14 @@ const G = (() => {
       const ex = S.expiredTrials();
       if (ex.length) { await midRun(() => UI.trialEnded(ex)); if (t !== token) return; paintSkin(); }
     }
-    if (R.ev && R.ev.modeAt) { R.mode = R.ev.modeAt(R.level, R); $('game').dataset.gm = R.mode; }
+    let evNew = null;
+    if (R.ev && R.ev.modeAt) { const m0 = R.mode; R.mode = R.ev.modeAt(R.level, R); $('game').dataset.gm = R.mode; R.evMode = R.mode !== 'classic'; if (R.mode !== m0 && !first) evNew = R.mode; else if (first && R.mode !== 'classic') evNew = R.mode; }
     let twist = null;
     if (isClassicRun()) {
       twist = D.twistFor(R.level); if (twist && !S.unlocked(twist)) twist = null; R.mode = twist || 'classic'; $('game').dataset.gm = R.mode;
       $('gMode').textContent = twist ? `TWIST · ${D.MODE[twist].name.toUpperCase()}` : 'CLASSIC';
     }
+    R.twist = twist; R.adB = {};
     const g = gridFor(R.level), grew = g !== gridN;
     buildBoard(g); paintSkin();
     R.steps = D.levelSteps(R.level); R.stepIdx = 0; R.lvWrong = 0; R.lvCoins = 0; R.xrayLeft = R.xrayPer;
@@ -322,7 +424,9 @@ const G = (() => {
     else if (newWorld) await banner(`<div class="bnK">NEW WORLD</div><div class="bnT bnIc">${ART.ic(w.icon)}</div><div class="bnS big">${w.name}</div>`, 'intro', 1600);
     if (t !== token) return;
     groove(R.boss ? 'hype' : 'full');
-    if (twist && !R.boss) { SND.whoosh(); await banner(`<div class="bnK">TWIST LEVEL</div><div class="bnT bnIc">${ART.ic(D.MODE[twist].icon)}</div><div class="bnS big">${D.MODE[twist].name} · ${D.MODE[twist].tag}</div>`, 'bonus', 1600, 'smug'); if (t !== token) return; }
+    if (twist) { SND.whoosh(); await modeCard(twist, 'TWIST LEVEL'); if (t !== token) return; }
+    else if (evNew) { SND.whoosh(); await modeCard(evNew, 'NEW MODE'); if (t !== token) return; }
+    else if (first && !R.ev && !R.pure && !R.imp && !R.dbeat && !R.test && R.mode !== 'classic' && D.MODE_HOW[R.mode] && !((S.st.modeSeen || {})[R.mode])) { await modeCard(R.mode, 'HOW TO PLAY'); if (t !== token) return; }
     if (R.boss) { SND.boss(); await banner(`<div class="bnK">BOSS LEVEL</div><div class="bnT">${R.level}</div><div class="bnS">Faster flashes · Big reward</div><div class="bnTaunt">"${pick(D.SANX.boss)}"</div>`, 'boss', 1900, 'angry'); }
     else if (R.bonus) { await banner(`<div class="bnK">BONUS LEVEL</div><div class="bnT">×3</div><div class="bnS">Triple coins this level</div>`, 'bonus', 1300); }
     if (t !== token) return;
@@ -346,9 +450,15 @@ const G = (() => {
     const len = R.steps[R.stepIdx];
     if (R.ev && R.ev.modeAtRound && fresh) {
       const m = R.ev.modeAtRound(R.stepIdx, R);
-      if (m && m !== R.mode) { R.mode = m; $('game').dataset.gm = m; $('gMode').textContent = `${R.ev.name} · ${D.MODE[m].name.toUpperCase()}`; await banner(`<div class="bnK">NEXT MODE</div><div class="bnT bnIc">${ART.ic(D.MODE[m].icon)}</div><div class="bnS big">${D.MODE[m].name} · ${D.MODE[m].tag}</div>`, 'intro', 1300); if (t !== token) return; }
+      if (m && m !== R.mode) { R.mode = m; R.evMode = m !== 'classic'; $('game').dataset.gm = m; $('gMode').textContent = `${R.ev.name} · ${D.MODE[m].name.toUpperCase()}`; hud(); await modeCard(m, 'NEXT MODE'); if (t !== token) return; }
     }
-    if (fresh) R.seq = makeSeq(len);
+    if (fresh) {
+      if (R.mode === 'rush') {
+        /* Rhythm Rush: a fresh pattern each round; ask for the LAST N in order */
+        if (R.ladder) { R.ask = D.rushAskLadder(len); R.seq = []; R.seq = makeSeq(len); }
+        else { const P = D.rushPlan(R.level); R.ask = P.ask; R.seq = []; R.seq = makeSeq(P.blink[Math.min(R.stepIdx, 2)]); }
+      } else { R.ask = 0; R.seq = makeSeq(len); }
+    }
     if (R.ladder || R.imp) SND.beat.tempo(bpmNow());
     if (R.ladder && R.ev && R.ev.sudden) { const sd = R.ev.sudden(R); if (sd && !R.sudden) { R.sudden = true; R.heartsBefore = R.hearts; R.hearts = 1; info('SUDDEN DEATH · 1 heart'); hud(); } else if (!sd && R.sudden) { R.sudden = false; R.hearts = Math.max(1, R.heartsBefore); hud(); } }
     if (R.ev && R.ev.beforeShow) R.ev.beforeShow(R, paintSkin);
@@ -357,15 +467,19 @@ const G = (() => {
     startInput();
   }
   function startInput() {
-    R.phase = 'input'; R.input = 0; R.got = []; R.rBeat = 0; R.rT0 = Date.now();
-    dots(R.seq.length, 0);
+    R.phase = 'input'; R.input = 0; R.got = []; R.rBeat = 0; R.rT0 = Date.now(); if (typeof BG !== 'undefined') BG.dim(false);
+    dots(need(), 0);
     const m = R.mode;
-    msg(m === 'twin' ? 'YOUR TURN · TAP BOTH TILES' : m === 'negative' ? 'YOUR TURN · TAP THE BLACK HOLES' : m === 'reverse' ? 'YOUR TURN · BACKWARDS!' : m === 'ghost' ? 'YOUR TURN · FROM MEMORY' : m === 'chaos' ? 'YOUR TURN · REAL TILES ONLY' : 'YOUR TURN', 'go');
+    msg(m === 'rush' ? `LAST ${R.ask} · IN ORDER` : m === 'twin' ? 'TAP BOTH TILES' : m === 'negative' ? 'TAP THE DARK TILES' : m === 'reverse' ? 'BACKWARDS!' : m === 'ghost' ? 'FROM MEMORY' : m === 'eye' ? 'TAP TO REVEAL' : m === 'chaos' ? 'REAL TILES ONLY' : 'YOUR TURN', 'go');
     if (m === 'ghost') tiles().forEach(x => { x.classList.add('dark'); if (R.fogLens) x.classList.add('fogL'); });
+    if (m === 'eye') tiles().forEach(x => x.classList.add('eyeC'));
     hud(); armXray();
     if (R.imp) { roundTimer(D.IMP.secs(R.seq.length)); return; }
+    if (m === 'rush') { roundTimer((R.ladder ? R.ask * 1.4 + 3 : D.rushPlan(R.level).secs) * R.timeMul); return; }
     if (m === 'speed' || (R.ev && R.ev.stepTimer)) roundTimer(Math.max(3, R.seq.length * 0.95 + 1.5) * R.timeMul);
   }
+  const need = () => R.mode === 'rush' ? R.ask : R.seq.length;
+  const expAt = k => R.mode === 'rush' ? R.seq[R.seq.length - R.ask + k] : R.mode === 'reverse' ? R.seq[R.seq.length - 1 - k] : R.seq[k];
   /* X-Ray booster: no tap for 3 seconds -> the next correct tile glows softly (2 per level) */
   function armXray() {
     clearTimeout(R.xrayT);
@@ -375,7 +489,7 @@ const G = (() => {
   }
   function xray(manual) {
     if (!R || R.phase !== 'input' || !(R.xrayLeft > 0)) return;
-    const exp = R.mode === 'twin' ? R.seq[R.input].find(x => !R.got.includes(x)) : R.mode === 'reverse' ? R.seq[R.seq.length - 1 - R.input] : R.seq[R.input];
+    const exp = R.mode === 'twin' ? R.seq[R.input].find(x => !R.got.includes(x)) : expAt(R.input);
     R.xrayLeft--; const el = tiles()[exp]; if (!el) return;
     el.classList.add('xray'); setTimeout(() => el.classList.remove('xray'), 1400);
     info(manual ? 'X-Ray!' : 'Stuck? X-Ray shows the next tile'); hud();
@@ -388,6 +502,7 @@ const G = (() => {
     R.stepClock = setInterval(() => {
       if (!R || t0 !== token || R.paused) return;
       if (R.phase !== 'input' || R.seq !== sq) { clearInterval(R.stepClock); return; }
+      if (frozen()) { drawClock(); return; }
       R.stepTimerLeft = Math.max(0, R.stepTimerLeft - 0.1); drawClock();
       if (R.imp && R.stepTimerLeft <= 5 && Math.abs(R.stepTimerLeft - Math.round(R.stepTimerLeft)) < 0.05) SND.tick();
       if (R.stepTimerLeft <= 0) { clearInterval(R.stepClock); wrong(-1, 'TIME UP!'); }
@@ -395,10 +510,10 @@ const G = (() => {
   }
 
   async function show() {
-    const t = token; R.phase = 'show'; R.shows++;
+    const t = token; R.phase = 'show'; R.shows++; if (typeof BG !== 'undefined') BG.dim(true);
     clearFx(); dots(R.seq.length, 0); hud();
     const grow = R.stepIdx > 0 && !R.imp && !R.daily && R.seq.length > 1;
-    msg(R.boss ? 'MEMORIZE FAST' : R.mode === 'negative' ? 'WATCH THE BLACK HOLE' : R.mode === 'chaos' ? 'WATCH · IGNORE THE GLITCHES' : grow ? 'WATCH · +1 NEW TILE' : 'WATCH', 'watch');
+    msg(R.mode === 'rush' ? `WATCH · LAST ${R.ask} COUNT` : R.boss ? 'MEMORIZE FAST' : R.mode === 'negative' ? 'WATCH THE BLACK HOLE' : R.mode === 'chaos' ? 'IGNORE THE FAKES' : R.mode === 'eye' ? 'WATCH · THEY WILL HIDE' : 'WATCH', 'watch');
     const n = N();
     let dur, gap;
     if (R.imp) { dur = D.IMP.flash; gap = D.IMP.gap; }
@@ -411,19 +526,20 @@ const G = (() => {
     const drng = R.pure ? mulberry(hash(R.seed, R.level, R.stepIdx, 'd', R.shows)) : Math.random;
     const last = R.seq.length - 1;
     const onBeat = SND.beat.on, bm = SND.beat.beatMs();
+    /* v1.6: every tile flashes for the SAME time with the SAME gap (no fast replay of the old part).
+       The new tile is only marked NEW. Rhythm Rush blinks on half beats on purpose. */
+    const rush = R.mode === 'rush';
+    if (rush) { dur = Math.round(Math.min(dur, 300)); gap = Math.round(Math.max(110, gap * 0.6)); }
     for (let k = 0; k < R.seq.length; k++) {
-      const isNew = grow && k === last, fast = grow && k < last;
-      let d0 = fast ? Math.max(170, Math.round(dur * 0.62)) : isNew ? Math.round(dur * 1.15) : dur;
+      const isNew = grow && k === last && !rush;
+      let d0 = dur;
       if (onBeat) {
-        /* v1.4: every flash lands on the beat (old part on 8th notes, the new tile on a strong beat) */
-        const want = fast ? d0 + gap * 0.7 : d0 + gap, div = (fast && bm / 2 >= 170) || want < bm * 0.7 ? 2 : 1;
+        const want = d0 + gap, div = rush ? 2 : (want < bm * 0.7 ? 2 : 1);
         if (k === 0) await sleep(250);
-        if (isNew) await sleep(bm * 0.35);
-        if (div === 1 && want > bm * 1.45) await sleep(bm * 0.55);
         if (t !== token) return;
         await sleep(SND.beat.untilNext(div));
         d0 = Math.min(d0, (div === 2 ? bm / 2 : bm) * 0.8);
-      } else await sleep(k === 0 ? 300 : fast ? Math.round(gap * 0.7) : isNew ? gap + 120 : gap);
+      } else await sleep(k === 0 ? 300 : gap);
       if (t !== token) return;
       while (R.paused) { await sleep(120); if (t !== token) return; }
       const v = R.seq[k];
@@ -454,10 +570,11 @@ const G = (() => {
       } else if (!R.got.includes(i)) wrong(i);
       return;
     }
-    const exp = R.mode === 'reverse' ? R.seq[R.seq.length - 1 - R.input] : R.seq[R.input];
+    const exp = expAt(R.input);
     if (i === exp) {
-      good(tEl, i); R.input++; dots(R.seq.length, R.input);
-      if (R.input >= R.seq.length) stepDone();
+      if (R.mode === 'eye') { tEl.classList.remove('eyeC'); tEl.classList.add('rev'); }
+      good(tEl, i); R.input++; dots(need(), R.input);
+      if (R.input >= need()) stepDone();
     } else wrong(i, null, exp);
   }
 
@@ -495,7 +612,7 @@ const G = (() => {
       else flyText('PERFECT RHYTHM', 'combo');
     } else if (per < 0.55 && L >= 3) { grade = 'GREAT!'; flyText('GREAT!', 'great'); }
     if (R.ladder && !R.pure) { const xp = Math.round(L * 3 * (R.xpMul || 1)); R.xp += xp; S.add('xp', xp); }
-    SND.step(); msg(grade, 'ok'); dots(R.seq.length, R.seq.length); hud();
+    SND.step(); msg(grade, 'ok'); dots(need(), need()); hud();
     if (R.ev && R.ev.onStep) { const r = R.ev.onStep(R); if (r === 'win') { finish(true); return; } }
     if (R.blitz) { R.level++; R.steps = D.levelSteps(R.level); R.stepIdx = 0; hud(); nextStep(true); return; }
     if (R.ladder) {
@@ -504,7 +621,8 @@ const G = (() => {
       if (R.stepIdx % D.LADDER_LV === 0) {
         R.levelsDone++; R.level++; S.st.stats.levelsTotal++;
         if (R.ev && R.ev.onLevel) { const r = R.ev.onLevel(R); if (r === 'win') { FX.win(S.active('win')); finish(true); return; } }
-        if (R.ev && R.ev.modeAt) { R.mode = R.ev.modeAt(R.level, R); $('game').dataset.gm = R.mode; }
+        if (R.ev && R.ev.modeAt) { const m0 = R.mode; R.mode = R.ev.modeAt(R.level, R); R.evMode = R.mode !== 'classic'; $('game').dataset.gm = R.mode; R.adB = {}; if (R.mode !== m0) { hud(); await modeCard(R.mode, 'NEW MODE'); if (t !== token) return; } }
+        R.adB = {};
       }
       if (R.stepIdx >= R.steps.length) { finish(true); return; }
       hud(); if (t !== token) return;
@@ -517,8 +635,8 @@ const G = (() => {
     nextStep(true);
   }
 
-  function earn(c) { R.coins += c; R.lvCoins = (R.lvCoins || 0) + c; S.add('coins', c); S.st.stats.earned += c; $('gCoins').textContent = R.coins.toLocaleString(); $('gPrizeN').textContent = R.lvCoins.toLocaleString(); }
-  function prizeFly(c) { const f = $('gPrizeFly'); f.textContent = '+' + c; f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); const p = $('gPrize'); p.classList.remove('pop'); void p.offsetWidth; p.classList.add('pop'); }
+  function earn(c) { R.coins += c; R.lvCoins = (R.lvCoins || 0) + c; S.add('coins', c); S.st.stats.earned += c; $('gCoins').textContent = R.coins.toLocaleString(); }
+  function prizeFly(c) { const box = $('gCoinsBox'); box.classList.remove('pop'); void box.offsetWidth; box.classList.add('pop'); const f = document.createElement('em'); f.className = 'coinFly'; f.textContent = '+' + c; box.appendChild(f); setTimeout(() => f.remove(), 900); }
 
   async function levelClear() {
     if (typeof REC !== 'undefined' && REC.recording) REC.evt('clear', { lv: R.level, len: R.seq.length });
@@ -578,7 +696,7 @@ const G = (() => {
       await midRun(() => UI.lucky(lv)); if (t !== token) return;
     }
     // natural break: interstitial (rules inside ADS). never inside challenges
-    if (!R.pure) { await midRun(() => ADS.inter('level')); if (t !== token) return; }
+    if (!R.pure && !(R.ev && /^ch_/.test(R.ev.id))) { await midRun(() => ADS.inter('level')); if (t !== token) return; }
     R.level++; beginLevel(false);
   }
 
@@ -589,7 +707,7 @@ const G = (() => {
     clearInterval(R.stepClock); clearTimeout(R.xrayT);
     if (R.comboKeep > 0 && R.combo > 0) { R.comboKeep--; info('Combo Keeper saved your combo'); } else R.combo = 0;
     R.lvWrong++;
-    if (i >= 0) { const el = tiles()[i]; el.classList.add('bad'); setTimeout(() => el.classList.remove('bad'), 420); }
+    if (i >= 0) { const el = tiles()[i]; el.classList.remove('eyeC'); el.classList.add('bad'); setTimeout(() => el.classList.remove('bad'), 420); }
     if (exp != null && R.imp) { const el = tiles()[exp]; el.classList.add('hintT'); setTimeout(() => el.classList.remove('hintT'), 900); }
     SND.wrong(); SND.vib([60, 40, 60]); SND.beat.drop();
     $('gBoardWrap').classList.remove('shake'); void $('gBoardWrap').offsetWidth; $('gBoardWrap').classList.add('shake');
@@ -601,6 +719,13 @@ const G = (() => {
     if (R.imp) { msg(why || 'WRONG!', 'bad'); setTimeout(() => { if (t === token) impFail(); }, 800); return; }
     if (R.blitz || (R.ev && R.ev.timePenalty)) { R.timeLeft = Math.max(0, R.timeLeft - 3); flyText('−3s', 'bad'); msg('−3 SECONDS', 'bad'); hud(); setTimeout(() => { if (t === token && R.timeLeft > 0) nextStep(false); }, 500); return; }
     if (R.ev && R.ev.onWrong) R.ev.onWrong(R);
+    /* v1.6: the first mistake on a twist / new mode is free and tells you why */
+    const special = R.twist || (R.evMode && R.mode !== 'classic' ? R.mode : null);
+    if (special && !R.pure && !R.dbeat && !(S.st.twistFree || {})[R.mode]) {
+      S.st.twistFree = S.st.twistFree || {}; S.st.twistFree[R.mode] = 1; S.save();
+      msg(`${D.MODE[R.mode].name.toUpperCase()}! ${D.MODE[R.mode].tag.toUpperCase()}`, 'bad'); info('Free mistake · no heart lost'); hud();
+      setTimeout(() => { if (t === token) nextStep(false); }, 1500); return;
+    }
     if (R.secondLeft > 0) { R.secondLeft--; msg('2ND CHANCE · NO HEART LOST', 'ok'); hud(); setTimeout(() => { if (t === token) nextStep(false); }, 900); return; }
     R.hearts--; R.fails++;
     if (R.fails >= 2 && !R.pure && !R.dbeat && !R.test) R.adapt = Math.min(1.45, R.adapt * 1.1);   // invisible mercy (not in challenges)
@@ -624,11 +749,11 @@ const G = (() => {
     banner(`<div class="bnK">LEVEL SKIPPED</div><div class="bnT">${R.level}</div><div class="bnS">On to level ${R.level + 1}</div>`, 'intro', 1200).then(() => { if (t !== token) return; R.level++; beginLevel(false); });
   }
 
-  function timeUp() { if (!R || R.ended) return; R.phase = 'wait'; clearFx(); $('gTimeAd').classList.add('hide'); if (R.ev && R.ev.onTimeUp) { R.ev.onTimeUp(R); } finish(R.blitz || (R.ev && R.ev.timeWin) ? true : false, 'time'); }
+  function timeUp() { if (!R || R.ended) return; R.phase = 'wait'; clearFx(); R.showTimeAd = false; if (R.ev && R.ev.onTimeUp) { R.ev.onTimeUp(R); } finish(R.blitz || (R.ev && R.ev.timeWin) ? true : false, 'time'); }
 
   function useHint() {
     if (!R || R.hintLeft <= 0 || R.phase !== 'input') return;
-    R.hintLeft--; $('gHint').classList.toggle('hide', !R.hintLeft);
+    R.hintLeft--; hud();
     replayPattern();
   }
   function replayPattern() {
@@ -648,7 +773,7 @@ const G = (() => {
   /* rewarded: +30 seconds (Beat the Sanx) */
   async function adTime() {
     if (!R || R.timeAdUsed) return;
-    $('gTimeAd').classList.add('hide');
+    R.showTimeAd = false; hud();
     const phase = R.phase; let ok = false;
     const go = await midRun(async () => { ok = await ADS.rewarded('time'); return ok; });
     if (!go) return;
@@ -711,13 +836,14 @@ const G = (() => {
     if (R.ladder && bestT > 0 && R.maxLen >= bestT - 1 && R.maxLen < bestT) near = `Only ${bestT - R.maxLen} tile from your best (${bestT})!`;
     else if (R.ladder && R.chal && R.chal.role === 'play') near = `${R.chal.target + 1 - R.maxLen} more tile${R.chal.target + 1 - R.maxLen > 1 ? 's' : ''} would have won it`;
     else if (!R.ladder && R.steps.length && R.stepIdx > 0) near = R.stepIdx === R.steps.length - 1 ? `So close! Last round of Level ${R.level}` : `${R.stepIdx} of ${R.steps.length} rounds done on Level ${R.level}`;
+    if (R.twist || (R.evMode && R.mode !== 'classic')) near = `This was a ${D.MODE[R.mode].name.toUpperCase()} level: ${D.MODE[R.mode].tag}.` + (near ? ' ' + near : '');
     const nearPB = !R.ev && st.stats.bestRun > 0 && R.levelsDone >= st.stats.bestRun - 1 && R.levelsDone < st.stats.bestRun;
     say(nearPB ? pick(D.SANX.near) : pick(D.SANX.lose), 'laugh');
     SND.lose();
     const maxAd = R.ev && R.ev.maxAdRevive != null ? R.ev.maxAdRevive : D.ADCAP.contAd;
     UI.gameOver({
       levels: R.levelsDone, coins: R.coins, level: R.level, mode: R.baseMode, nearPB, near, best: st.stats.bestRun, label: R.ladder ? `${R.maxLen} tiles` : `Level ${R.level}`,
-      canShield: st.shields > 0 && !(R.ev && R.ev.noRevive),
+      canShield: st.shields > 0 && !(R.ev && (R.ev.noRevive || R.ev.adOnly)),
       canAd: R.adContinues < maxAd && !(R.ev && R.ev.noRevive),
       adN: R.adContinues, adMax: maxAd,
       canDouble: !R.doubled && R.coins >= 30 && !R.ev,
@@ -728,7 +854,7 @@ const G = (() => {
     if (!R) return;
     if (how === 'shield') { if (!S.spend('shields', 1)) return; }
     if (how === 'ad') R.adContinues++;
-    R.revived++; R.hearts = R.maxHearts; R.fails = 0; R.adapt = Math.min(1.35, R.adapt * 1.05);
+    R.revived++; R.hearts = R.ev && R.ev.reviveHearts ? R.ev.reviveHearts : R.maxHearts; R.fails = 0; R.adapt = Math.min(1.35, R.adapt * 1.05);
     UI.show('game'); hud(); groove(R.boss ? 'hype' : 'full');
     const t = token;
     if (how === 'ad') { await countdown(); if (t !== token) return; nextStep(false); return; }

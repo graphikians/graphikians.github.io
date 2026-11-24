@@ -7,7 +7,7 @@ const SHOP = (() => {
   const $ = id => document.getElementById(id);
   const fmt = n => UI.fmt(n);
   let tab = 'home';
-  const TABS = [['free', 'Free', 'ad'], ['anim', 'Animated', 'sparkle'], ['skins', 'Skins', 'palette'], ['tap', 'Tap FX', 'zap'], ['shape', 'Shapes', 'square'], ['sound', 'Sounds', 'music'],
+  const TABS = [['free', 'Free', 'ad'], ['bg', 'Backgrounds', 'image'], ['anim', 'Animated', 'sparkle'], ['skins', 'Skins', 'palette'], ['tap', 'Tap FX', 'zap'], ['shape', 'Shapes', 'square'], ['sound', 'Sounds', 'music'],
     ['flash', 'Flash', 'sun'], ['win', 'Win FX', 'trophy'], ['frame', 'Frames', 'crown'], ['sets', 'Sets', 'gift'], ['boost', 'Boosters', 'bulb'], ['chests', 'Chests', 'vault']];
   const COLL_TABS = ['anim', 'tap', 'shape', 'sound', 'flash', 'win', 'frame'];
   const itemsOf = cat => cat === 'anim' ? D.SKINS.filter(s => s.cat === 'anim') : D.COS[cat].filter(x => x.cost > 0);
@@ -36,11 +36,11 @@ const SHOP = (() => {
   /* landing: every category visible at once (no hidden horizontal scroll) */
   function homeGrid() {
     const st = S.st, ad = adDay(), freeDot = !giftLeft() || D.AD_TRACK.some((t, i) => ad.n >= t.n && !ad.got.includes(i));
-    const cnt = { free: 'Daily gifts', anim: `${itemsOf('anim').length} tiles`, skins: `${D.SKINS.filter(x => x.cost > 0 && !x.cat).length} skins`, tap: '10 effects', shape: '10 shapes', sound: '10 packs', flash: '10 styles', win: '10 effects', frame: '10 frames', sets: `${D.SETS.length} sets · 20% off`, boost: `${D.BOOSTERS.length} boosters`, chests: `${D.CHESTS.length} chests` };
+    const cnt = { bg: `${D.BGS.length} live scenes`, free: 'Daily gifts', anim: `${itemsOf('anim').length} tiles`, skins: `${D.SKINS.filter(x => x.cost > 0 && !x.cat).length} skins`, tap: '10 effects', shape: '10 shapes', sound: '10 packs', flash: '10 styles', win: '10 effects', frame: '10 frames', sets: `${D.SETS.length} sets · 20% off`, boost: `${D.BOOSTERS.length} boosters`, chests: `${D.CHESTS.length} chests` };
     const feat = itemsOf('anim').find(x => x.gems && !S.st.skins.includes(x.id)) || itemsOf('anim')[0];
-    return `<div class="free100">${ART.ic('check')}<span>100% FREE · coins aur ads se, kabhi real money nahi</span></div>
+    return `${adFreeHero()}<div class="free100">${ART.ic('check')}<span>100% FREE · Earn everything with coins and ads. Never real money.</span></div>
       ${feat ? `<button class="featShop" data-tab="anim"><small>FEATURED · ${feat.gems ? 'VIP' : 'NEW'}</small><b>${feat.name} tiles</b><span>${feat.gems ? 'Premium animated tiles' : 'Try free for 30 min with an ad'}</span><div class="fsBoard">${feat.colors.slice(0, 9).map(c => `<i style="--c:${c}"></i>`).join('')}</div></button>` : ''}
-      <div class="catGrid">${TABS.map(([k, t, ic]) => `<button class="catC ${k === 'free' ? 'free' : ''}" data-tab="${k}">${k === 'free' && freeDot ? '<span class="nb">!</span>' : ['anim', 'tap', 'sound'].includes(k) ? '<span class="nb">NEW</span>' : ''}<span class="ci">${ART.ic(ic)}</span><b>${t}</b><small>${cnt[k]}</small></button>`).join('')}</div>`;
+      <div class="catGrid">${TABS.map(([k, t, ic]) => `<button class="catC ${k === 'free' ? 'free' : ''}" data-tab="${k}">${k === 'free' && freeDot ? '<span class="nb">!</span>' : ['bg', 'anim', 'tap'].includes(k) ? '<span class="nb">NEW</span>' : ''}<span class="ci">${ART.ic(ic)}</span><b>${t}</b><small>${cnt[k]}</small></button>`).join('')}</div>`;
   }
   function render() {
     const st = S.st;
@@ -49,6 +49,7 @@ const SHOP = (() => {
     let body = '';
     if (tab === 'home') body = homeGrid();
     else if (tab === 'free') body = freeTab();
+    else if (tab === 'bg') body = bgTab();
     else if (tab === 'skins') body = skinsTab();
     else if (tab === 'anim' || D.COS[tab]) body = cosTab(tab);
     else if (tab === 'sets') body = setsTab();
@@ -60,6 +61,35 @@ const SHOP = (() => {
       <div class="pgBody" id="shopBody">${body}</div>`;
   }
 
+  /* v1.6 hero: the 1-crore-coin Ad-free, with a progress bar and 10% milestones */
+  function adFreeHero() {
+    const st = S.st;
+    if (st.noAds) return `<div class="afHero own"><span class="afIc">${ART.ic('shield')}</span><div><small>AD-FREE</small><b>Ad-free is ON</b><em>No banners, no break ads. Reward ads stay optional.</em></div></div>`;
+    const p = Math.min(1, st.coins / D.NO_ADS_PRICE), pc = Math.floor(p * 100), ms = Math.floor(p * 10);
+    return `<div class="afHero"><div class="afTop"><span class="afIc">${ART.ic('shield')}</span><div><small>THE BIG ONE</small><b>Go Ad-free forever</b><em>1 crore coins · no banners, no break ads</em></div></div>
+      <div class="afBar"><i style="width:${p * 100}%"></i>${Array.from({ length: 9 }, (_, k) => `<span class="${k < ms ? 'on' : ''}" style="left:${(k + 1) * 10}%"></span>`).join('')}</div>
+      <div class="afRow"><span>${ART.coin(15)} <b>${UI.short(st.coins)}</b> / 1 Cr</span><span class="afPc">${pc}%${ms < 10 ? ` · next milestone ${(ms + 1) * 10}%` : ''}</span></div>
+      <button class="btn big ${st.coins >= D.NO_ADS_PRICE ? 'pulse' : 'off'}" data-act="buyNoAds">${st.coins >= D.NO_ADS_PRICE ? `${ART.ic('shield')} UNLOCK AD-FREE` : `${ART.ic('lock')} ${UI.short(D.NO_ADS_PRICE - st.coins)} coins to go`}</button>
+      <small class="afNote">Reward ads (free boosters, chests, revives) keep working after Ad-free.</small></div>`;
+  }
+  /* v1.6 animated backgrounds */
+  const bgOwned = id => (S.st.bg.own || []).includes(id);
+  function bgTab() {
+    const st = S.st, b = st.bg, act = BG.active(), d = S.dayKey(); if (b.tday.d !== d) { b.tday = { d, n: 0 }; S.save(); }
+    const tr = b.trial && b.trial.until > Date.now() ? b.trial : null;
+    const cards = D.BGS.map(x => {
+      const own = bgOwned(x.id), on = act === x.id, trying = tr && tr.id === x.id;
+      const price = x.gems ? `${ART.gem(14)} ${fmt(x.gems)}` : x.cost ? `${ART.coin(14)} ${fmt(x.cost)}` : 'FREE';
+      return `<div class="bgCard ${on ? 'on' : ''}"><canvas class="bgPrev" width="150" height="220" data-bg="${x.id}"></canvas>
+        <div class="bgInfo"><b>${x.name}</b><small>${x.tag}</small>
+        ${on ? `<em class="bgOnTag">${ART.ic('check')} ${trying ? 'Trying · ' + hms(tr.until - Date.now()) : 'In use'}</em>` : own ? `<button class="btn sm" data-act="bgUse:${x.id}">Use</button>`
+          : `<div class="bgBtns"><button class="btn sm" data-act="bgBuy:${x.id}">${price}</button><button class="btn sm ghost" data-act="bgTry:${x.id}">${ART.ic('ad')} 30 min</button></div>`}</div></div>`;
+    }).join('');
+    setTimeout(() => document.querySelectorAll('.bgPrev').forEach(c => { if (!c._p) c._p = BG.preview(c, c.dataset.bg); }), 30);
+    return `<div class="bgHead"><b>Live backgrounds</b><small>Behind your home and game screens. Calm, never distracting.</small>
+      <button class="setRow bgTog" data-tog="bg">${ART.ic('image')}<span>Animated background</span><i class="sw ${st.set.bg !== false ? 'on' : ''}"></i></button>
+      <small class="muted">Ad trials today: ${b.tday.n}/10</small></div><div class="bgGrid">${cards}</div>`;
+  }
   function freeTab() {
     const st = S.st, ad = adDay(), gl = giftLeft(), last = D.AD_TRACK[D.AD_TRACK.length - 1].n;
     const nodes = D.AD_TRACK.map((t, i) => { const ok = ad.n >= t.n, got = ad.got.includes(i); return `<button class="tkNode ${ok ? 'ok' : ''} ${got ? 'got' : ''} ${i === D.AD_TRACK.length - 1 ? 'end' : ''}" style="left:${t.n / last * 100}%" data-act="${ok && !got ? 'shTrack:' + i : 'shTrackInfo:' + i}"><i>${got ? ART.ic('check') : t.n}</i><span>${rTxt(t.r)}</span></button>`; }).join('');
@@ -82,9 +112,7 @@ const SHOP = (() => {
       ${ds ? `<div class="dealCard">${mini(ds, '', 9, 'sm')}<div><em class="offTag">${Math.round(D.DEAL_OFF * 100)}% OFF</em><b>${ds.name} skin</b><small><s>${fmt(ds.cost)}</s> today only</small></div><button class="btn sm" data-act="shDeal">${ART.coin(14)} ${fmt(dp)}</button></div>` : ''}
       <div class="dealCard"><span class="bsIc">${ART.ic('sparkle')}</span><div><b>Booster bundle</b><small>${D.BUNDLE.boosts} random boosters · save 40%</small></div><button class="btn sm" data-act="shBundle">${ART.coin(14)} ${fmt(D.BUNDLE.price)}</button></div>
       <div class="secT">Ad-unlock skins</div>${adSkins}
-      <div class="noAdsCard ${st.noAds ? 'owned' : ''}">${ART.ic('shield')}<div><b>No forced ads</b><small>Removes banner and break ads forever. Reward ads stay optional.</small>
-      ${st.noAds ? '<em>Active</em>' : `<div class="bar"><i style="width:${Math.min(100, st.coins / D.NO_ADS_PRICE * 100)}%"></i></div><small>${fmt(st.coins)} / ${fmt(D.NO_ADS_PRICE)} coins (1 crore)</small>`}</div>
-      ${st.noAds ? '' : `<button class="btn ${st.coins >= D.NO_ADS_PRICE ? '' : 'off'}" data-act="buyNoAds">${ART.coin(14)} 1 Cr</button>`}</div>`;
+      </div>`;
   }
 
   function skinsTab() {
@@ -263,6 +291,12 @@ const SHOP = (() => {
       case 'shEquipSet': equipSet(v); return;
       case 'shShield': if (S.spend(v, v === 'coins' ? 400 : D.SHIELD_GEMS)) { S.add('shields', 1); UI.toast('Shield +1', 'shield'); render(); } else UI.toast(v === 'coins' ? 'Not enough coins' : 'Not enough diamonds', v === 'coins' ? 'coins' : 'diamond'); return;
       case 'shColl': collection(); return;
+      case 'bgUse': { if (!bgOwned(v)) return; st.bg.on = v; if (st.bg.trial && st.bg.trial.id !== v) st.bg.trial = null; S.save(); BG.refresh(); render(); UI.toast(`${D.BG[v].name} on`, 'image'); return; }
+      case 'bgBuy': { const x = D.BG[v]; if (!x || bgOwned(v)) return; const cur = x.gems ? 'gems' : 'coins', n = x.gems || x.cost;
+        if (!S.spend(cur, n)) { UI.toast(cur === 'gems' ? 'Not enough diamonds' : 'Not enough coins', cur === 'gems' ? 'diamond' : 'coins'); return; }
+        st.bg.own.push(v); st.bg.on = v; st.bg.trial = null; S.save(); SND.win(); BG.refresh(); UI.toast(`${x.name} unlocked!`, 'sparkle'); render(); return; }
+      case 'bgTry': { const d = S.dayKey(); if (st.bg.tday.d !== d) st.bg.tday = { d, n: 0 }; if (st.bg.tday.n >= 10) { UI.toast('10 trials used today · back tomorrow', 'clock'); return; }
+        if (!(await ADS.rewarded('bgTrial'))) return; st.bg.tday.n++; st.bg.trial = { id: v, until: Date.now() + 30 * 60e3 }; S.save(); BG.refresh(); UI.toast(`${D.BG[v].name} for 30 min`, 'clock'); render(); return; }
     }
   }
   /* clicks routed from UI (data-tab / data-equip / data-buyskin / data-buyb / data-cos) */

@@ -8,12 +8,14 @@ const D = {};
 D.MODES = [
   { id: 'classic',  name: 'Classic',  tag: 'Repeat the pattern',      icon: 'zap',     unlock: 1,  flash: 560 },
   { id: 'reverse',  name: 'Reverse',  tag: 'Repeat it backwards',     icon: 'repeat',  unlock: 3,  flash: 560 },
+  { id: 'rush',     name: 'Rhythm Rush', tag: 'Remember the LAST tiles, in order', icon: 'music', unlock: 6, flash: 300 },
   { id: 'speed',    name: 'Speed',    tag: 'Fast flashes + timer',    icon: 'bolt2',   unlock: 5,  flash: 280 },
   { id: 'twin',     name: 'Twin',     tag: 'Two tiles at once',       icon: 'copy',    unlock: 7,  flash: 760 },
+  { id: 'eye',      name: 'Eye Spy',  tag: 'Tiles hide. Tap to reveal', icon: 'eye',     unlock: 8,  flash: 560 },
   { id: 'chaos',    name: 'Chaos',    tag: 'Ignore the fake flashes', icon: 'shuffle', unlock: 9,  flash: 500 },
   { id: 'ghost',    name: 'Ghost',    tag: 'Tiles vanish. Use memory',icon: 'ghost',   unlock: 11, flash: 640 },
   { id: 'negative', name: 'Negative', tag: 'Find the dark tile',      icon: 'moon',    unlock: 13, flash: 640 },
-  { id: 'focus',    name: 'Focus',    tag: 'Blink and you miss it',   icon: 'eye',     unlock: 15, flash: 150 },
+  { id: 'focus',    name: 'Focus',    tag: 'Blink and you miss it',   icon: 'aperture',     unlock: 15, flash: 150 },
   { id: 'blitz',    name: 'Blitz',    tag: '90 second race',          icon: 'clock',   unlock: 18, flash: 480 },
   { id: 'zen',      name: 'Zen',      tag: 'No fail. Just flow',      icon: 'leaf',    unlock: 1,  flash: 720 }
 ];
@@ -37,7 +39,7 @@ D.band = lv => { let a = 1; for (let i = 0; i < D.BANDS.length; i++) { const [to
    level x5 is a TWIST level in Classic (a surprise mode) from level 15 on. */
 D.levelLen = lv => D.band(lv).n + (lv % 10 === 0 ? 1 : 0);
 D.isRelief = lv => lv > 10 && (lv % 10 === 1 || lv % 10 === 2);
-D.TWISTS = ['reverse', 'speed', 'chaos'];   /* v1.5: no ghost/negative surprises (tiles looked blank) */
+D.TWISTS = ['reverse', 'eye', 'speed', 'rush', 'chaos'];   /* v1.5: no ghost/negative surprises (tiles looked blank) */
 D.twistFor = lv => (lv >= 15 && lv % 10 === 5) ? D.TWISTS[Math.floor(lv / 10) % D.TWISTS.length] : null;
 /* beat tempo (BPM) of a level: rises slowly with the tile band, boss levels hit harder */
 D.bpmFor = lv => Math.min(150, 96 + D.band(lv).i * 5 + (lv % 10 === 0 ? 10 : 0) - (D.isRelief(lv) ? 6 : 0));
@@ -147,6 +149,46 @@ D.BOOSTERS = [
   { id: 'pass',     name: 'Pass Boost',   icon: 'ticket',  desc: 'Double Sanx Pass points this run',   coins: 600, gems: 4 }
 ];
 D.MAX_BOOSTS = 3;
+/* v1.6 in-game booster row: up to 3 picked boosters + 3 that open with a rewarded ad (once per level each) */
+D.AD_BOOSTS = ['xray', 'freeze', 'second'];
+D.AD_BOOST_ALT = ['hint', 'second', 'xray', 'freeze'];
+D.TAP_BOOSTS = ['hint', 'xray', 'skip'];          // boosters the player taps during a round
+/* v1.6 Rhythm Rush: tiles blink fast on the beat, then "which were the LAST N?" in order */
+D.rushPlan = lv => { const a = lv <= 5 ? [3, 4] : lv <= 15 ? [4, 6] : lv <= 30 ? [5, 8] : [7, 10]; const ask = a[0] + (lv % 10 === 0 ? 1 : 0); return { ask, blink: [a[1], a[1] + 1, a[1] + 2], secs: ask * 1.4 + 3 }; };
+D.rushAskLadder = len => Math.max(2, Math.min(len - 2, 3 + Math.floor(len / 4)));
+/* v1.6 events: every event (except challenges and fixed-mode events) walks a mode ladder toward the win */
+D.EV_LADDER = ['classic', 'classic', 'reverse', 'eye', 'speed', 'rush', 'chaos'];
+D.EV_MIX = ['classic', 'reverse', 'eye', 'speed', 'rush', 'chaos'];
+/* v1.6 how-to demos for twist / new modes */
+D.MODE_HOW = {
+  classic: { demo: 'same', txt: 'Tap the tiles in the SAME order they flashed.' },
+  reverse: { demo: 'rev', txt: 'Tap the tiles BACKWARDS: last one first.' },
+  eye: { demo: 'eye', txt: 'After the flashes every tile hides behind an eye. Tap where the tiles were. A right tap reveals the tile.' },
+  speed: { demo: 'same', txt: 'Tiles flash FAST and a timer runs. Same order.' },
+  rush: { demo: 'rush', txt: 'Many tiles blink on the beat. Then tap only the LAST ones, in order.' },
+  chaos: { demo: 'same', txt: 'Fake flashes try to trick you. Tap only the REAL pattern.' },
+  ghost: { demo: 'same', txt: 'Tiles go dark when it is your turn. Tap from memory.' },
+  negative: { demo: 'same', txt: 'All tiles light up except one. Remember the DARK tile.' },
+  focus: { demo: 'same', txt: 'Super short flashes. Do not blink.' },
+  twin: { demo: 'same', txt: 'Two tiles flash at once. Tap BOTH.' }
+};
+/* v1.6 Challenges Star Road: chests at 10 / 20 / 30 stars */
+D.STAR_CHESTS = [{ stars: 10, chest: 'silver', coins: 1500 }, { stars: 20, chest: 'gold', coins: 4000, gems: 5 }, { stars: 30, chest: 'gold', coins: 10000, gems: 20, skin: 'starlord' }];
+D.STAR3_COINS = 300;
+/* v1.6 animated backgrounds (game + home). 3 free, 7 with coins / gems, 30 min ad trial */
+D.BGS = [
+  { id: 'glow',     name: 'Tile Glow',  tag: 'Glows in the colour of every tile', cost: 0 },
+  { id: 'aurora',   name: 'Aurora',     tag: 'Slow silk ribbons of light', cost: 0 },
+  { id: 'spot',     name: 'Spotlight',  tag: 'Stage lights from above', cost: 0 },
+  { id: 'space',    name: 'Space',      tag: 'Stars and planets drift by', cost: 5000 },
+  { id: 'tunnel',   name: 'Tunnel',     tag: 'Fly through the board', cost: 5000 },
+  { id: 'club',     name: 'Club',       tag: 'Laser beams and a light floor', cost: 15000 },
+  { id: 'arena',    name: 'Arena',      tag: 'Grid floor and big beams', cost: 15000 },
+  { id: 'rain',     name: 'Neon Rain',  tag: 'Falling streaks of light', cost: 50000 },
+  { id: 'versus',   name: 'Versus',     tag: 'Split energy, face-off vibes', gems: 500 },
+  { id: 'galaxy',   name: 'Galaxy Spin', tag: 'A slow spinning galaxy', gems: 1500 }
+];
+D.BG = Object.fromEntries(D.BGS.map(b => [b.id, b]));
 D.BOOST = Object.fromEntries(D.BOOSTERS.map(b => [b.id, b]));
 /* v1.4: only 6 boosters stay in the game (simple choice). Old ones are refunded as coins once. */
 D.BOOSTERS_ALL = D.BOOSTERS;
@@ -549,7 +591,7 @@ D.ADCAP = { replay: 3, extraTry: 1, bts30: 1, freeBoost: 3, questReroll: 1, dail
 D.SKINS.push(
   { id: 'f_xmas',  fest: 'xmas',  name: 'Christmas', cost: -4, icons: ['star', 'gift', 'heart', 'sun', 'diamond', 'moon', 'crown', 'circle', 'tri'], colors: ['#e63946', '#2a9d8f', '#f1faee', '#c1121f', '#40916c', '#ffd166', '#d62828', '#1b4332', '#ffffff'] },
   { id: 'f_ny',    fest: 'ny',    name: 'New Year',  cost: -4, icons: ['sparkle', 'star', 'clock', 'zap', 'diamond', 'crown', 'sun', 'comet', 'heart'], colors: ['#ffd700', '#c0c0c0', '#9a6df5', '#00e5ff', '#ff3d7f', '#743ae8', '#ffe066', '#ffffff', '#4cc9f0'] },
-  { id: 'f_kite',  fest: 'kite',  name: 'Patang',    cost: -4, icons: ['diamond', 'diamond', 'diamond', 'sun', 'cloud', 'diamond', 'diamond', 'star', 'diamond'], colors: ['#ff006e', '#fb5607', '#ffbe0b', '#3a86ff', '#8338ec', '#06d6a0', '#ef476f', '#118ab2', '#ffd166'] },
+  { id: 'f_kite',  fest: 'kite',  name: 'Kite Fest',  cost: -4, icons: ['diamond', 'diamond', 'diamond', 'sun', 'cloud', 'diamond', 'diamond', 'star', 'diamond'], colors: ['#ff006e', '#fb5607', '#ffbe0b', '#3a86ff', '#8338ec', '#06d6a0', '#ef476f', '#118ab2', '#ffd166'] },
   { id: 'f_tri',   fest: 'tri',   name: 'Tiranga',   cost: -4, icons: ['star', 'sun', 'star', 'circle', 'compass', 'circle', 'star', 'sun', 'star'], colors: ['#ff9933', '#ff9933', '#ff9933', '#ffffff', '#ffffff', '#ffffff', '#138808', '#138808', '#138808'] },
   { id: 'f_love',  fest: 'love',  name: 'Hearts',    cost: -4, icons: ['heart', 'heart', 'star', 'heart', 'diamond', 'heart', 'sparkle', 'heart', 'heart'], colors: ['#ff006e', '#ff4d6d', '#ff8fab', '#c9184a', '#ffb3c1', '#ff758f', '#e5383b', '#ffccd5', '#a4133c'] },
   { id: 'f_holi',  fest: 'holi',  name: 'Holi',      cost: -4, icons: ['drop', 'sparkle', 'drop', 'star', 'drop', 'heart', 'drop', 'sun', 'drop'], colors: ['#ff006e', '#ffbe0b', '#3a86ff', '#8338ec', '#06d6a0', '#fb5607', '#ff4d6d', '#00bbf9', '#9b5de5'] },
@@ -571,7 +613,7 @@ D.FESTS = [
   { id: 'ny',    name: 'New Year Countdown', fest: 'New Year',        icon: 'clock',   from: '2026-12-31', to: '2027-01-02', skin: 'f_ny',    kind: 'speed', theme: ['#ffd700', '#3a0ca3'],
     tag: '60 second speed race into the new year', rules: ['60 seconds on the clock.', 'Clear as many steps as you can in Speed mode.', 'Wrong tap costs 3 seconds.', '20+ steps unlocks the New Year skin.'], goal: 20, mode: 'speed', secs: 60, reward: { coins: 2026, gems: 12 } },
   { id: 'kite',  name: 'Kite Cut',           fest: 'Uttarayan',       icon: 'diamond', from: '2027-01-12', to: '2027-01-16', skin: 'f_kite',  kind: 'kite', theme: ['#fb5607', '#3a86ff'],
-    tag: 'Every round you clear cuts an AI kite', rules: ['Each round you clear cuts one AI kite.', 'Cut 7 kites to win (pattern starts at 2 tiles, +1 every round).', '3 hearts. A wrong tap lets an AI kite cut yours (lose a heart).', 'Win to unlock the Patang skin.'], goal: 7, mode: 'classic', reward: { coins: 1400, gems: 8 } },
+    tag: 'Every round you clear cuts an AI kite', rules: ['Each round you clear cuts one AI kite.', 'Cut 7 kites to win (pattern starts at 2 tiles, +1 every round).', '3 hearts. A wrong tap lets an AI kite cut yours (lose a heart).', 'Win to unlock the Kite Fest skin.'], goal: 7, mode: 'classic', reward: { coins: 1400, gems: 8 } },
   { id: 'tri',   name: 'Tiranga Challenge',  fest: 'Republic Day',    icon: 'flag',    from: '2027-01-24', to: '2027-01-27', skin: 'f_tri',   kind: 'tri', theme: ['#ff9933', '#138808'],
     tag: 'Three colors. Speed rises every level', rules: ['The board uses only three colors.', 'Every level the flashes get 8% faster.', 'Survive 6 levels to win.', 'Win to unlock the Tiranga skin.'], goal: 6, mode: 'classic', reward: { coins: 1950, gems: 8 } },
   { id: 'love',  name: 'Heart Match',        fest: "Valentine's Day", icon: 'heart',   from: '2027-02-12', to: '2027-02-15', skin: 'f_love',  kind: 'twin', theme: ['#ff006e', '#a4133c'],
@@ -582,7 +624,7 @@ D.FESTS = [
     tag: 'Tile colors swap every round', rules: ['Every round the tile colors get shuffled.', 'Remember the position, not the color.', 'Remember a 9-tile pattern to win (starts at 2, +1 every round).', 'Win to unlock the Holi skin + diamonds.'], goal: 12, mode: 'classic', reward: { coins: 1500, gems: 15 } },
   { id: 'azadi', name: 'Azadi Run',          fest: 'Independence Day',icon: 'flag',    from: '2027-08-13', to: '2027-08-16', skin: 'f_azadi', kind: 'marathon', theme: ['#ff9933', '#138808'],
     tag: '15 level marathon', rules: ['Classic marathon: clear 15 levels in one run.', '3 hearts. One ad revive allowed.', 'Every 5 levels: bonus coins.', 'Win to unlock the Azadi skin.'], goal: 15, mode: 'classic', reward: { coins: 1947, gems: 15 } },
-  { id: 'rakhi', name: 'Bhai-Behen Duo',     fest: 'Raksha Bandhan',  icon: 'heart',   from: '2027-08-15', to: '2027-08-18', skin: 'f_rakhi', kind: 'duo', theme: ['#ff006e', '#fb8500'],
+  { id: 'rakhi', name: 'Sibling Duo',        fest: 'Raksha Bandhan',  icon: 'heart',   from: '2027-08-15', to: '2027-08-18', skin: 'f_rakhi', kind: 'duo', theme: ['#ff006e', '#fb8500'],
     tag: 'Friend Challenges pay double', rules: ['Every Friend Challenge win pays double during the festival.', 'Duo round: Twin mode, clear 10 pairs.', '3 hearts.', 'Win the duo round to unlock the Rakhi skin.'], goal: 10, mode: 'twin', reward: { coins: 1200, gems: 8 } },
   { id: 'modak', name: 'Modak Hunt',         fest: 'Ganesh Chaturthi',icon: 'drop',    from: '2027-09-03', to: '2027-09-14', skin: 'f_modak', kind: 'collect', theme: ['#ffb703', '#d00000'],
     tag: 'Collect modaks on every level', rules: ['Every level you clear drops modaks (1 to 3).', 'Collect 51 modaks during the festival.', 'Milestones at 11, 21 and 51 modaks.', 'Reach 51 to unlock the Modak skin.'], goal: 51, mode: 'classic', reward: { coins: 2100, gems: 12 } },

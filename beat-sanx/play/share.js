@@ -134,7 +134,7 @@ const SH = (() => {
       plate(x, (d.sub || '').toUpperCase(), 540, 1282);
       await chips(x, d.chips, 1440);
       await bottomPanel(x, d, false);
-      await sanx(x, d.mood, d.bubble || 'Kaise?!');
+      await sanx(x, d.mood, d.bubble || 'HOW?!');
     } else {
       const head = (d.head || `${d.big} ${d.sub || ''}`).toUpperCase(), s = fitSize(x, head, 960, 86, 900);
       for (let k = 12; k > 0; k -= 2) txt(x, head, 540, 1372 + k, s, 900, k > 8 ? '#14063a' : '#4c1d95');
@@ -204,7 +204,7 @@ const SH = (() => {
       const acc = r && r.taps ? Math.round(r.correct / r.taps * 100) : null;
       send('result', { k: r && r.levels >= S.st.stats.bestRun ? 'NEW PERSONAL BEST' : 'MY RUN', big: lv, sub: 'levels cleared', head: `I cleared ${lv} levels`, chips: [{ t: 'Combo ' + ((r && r.maxCombo) || 0), ic: 'fire' }, r && r.coins ? { t: '+' + fmt(r.coins), coin: true } : null, acc != null ? { t: acc + '%', ic: 'target' } : null].filter(Boolean), mood: lv >= 5 ? 'shock' : 'laugh' }, `🧠⚡ I cleared ${lv} levels${r && r.mode ? ' in ' + modeName(r.mode) : ''} on Beat Sanx! Can you beat Sanx?`);
     },
-    imp(n) { send('imp', { k: 'IMPOSSIBLE 100', big: n, sub: 'tiles from memory', head: `My brain: ${n} tiles`, chips: [{ t: 'IMPOSSIBLE 100', ic: 'brain' }], mood: n >= 20 ? 'shock' : 'smug', bubble: n >= 20 ? 'Kaise?!' : 'Bas itna?', cta: 'Beat my brain' }, `🧠 My brain remembers ${n} tiles in IMPOSSIBLE 100 on Beat Sanx. Tum kitna yaad rakh sakte ho?`); },
+    imp(n) { send('imp', { k: 'IMPOSSIBLE 100', big: n, sub: 'tiles from memory', head: `My brain: ${n} tiles`, chips: [{ t: 'IMPOSSIBLE 100', ic: 'brain' }], mood: n >= 20 ? 'shock' : 'smug', bubble: n >= 20 ? 'HOW?!' : 'That is it?', cta: 'Beat my brain' }, `🧠 My brain remembers ${n} tiles in IMPOSSIBLE 100 on Beat Sanx. How many can you remember?`); },
     challenge(c, text) { send('challenge', { k: 'DUEL CHALLENGE', big: c.tiles, sub: 'tiles to beat', head: `Beat my ${c.tiles} tiles`, chips: [{ t: modeName(c.mode), ic: (D.MODE[c.mode] || D.MODE.classic).icon }, c.stake ? { t: 'Win ' + fmt(c.stake * 2), coin: true } : { t: 'Same pattern', ic: 'swords' }], mood: 'angry', bubble: 'Try me!', cta: 'Scan & accept', scan: 'Scan to play my duel · 100% free', url: 'https://graphikians.github.io/beat-sanx/c/?c=' + c.code }, text); },
     chalResult(p, text) { send(p.won ? 'victory' : 'result', { k: p.won ? 'DUEL WON' : 'DUEL RESULT', big: p.tiles, sub: `tiles · you had ${p.target}`, head: `${p.tiles} vs ${p.target} tiles`, chips: [{ t: p.won ? 'I won!' : 'You win', ic: p.won ? 'trophy' : 'swords' }], mood: p.won ? 'shock' : 'laugh', url: 'https://graphikians.github.io/beat-sanx/c/?c=' + p.code, cta: p.won ? 'Rematch?' : 'Beat my score' }, text); },
     victory(a, b) { send('victory', { k: 'DUEL WON', big: a, sub: `tiles vs ${b}`, head: `${a} vs ${b} tiles`, chips: [{ t: 'Victory', ic: 'trophy' }], mood: 'shock', cta: 'Who is next?' }, `🏆 I won my Beat Sanx duel: ${a} tiles vs ${b}! Who's next?`); },

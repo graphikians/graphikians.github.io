@@ -1,6 +1,6 @@
 /* ================= BEAT SANX — boot ================= */
 'use strict';
-window.BS_VERSION = '1.5';
+window.BS_VERSION = '1.6';
 (function boot() {
   if (window.BS_CREATOR) { S.st.seenTut = true; S.st.login.pending = false; ADS.inter = async () => false; ADS.rewarded = async () => true; ADS.banner = () => { }; document.body.classList.add('isCreator'); }
   if (window.BS_WEB) { D.DBEAT.practiceAds = 0; D.ADCAP.contAd = 0; D.ADCAP.replay = 0; S.st.seenTut = true; document.body.classList.add('isWeb'); }
@@ -10,7 +10,7 @@ window.BS_VERSION = '1.5';
   S.st.lastSeen = Date.now(); S.save();
   setInterval(() => { S.st.lastSeen = Date.now(); S.save(); }, 60000);
   document.body.insertAdjacentHTML('afterbegin', ART.defs());
-  G.build(); UI.init(); NET.init();
+  G.build(); UI.init(); NET.init(); try { BG.init(); } catch (e) { }
   const go = () => {
     const sp = document.getElementById('splash'); sp.classList.add('out'); setTimeout(() => sp.remove(), 500);
     UI.show('home');

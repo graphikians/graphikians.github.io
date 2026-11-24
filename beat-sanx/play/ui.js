@@ -141,7 +141,9 @@ const UI = (() => {
     negative: ['All tiles light up except one', 'That one becomes a BLACK HOLE', 'Tap the black holes in order · counter shows how many are left'],
     focus: ['Super short flashes', 'Blink and you miss it', 'Full focus!'],
     blitz: ['90 seconds on the clock', 'Clear as many steps as you can', 'Wrong tap = minus 3 seconds'],
-    zen: ['No hearts. No fail.', 'Wrong tap shows the right tile', 'Half coins, full relax']
+    zen: ['No hearts. No fail.', 'Wrong tap shows the right tile', 'Half coins, full relax'],
+    rush: ['Many tiles blink fast, on the beat', 'Then tap only the LAST few, in order', 'All correct = coins · wrong tap = 1 heart'],
+    eye: ['Watch the tiles flash', 'Every tile hides behind an eye', 'Tap where they were · a right tap reveals it']
   };
   function modeSheet() {
     const st = S.st;
@@ -157,17 +159,30 @@ const UI = (() => {
   function readySheet(mode) {
     selMode = mode; const st = S.st, m = D.MODE[mode], lv = S.lv(mode);
     selBoosts = selBoosts.filter(b => (st.boosters[b] || 0) > 0);
-    const boosts = D.BOOSTERS.map(b => { const on = selBoosts.includes(b.id), n = (st.boosters[b.id] || 0) - (on ? 1 : 0); if (!S.boostOpen(b.id)) return `<button class="bst lockB" data-act="lockB:${b.id}">${ART.ic('lock')}<i>Lv ${D.BOOST_LV[b.id]}</i><small>${b.name}</small></button>`; return `<button class="bst ${on ? 'sel' : ''} ${n <= 0 && !on ? 'empty' : ''}" data-boost="${b.id}">${on ? '<span class="minus">−1</span>' : ''}${ART.ic(b.icon)}<i>${n}</i><small>${b.name}</small></button>`; }).join('');
+    const boosts = boostGrid();
+    const _unused = D.BOOSTERS.map(b => { const on = selBoosts.includes(b.id), n = (st.boosters[b.id] || 0) - (on ? 1 : 0); if (!S.boostOpen(b.id)) return `<button class="bst lockB" data-act="lockB:${b.id}">${ART.ic('lock')}<i>Lv ${D.BOOST_LV[b.id]}</i><small>${b.name}</small></button>`; return `<button class="bst ${on ? 'sel' : ''} ${n <= 0 && !on ? 'empty' : ''}" data-boost="${b.id}">${on ? '<span class="minus">−1</span>' : ''}${ART.ic(b.icon)}<i>${n}</i><small>${b.name}</small></button>`; }).join('');
     const fbLeft = S.cap('freeBoost', D.ADCAP.freeBoost);
     sheet(h`<div class="rdHead"><span class="rdIc">${ART.ic(m.icon)}</span><div><small>${mode === 'blitz' ? 'BEST ' + (st.blitzBest || 0) + ' STEPS' : 'LEVEL ' + lv + ' · ' + D.world(lv).name.toUpperCase()}</small><b>${m.name}</b></div></div>
       <div class="rdBody"><div class="demo" id="demo" data-m="${mode}">${Array.from({ length: 9 }, (_, i) => `<i style="--c:${D.SKINS[0].colors[i]}"></i>`).join('')}</div>
       <ol class="rdRules">${MODE_RULES[mode].map(r => `<li>${r}</li>`).join('')}</ol></div>
-      <div class="shT sm">Boosters <span class="selN">${selBoosts.length} of ${D.MAX_BOOSTS} selected</span></div><div class="bGrid">${boosts}</div>
-      <div class="bDesc" id="bDesc">${selBoosts.length ? selBoosts.map(b => `<b>${D.BOOST[b].name}</b>: ${D.BOOST[b].desc}`).join('<br>') : 'Tap to use (count goes down) · tap again to put back · max 3 per run'}</div>
+      <div class="shT sm">Boosters <span class="selN" id="selN">${selBoosts.length} of ${D.MAX_BOOSTS} selected</span></div><div class="bGrid" id="bGrid">${boosts}</div>
+      <div class="bDesc" id="bDesc">${boostDesc()}</div>
       <div class="getB"><button data-act="shop:boost">${ART.coin(15)} Get more with coins</button>${freeBoost ? `<span class="fbOn">${ART.ic('check')} Free ${D.BOOST[freeBoost].name}</span>` : fbLeft > 0 ? `<button data-act="freeBoost"><span class="adt">AD</span> 1 free · ${fbLeft} left</button>` : `<span class="muted">Free boosters used today</span>`}</div>
-      ${typeof REC !== 'undefined' && REC.ok() ? `<button class="recTog ${recOn ? 'on' : ''}" data-act="recTog"><span class="rcDot"></span><span><b>Record my reaction</b><small>Your face + the game → auto-edited video</small></span><em>${recOn ? 'ON' : 'OFF'}</em></button>` : ''}
+      ${CREATOR_UI() ? `<button class="recTog ${recOn ? 'on' : ''}" data-act="recTog"><span class="rcDot"></span><span><b>Record my reaction</b><small>Your face + the game → auto-edited video</small></span><em>${recOn ? 'ON' : 'OFF'}</em></button>` : ''}
       <button class="btn big pulse" data-act="playSel">${ART.ic('play')} PLAY ${m.name.toUpperCase()}</button>`, 'ready');
     demoLoop(mode);
+  }
+  function boostGrid() {
+    const st = S.st;
+    return D.BOOSTERS.map(b => { const on = selBoosts.includes(b.id), n = (st.boosters[b.id] || 0) - (on ? 1 : 0); if (!S.boostOpen(b.id)) return `<button class="bst lockB" data-act="lockB:${b.id}">${ART.ic('lock')}<i>Lv ${D.BOOST_LV[b.id]}</i><small>${b.name}</small></button>`; return `<button class="bst ${on ? 'sel' : ''} ${n <= 0 && !on ? 'empty' : ''}" data-boost="${b.id}">${on ? '<span class="minus">−1</span>' : ''}${ART.ic(b.icon)}<i>${n}</i><small>${b.name}</small></button>`; }).join('');
+  }
+  const boostDesc = () => selBoosts.length ? selBoosts.map(b => `<b>${D.BOOST[b].name}</b>: ${D.BOOST[b].desc}`).join('<br>') : 'Tap to use (count goes down) · tap again to put back · max 3 per run';
+  /* only the booster block changes: no sheet re-open, no jerk */
+  function readyBoosts() {
+    const g = $('bGrid'); if (!g) return readySheet(selMode);
+    const t = document.createElement('div'); t.innerHTML = boostGrid();
+    [...t.children].forEach((nb, i) => { const ob = g.children[i]; if (ob && ob.outerHTML !== nb.outerHTML) ob.replaceWith(nb); });
+    $('bDesc').innerHTML = boostDesc(); $('selN').textContent = `${selBoosts.length} of ${D.MAX_BOOSTS} selected`;
   }
   /* tiny animated demo of the mode's rule */
   function demoLoop(mode) {
@@ -206,11 +221,16 @@ const UI = (() => {
   }
 
   /* ---------- SHEETS / MODALS ---------- */
+  /* v1.6: re-rendering an open sheet only swaps its content (no close/re-open jerk, scroll kept) */
   function sheet(html, cls = '') {
-    const s = $('sheet'); s.className = 'on ' + cls;
-    s.innerHTML = `<div class="shBack" data-act="closeSheet"></div><div class="shBox"><button class="shX" data-act="closeSheet">${ART.ic('close')}</button>${html}</div>`;
+    const s = $('sheet'), box = s.querySelector('.shBox');
+    const inner = `<button class="shX" data-act="closeSheet">${ART.ic('close')}</button>${html}`;
+    if (box && s.classList.contains('on') && s.dataset.cls === cls) { const y = box.scrollTop; box.innerHTML = inner; box.scrollTop = y; return false; }
+    s.className = 'on ' + cls; s.dataset.cls = cls;
+    s.innerHTML = `<div class="shBack" data-act="closeSheet"></div><div class="shBox">${inner}</div>`;
+    return true;
   }
-  function closeSheet() { $('sheet').className = ''; $('sheet').innerHTML = ''; }
+  function closeSheet() { $('sheet').className = ''; $('sheet').innerHTML = ''; $('sheet').dataset.cls = ''; }
   function modal(html, cls = '') {
     const m = $('modal'); m.className = 'on ' + cls; m.innerHTML = `<div class="mdBox">${html}</div>`;
   }
@@ -360,7 +380,7 @@ const UI = (() => {
       if (Math.random() < c.boost) loot.boost = D.BOOSTERS[Math.floor(Math.random() * D.BOOSTERS.length)].id;
       modal(h`<div class="ch3"><div class="mdK">${title || (free ? 'Free chest' : c.name)}</div><div class="ch3T">${c.name}</div>
         <div class="chestBox" style="--cc:${c.color}" id="chestBox">${chestSvg(c.color)}</div>
-        <div class="ch3Tap" id="chTap"><b>TAP!</b><small id="chLeft">3 taps to open</small><div class="dots3"><i></i><i></i><i></i></div></div><div class="ch3Cards" id="chCards"></div></div>`, 'chest');
+        <div class="ch3Tap" id="chTap"><b>TAP!</b><small id="chLeft">Tap the chest to open</small></div><div class="ch3Cards" id="chCards"></div></div>`, 'chest');
       const box = $('chestBox'); let taps = 0, opened = false;
       const open = () => {
         if (opened) return; opened = true; box.classList.add('open'); SND.win(); $('chTap').classList.add('hide');
@@ -376,25 +396,41 @@ const UI = (() => {
         }, 700);
       };
       box.onclick = () => {
-        if (opened) return; taps++; SND.tap(taps);
-        box.classList.remove('hit'); void box.offsetWidth; box.classList.add('hit', 'c' + taps);
-        document.querySelectorAll('#chTap .dots3 i').forEach((d, i) => d.classList.toggle('on', i < taps));
-        const l = $('chLeft'); if (l) l.textContent = taps >= 3 ? 'Opening!' : `${3 - taps} more tap${3 - taps > 1 ? 's' : ''}`;
-        if (taps >= 3) setTimeout(open, 250);
+        if (opened || taps) return; taps = 1; SND.tap(3);
+        box.classList.remove('hit'); void box.offsetWidth; box.classList.add('hit', 'c3', 'burst');
+        const l = $('chLeft'); if (l) l.textContent = 'Opening!';
+        setTimeout(open, 260);
       };
       setTimeout(() => { if (!opened && taps === 0) { const l = $('chLeft'); if (l) l.textContent = 'Tap the chest!'; } }, 2500);
     });
   }
   let chestRes = null;
-  const chestSvg = c => `<svg viewBox="0 0 200 170" style="overflow:visible"><defs><linearGradient id="cw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7a4a2a"/><stop offset="1" stop-color="#3e2210"/></linearGradient><linearGradient id="cm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff6c2"/><stop offset=".5" stop-color="${c}"/><stop offset="1" stop-color="#5a3a10"/></linearGradient></defs>
-    <ellipse cx="100" cy="162" rx="86" ry="10" fill="#000" opacity=".45"/>
-    <g class="cBody"><rect x="18" y="72" width="164" height="86" rx="12" fill="url(#cw)" stroke="#1c0a00" stroke-width="5"/><path d="M18 100h164M18 128h164" stroke="#2a1508" stroke-width="3" opacity=".6"/>
-    <rect x="18" y="72" width="22" height="86" rx="6" fill="url(#cm)" stroke="#1c0a00" stroke-width="4"/><rect x="160" y="72" width="22" height="86" rx="6" fill="url(#cm)" stroke="#1c0a00" stroke-width="4"/>
-    <circle cx="100" cy="128" r="9" fill="#9a6df5" stroke="#fff" stroke-width="3"/>
-    <path class="crk k1" d="M60 100 l14 12 -8 14 16 10" stroke="#fff" stroke-width="3" fill="none"/><path class="crk k2" d="M140 96 l-12 14 10 12 -14 16" stroke="#fff" stroke-width="3" fill="none"/><path class="crk k3" d="M96 76 l8 14 -10 10 8 14" stroke="#fff" stroke-width="3" fill="none"/></g>
-    <g class="cLid"><path d="M14 76 Q14 18 100 18 Q186 18 186 76 Z" fill="url(#cw)" stroke="#1c0a00" stroke-width="5"/><path d="M30 76 Q30 30 50 26 L50 76Z M150 76 L150 26 Q170 30 170 76Z" fill="url(#cm)" stroke="#1c0a00" stroke-width="4"/><path d="M14 76h172" stroke="url(#cm)" stroke-width="10"/>
-    <rect x="84" y="62" width="32" height="40" rx="8" fill="url(#cm)" stroke="#1c0a00" stroke-width="4"/><circle cx="100" cy="80" r="6" fill="#1c0a00"/><path d="M100 82v10" stroke="#1c0a00" stroke-width="4"/></g>
-    <ellipse class="cGlow" cx="100" cy="76" rx="80" ry="14" fill="#fff"/></svg>`;
+  /* v1.6: 3D chest (front + side faces, bevelled lid, metal trims, light sweep) */
+  const chestSvg = c => `<div class="ch3d"><div class="ch3dGlow" style="--cc:${c}"></div><svg viewBox="0 0 220 190" style="overflow:visible"><defs>
+    <linearGradient id="cwF" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5b2fc4"/><stop offset=".55" stop-color="#3a1590"/><stop offset="1" stop-color="#1e0858"/></linearGradient>
+    <linearGradient id="cwS" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2a0e70"/><stop offset="1" stop-color="#14053a"/></linearGradient>
+    <linearGradient id="cwT" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a5cf0"/><stop offset="1" stop-color="#4a1fb0"/></linearGradient>
+    <linearGradient id="cm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".35" stop-color="${c}"/><stop offset="1" stop-color="#2b0e6b"/></linearGradient>
+    <linearGradient id="cSw" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <clipPath id="cClip"><rect x="20" y="84" width="150" height="90" rx="10"/></clipPath></defs>
+    <ellipse cx="108" cy="180" rx="96" ry="10" fill="#000" opacity=".5"/>
+    <g class="cBody">
+      <path d="M170 84 L196 70 L196 156 L170 174 Z" fill="url(#cwS)" stroke="#0c0326" stroke-width="4" stroke-linejoin="round"/>
+      <rect x="20" y="84" width="150" height="90" rx="10" fill="url(#cwF)" stroke="#0c0326" stroke-width="4"/>
+      <path d="M20 112h150M20 142h150" stroke="#12043a" stroke-width="3" opacity=".55"/>
+      <rect x="20" y="84" width="20" height="90" rx="5" fill="url(#cm)" stroke="#0c0326" stroke-width="3.5"/><rect x="150" y="84" width="20" height="90" rx="5" fill="url(#cm)" stroke="#0c0326" stroke-width="3.5"/>
+      <path d="M182 77 L182 163" stroke="url(#cm)" stroke-width="9"/>
+      <g clip-path="url(#cClip)"><rect class="cSweep" x="-60" y="80" width="50" height="100" fill="url(#cSw)" transform="skewX(-20)"/></g>
+      <circle cx="95" cy="138" r="10" fill="#c4a7ff" stroke="#fff" stroke-width="3"/>
+      <path class="crk k1" d="M58 108 l14 12 -8 14 16 10" stroke="#fff" stroke-width="3" fill="none"/><path class="crk k2" d="M136 104 l-12 14 10 12 -14 16" stroke="#fff" stroke-width="3" fill="none"/><path class="crk k3" d="M92 88 l8 14 -10 10 8 14" stroke="#fff" stroke-width="3" fill="none"/></g>
+    <g class="cLid">
+      <path d="M172 88 L198 74 Q197 38 150 18 Q172 34 172 88Z" fill="url(#cwS)" stroke="#0c0326" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M16 88 Q16 22 95 22 Q174 22 174 88 Z" fill="url(#cwT)" stroke="#0c0326" stroke-width="4.5"/>
+      <path d="M34 60 Q46 34 80 30" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".45" fill="none"/>
+      <path d="M30 88 Q30 38 50 32 L50 88Z M140 88 L140 32 Q160 38 160 88Z" fill="url(#cm)" stroke="#0c0326" stroke-width="3.5"/>
+      <path d="M16 88h158" stroke="url(#cm)" stroke-width="10"/>
+      <rect x="79" y="72" width="32" height="40" rx="8" fill="url(#cm)" stroke="#0c0326" stroke-width="3.5"/><circle cx="95" cy="90" r="6" fill="#0c0326"/><path d="M95 92v10" stroke="#0c0326" stroke-width="4"/></g>
+    <ellipse class="cGlow" cx="95" cy="88" rx="82" ry="14" fill="#fff"/></svg></div>`;
   function chestsSheet() {
     const rows = D.CHESTS.map(c => `<div class="chRow"><div class="chIc" style="--cc:${c.color}">${chestSvg(c.color)}</div><div class="chTx"><b>${c.name}</b><small>${c.coins[0]}-${c.coins[1]} coins · ${c.gems[0]}-${c.gems[1]} diamonds${c.boost >= 0.9 ? ' · booster' : ''}</small></div><button class="btn sm" data-chest="${c.id}">${ART.coin(14)} ${fmt(c.price)}</button></div>`).join('');
     sheet(`<div class="shT">Mystery chests</div><div class="shS">Boss levels also drop a free Bronze chest</div>${rows}`);
@@ -495,37 +531,44 @@ const UI = (() => {
   function passIc(r) { return r.skin ? ART.ic('crown') : r.chest ? ART.ic('gift') : r.gems ? ART.gem(20) : r.boost ? ART.ic(D.BOOST[r.boost].icon) : ART.coin(20); }
   function passTx(r) { return r.skin ? 'Elite skin' : r.chest ? D.CHESTS.find(c => c.id === r.chest).name.split(' ')[0] : r.gems ? '+' + r.gems : r.boost ? D.BOOST[r.boost].name.split(' ')[0] : '+' + r.coins; }
   function misProg(p, m) { const st = S.st.stats; if (m.k === 'bestTiles') return p.bestTiles || 0; return (st[m.k] || 0) - ((p.base || {})[m.k] || 0); }
-  function passSheet() {
+  /* v1.6 Sanx Pass: vertical ladder. tier line in the middle, free left, Premium (crown) right */
+  let passTab = 'rw';
+  function passSheet(tab) {
+    if (tab) passTab = tab;
     const p = S.passTouch(), tier = S.passTier(), into = p.pts % D.PASS.per;
-    const rows = Array.from({ length: D.PASS.tiers }, (_, i) => {
-      const r = D.PASS.reward(i), g = D.PASS.gold(i), ok = i < tier, got = p.got.includes(i), got2 = p.got2.includes(i);
-      return `<div class="psCol ${ok ? 'ok' : ''} ${i === tier ? 'now' : ''}"><small>${i + 1}</small>
-        <button class="psT ${ok ? 'ok' : ''} ${got ? 'got' : ''} ${i === D.PASS.tiers - 1 ? 'final' : ''}" data-act="${ok && !got ? 'passClaim:' + i : 'none'}"><span>${passIc(r)}</span><b>${passTx(r)}</b>${got ? `<i>${ART.ic('check')}</i>` : ''}</button>
-        <button class="psT gold ${ok && p.gold ? 'ok' : ''} ${got2 ? 'got' : ''} ${p.gold ? '' : 'lk'}" data-act="${ok && p.gold && !got2 ? 'passClaim2:' + i : 'none'}"><span>${passIc(g)}</span><b>${passTx(g)}</b>${got2 ? `<i>${ART.ic('check')}</i>` : !p.gold ? `<i class="lk">${ART.ic('lock')}</i>` : ''}</button></div>`;
-    }).join('');
+    const cell = (r, i, prem) => {
+      const ok = i < tier, got = prem ? p.got2.includes(i) : p.got.includes(i), lk = prem && !p.gold, can = ok && !got && !lk;
+      return `<button class="pvR ${prem ? 'prem' : 'free'} ${ok ? 'ok' : ''} ${got ? 'got' : ''} ${can ? 'can' : ''} ${lk ? 'lk' : ''}" data-act="${can ? (prem ? 'passClaim2:' : 'passClaim:') + i : 'none'}">
+        <span class="pvIc">${passIc(r)}</span><b>${passTx(r)}</b>${got ? `<i class="pvOk">${ART.ic('check')}</i>` : lk ? `<i class="pvLk">${ART.ic('lock')}</i>` : can ? '<em>CLAIM</em>' : ''}</button>`;
+    };
+    const rows = Array.from({ length: D.PASS.tiers }, (_, i) => `<div class="pvRow ${i < tier ? 'ok' : ''} ${i === tier ? 'now' : ''} ${i === D.PASS.tiers - 1 ? 'final' : ''}">
+        ${cell(D.PASS.reward(i), i, false)}<div class="pvNode"><span>${i + 1}</span></div>${cell(D.PASS.gold(i), i, true)}</div>`).join('');
     const ready = Array.from({ length: tier }, (_, i) => i).filter(i => !p.got.includes(i) || (p.gold && !p.got2.includes(i))).length;
+    const misDone = D.PASS.missions.filter(m => !p.mis.includes(m.id) && misProg(p, m) >= m.n).length;
     const mis = D.PASS.missions.map(m => { const v = Math.min(m.n, Math.max(0, misProg(p, m))), done = v >= m.n, cl = p.mis.includes(m.id); return `<div class="qRow ${cl ? 'claimed' : ''}"><div class="qTx"><b>${m.t}</b><div class="bar"><i style="width:${v / m.n * 100}%"></i></div><small>${v}/${m.n}</small></div>${cl ? `<span class="qOk">${ART.ic('check')}</span>` : done ? `<button class="btn sm pulse" data-act="passMis:${m.id}">+${m.pts} pts</button>` : `<span class="qRw">+${m.pts} pts</span>`}</div>`; }).join('');
-    sheet(h`<div class="psHead"><span>${ART.ic('ticket')}</span><div><small>SEASON · ENDS IN ${left(S.passEnd()).toUpperCase()}</small><b>Sanx Pass</b></div><em>Tier ${tier}/${D.PASS.tiers}</em></div>
-      <div class="bar xp"><i style="width:${tier >= D.PASS.tiers ? 100 : into / D.PASS.per * 100}%"></i></div><div class="shS">${tier >= D.PASS.tiers ? 'Pass complete!' : `${into}/${D.PASS.per} points to tier ${tier + 1}`} · ${ready ? `<b>${ready} reward${ready > 1 ? 's' : ''} ready</b>` : 'Play to earn points'}</div>
-      ${p.gold ? `<div class="goldOn">${ART.ic('crown')} GOLD TRACK UNLOCKED</div>` : `<button class="goldBtn" data-act="passGold">${ART.ic('crown')}<span><b>Unlock the Gold track free</b><small>Watch ${D.PASS.goldAds - (p.goldAds || 0)} more ad${D.PASS.goldAds - (p.goldAds || 0) > 1 ? 's' : ''} · double rewards every tier · never real money</small></span><em>${p.goldAds || 0}/${D.PASS.goldAds}</em></button>`}
-      ${ready ? `<button class="btn big" data-act="passAll">${ART.ic('gift')} CLAIM ALL (${ready})</button>` : ''}
-      <div class="psKey"><span>Top: free rewards</span><span class="g">Bottom: Gold track</span></div>
-      <div class="psRoad">${rows}</div>
-      <div class="secT">Season missions</div>${mis}
+    const body = passTab === 'rw' ? h`
+      ${p.gold ? `<div class="pvPremOn">${ART.ic('crown')} PREMIUM TRACK UNLOCKED</div>` : `<button class="pvPremBtn" data-act="passGold">${ART.ic('crown')}<span><b>Unlock Premium free</b><small>Watch ${D.PASS.goldAds - (p.goldAds || 0)} more ad${D.PASS.goldAds - (p.goldAds || 0) > 1 ? 's' : ''} · extra reward every tier · never real money</small></span><em>${p.goldAds || 0}/${D.PASS.goldAds}</em></button>`}
+      ${ready ? `<button class="btn big pulse" data-act="passAll">${ART.ic('gift')} CLAIM ALL (${ready})</button>` : ''}
+      <div class="pvKey"><span>FREE</span><span>TIER</span><span class="pr">${ART.ic('crown')} PREMIUM</span></div>
+      <div class="pvLadder">${rows}</div>` : h`<div class="secT">Season missions</div>${mis}
       <div class="secT">Earn points</div><div class="psHow">
-        <span>Level clear <b>+${D.PASS.pts.level}</b></span><span>Boss <b>+${D.PASS.pts.boss}</b></span><span>Event run <b>+${D.PASS.pts.event}</b></span><span>Quest <b>+${D.PASS.pts.quest}</b></span><span>Daily <b>+${D.PASS.pts.daily}</b></span><span>IMPOSSIBLE 100 win <b>+${D.PASS.pts.imp}</b></span><span>Duel win <b>+${D.PASS.pts.chal}</b></span><span>${ART.ic('ticket')} Pass Boost booster <b>2×</b></span></div>`, 'pass');
-    setTimeout(() => { const n = document.querySelector('.psCol.now'); if (n) n.scrollIntoView({ inline: 'center', block: 'nearest' }); }, 50);
+        <span>Level clear <b>+${D.PASS.pts.level}</b></span><span>Boss <b>+${D.PASS.pts.boss}</b></span><span>Event run <b>+${D.PASS.pts.event}</b></span><span>Quest <b>+${D.PASS.pts.quest}</b></span><span>Daily <b>+${D.PASS.pts.daily}</b></span><span>IMPOSSIBLE 100 win <b>+${D.PASS.pts.imp}</b></span><span>Duel win <b>+${D.PASS.pts.chal}</b></span><span>${ART.ic('ticket')} Pass Boost booster <b>2×</b></span></div>`;
+    const fresh = sheet(h`<div class="pvHead"><span class="pvCrown">${ART.ic('crown')}</span><div><small>SEASON · ENDS IN ${left(S.passEnd()).toUpperCase()}</small><b>Sanx Pass</b></div><em>Tier <b>${tier}</b>/${D.PASS.tiers}</em></div>
+      <div class="bar xp"><i style="width:${tier >= D.PASS.tiers ? 100 : into / D.PASS.per * 100}%"></i></div><div class="shS">${tier >= D.PASS.tiers ? 'Pass complete!' : `${into}/${D.PASS.per} points to tier ${tier + 1}`}</div>
+      <div class="pvTabs"><button class="${passTab === 'rw' ? 'on' : ''}" data-act="passTab:rw">${ART.ic('gift')} Rewards${ready ? `<i class="dot"></i>` : ''}</button><button class="${passTab === 'mis' ? 'on' : ''}" data-act="passTab:mis">${ART.ic('flag')} Missions${misDone ? `<i class="dot"></i>` : ''}</button></div>
+      ${body}`, 'pass');
+    if (passTab === 'rw' && (fresh || tab)) setTimeout(() => { const n = document.querySelector('.pvRow.now') || document.querySelector('.pvRow.final'); const box = document.querySelector('#sheet .shBox'); if (n && box) box.scrollTop = Math.max(0, n.offsetTop - box.clientHeight / 2 + 30); }, 60);
   }
   async function passGold() {
     const p = S.passTouch(); if (p.gold) return;
     if (!(await ADS.rewarded('passGold'))) return;
-    p.goldAds = (p.goldAds || 0) + 1; if (p.goldAds >= D.PASS.goldAds) { p.gold = true; toast('Gold track unlocked!', 'crown'); FX.win('fireworks'); } S.save(); passSheet();
+    p.goldAds = (p.goldAds || 0) + 1; if (p.goldAds >= D.PASS.goldAds) { p.gold = true; toast('Premium track unlocked!', 'crown'); FX.win('fireworks'); } S.save(); passSheet();
   }
   async function passClaim2(i) {
     const p = S.passTouch(); if (!p.gold || i >= S.passTier() || p.got2.includes(i)) return;
     p.got2.push(i); S.save();
     const r = { ...D.PASS.gold(i) };
-    if (r.chest) { const c = r.chest; delete r.chest; await chest(c, true, 'Gold reward'); } else { S.grant(r); reward(r, `Gold tier ${i + 1}`); }
+    if (r.chest) { const c = r.chest; delete r.chest; await chest(c, true, 'Premium reward'); } else { S.grant(r); reward(r, `Premium tier ${i + 1}`); }
     passSheet(); refresh();
   }
   function passMis(id) {
@@ -536,45 +579,90 @@ const UI = (() => {
   /* ---------- CHALLENGES TAB: 10 ladder challenges x 3 stars, 30 stars = Legendary skin ---------- */
   const starsOf = id => (S.st.cstars[id] || {}).s || 0;
   const totalStars = () => D.CHALLENGES.reduce((a, c) => a + starsOf(c.id), 0);
+  /* v1.6 STAR ROAD: hero ring, big NEXT card, a road of challenges, chests at 10/20/30 stars */
+  const chLocked = c => !S.feat('chall') || (c.mode !== 'classic' && !S.unlocked(c.mode));
+  function ring(v, max, sz = 112) {
+    const r = sz / 2 - 9, C = 2 * Math.PI * r, f = Math.min(1, v / max);
+    return `<svg class="srRing" viewBox="0 0 ${sz} ${sz}" width="${sz}" height="${sz}"><defs><linearGradient id="srG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c4a7ff"/><stop offset="1" stop-color="#743ae8"/></linearGradient></defs>
+      <circle cx="${sz / 2}" cy="${sz / 2}" r="${r}" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="10"/>
+      <circle cx="${sz / 2}" cy="${sz / 2}" r="${r}" fill="none" stroke="url(#srG)" stroke-width="10" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - f)}" transform="rotate(-90 ${sz / 2} ${sz / 2})"/></svg>`;
+  }
   function renderChall() {
     const st = S.st, tot = totalStars(), own = st.skins.includes('starlord');
-    const cards = D.CHALLENGES.map((c, i) => {
-      const s = starsOf(c.id), best = (st.cstars[c.id] || {}).b || 0, chL0 = !S.feat('chall'), lock = chL0 || (c.mode !== 'classic' && !S.unlocked(c.mode));
-      return `<button class="cCard ${lock ? 'locked' : ''} ${s === 3 ? 'full' : ''}" data-act="${chL0 ? 'locked:chall' : lock ? 'none' : 'cplay:' + c.id}"><span class="ccN">${i + 1}</span><span class="ccIc">${ART.ic(lock ? 'lock' : c.icon)}</span>
-        <span class="ccTx"><b>${c.name}</b><small>${lock ? 'Unlock ' + D.MODE[c.mode].name + ' first' : c.tag + ' · best ' + best + ' tiles'}</small><span class="ccSt">${c.stars.map((t, k) => `<i class="${k < s ? 'on' : ''}">${ART.ic('star')}<em>${t}</em></i>`).join('')}</span></span>${ART.ic('play', 'ccGo')}</button>`;
-    }).join('');
-    const impL = !S.feat('imp'), chL = !S.feat('chall');
-    const duL = !S.feat('duel'), mb = S.memBest(), rk = D.memRank(mb), nx = D.memNext(mb);
-    $('chall').innerHTML = h`${topbar()}<div class="pgT">Challenges <span class="pgSub">${tot}/${D.STARS_FOR_SKIN} stars</span></div><div class="pgBody">
+    st.starChests = st.starChests || [];
+    const list = D.CHALLENGES.map((c, i) => ({ c, i, s: starsOf(c.id), best: (st.cstars[c.id] || {}).b || 0, lock: chLocked(c) }));
+    const next = list.find(x => !x.lock && x.s < 3) || list.find(x => !x.lock) || list[0];
+    const sk = D.skin('starlord');
+    const chestNode = (k, x) => { const got = st.starChests.includes(k), rdy = tot >= x.stars && !got; return `<button class="srChest ${got ? 'got' : rdy ? 'rdy' : ''}" style="left:${x.stars / 30 * 100}%" data-act="${rdy ? 'schest:' + k : 'none'}">${ART.ic(got ? 'check' : 'gift')}<small>${x.stars}★</small></button>`; };
+    const unlockTxt = c => !S.feat('chall') ? `Unlocks at Level ${D.UNLOCK.chall.lv}` : `Play ${D.MODE[c.mode].name}: unlocks at Level ${D.MODE[c.mode].unlock}`;
+    const starsHtml = (c, s) => c.stars.map((t, k) => `<i class="${k < s ? 'on' : ''}">${ART.ic('star')}<em>${t}</em></i>`).join('');
+    const nx = next.c;
+    const road = list.map(({ c, i, s, best, lock }) => `<button class="srNode ${lock ? 'locked' : ''} ${s === 3 ? 'full' : ''} ${c === nx ? 'cur' : ''}" data-act="${lock ? (S.feat('chall') ? 'none' : 'locked:chall') : 'cplay:' + c.id}">
+        <span class="srDot">${lock ? ART.ic('lock') : s === 3 ? ART.ic('check') : i + 1}</span>
+        <span class="srTx"><b>${c.name}</b><small>${lock ? unlockTxt(c) : `${D.MODE[c.mode].name}${c.grid ? ' · ' + c.grid + '×' + c.grid : ''}${c.hearts ? ' · 1 heart' : ''} · best ${best}`}</small></span>
+        <span class="ccSt">${starsHtml(c, s)}</span></button>`).join('');
+    const impL = !S.feat('imp'), duL = !S.feat('duel'), mb = S.memBest(), rk = D.memRank(mb), nr = D.memNext(mb);
+    $('chall').innerHTML = h`${topbar()}<div class="pgT">Challenges</div><div class="pgBody">
+      <div class="srHero">
+        <div class="srRingBox">${ring(tot, 30)}<div class="srRingTx"><b>${tot}</b><small>/ 30 ★</small></div></div>
+        <div class="srHeroTx"><small>STAR ROAD</small><b>${own ? 'Star Legend unlocked' : 'Win the Star Legend skin'}</b><em>${own ? 'Collect stars for chest rewards' : `${30 - tot} stars to go`}</em>
+          <div class="srSkin">${sk.colors.slice(0, 4).map((c, i) => `<span class="tile" style="--c:${c}"><span class="tFace">${ART.tileIc(sk.icons[i])}</span></span>`).join('')}</div></div>
+        <div class="srTrack"><div class="srFill" style="width:${Math.min(100, tot / 30 * 100)}%"></div>${D.STAR_CHESTS.map((x, k) => chestNode(k, x)).join('')}</div>
+      </div>
+      <div class="srNext ${next.lock ? 'locked' : ''}">
+        <div class="snK">${next.s === 3 ? 'ALL STARS · PLAY AGAIN' : 'NEXT CHALLENGE'} · ${next.i + 1}/10</div>
+        <div class="snRow"><span class="snIc">${ART.ic(nx.icon)}</span><span class="snTx"><b>${nx.name}</b><small>${D.MODE[nx.mode].name} ladder · starts at 2 tiles, +1 every round</small></span></div>
+        <div class="snStars">${nx.stars.map((t, k) => `<div class="${k < next.s ? 'on' : ''}">${ART.ic('star')}<b>${t}</b><small>tiles</small></div>`).join('')}</div>
+        <button class="btn big pulse" data-act="${next.lock ? 'locked:chall' : 'cplay:' + nx.id}">${ART.ic(next.lock ? 'lock' : 'play')} ${next.lock ? 'LOCKED' : 'PLAY'}</button>
+        <div class="snNote">${ART.ic('heart')} Out of hearts? Watch an ad for +1 heart</div>
+      </div>
+      <div class="secT">The road <span class="muted">3 stars each</span></div>
+      <div class="srRoad">${road}</div>
+      <div class="secT">More challenges</div>
       <div class="featRow">
         ${impL ? `<button class="feat impF locked" data-act="locked:imp"><span class="ftK">${ART.ic('lock')} LEVEL ${D.UNLOCK.imp.lv}</span><b>IMPOSSIBLE <i>100</i></b><small>The ultimate memory test</small>${ART.ic('brain', 'ftIc')}</button>` : `<button class="feat impF" data-act="imp"><span class="ftK">CHALLENGE</span><b>IMPOSSIBLE <i>100</i></b><small>${st.imp.best ? 'Your best: ' + st.imp.best + ' tiles' : 'How much can you remember?'}</small>${ART.ic('brain', 'ftIc')}</button>`}
         <button class="feat chF ${duL ? 'locked' : ''}" data-act="${duL ? 'locked:duel' : 'chal'}">${CH.pendingCount() && !duL ? `<i class="dot"></i>` : ''}<span class="ftK">${duL ? ART.ic('lock') + ' LEVEL ' + D.UNLOCK.duel.lv : 'DUEL LADDER'}</span><b>DUEL A FRIEND</b><small>Same pattern. Winner takes 2×</small>${ART.ic('swords', 'ftIc')}</button>
       </div>
-      <button class="memCard" data-act="test"><span class="mcL"><small>MEMORY TEST · NO BOOSTERS</small><b>Memory Score ${mb || '?'}</b><em>${mb ? `${rk.name}${nx ? ` · ${nx.min - mb} tile${nx.min - mb > 1 ? 's' : ''} to ${nx.name}` : ''}` : 'How many tiles can you remember?'}</em></span><span class="mcGo">${ART.ic('brain')} TEST</span></button>
-      ${typeof REC !== 'undefined' && REC.ok() ? `<button class="recTog" data-act="testRec"><span class="rcDot"></span><span><b>Memory Test + record my reaction</b><small>Your face + the game → auto-edited video</small></span><em>${ART.ic('play')}</em></button>` : ''}
-      <div class="starBar"><div class="sbTop">${ART.ic('star')}<b>${tot}/${D.STARS_FOR_SKIN}</b><span>Collect all stars to unlock the <b>Star Legend</b> animated skin</span></div><div class="bar"><i style="width:${tot / D.STARS_FOR_SKIN * 100}%"></i></div>
-        ${own ? `<em class="ok">${ART.ic('check')} Star Legend unlocked</em>` : tot >= D.STARS_FOR_SKIN ? `<button class="btn sm pulse" data-act="cstarClaim">CLAIM SKIN</button>` : ''}</div>
-      <div class="secT">Ladder challenges <span class="muted">pattern starts at 2 tiles, +1 every round</span></div>
-      ${chL ? `<div class="nextUnl big">${ART.ic('lock')}<span><b>Ladder challenges unlock at Level ${D.UNLOCK.chall.lv}</b><small>Collect 30 stars for the Star Legend skin</small></span></div>` : ''}<div class="cList ${chL ? 'lockedList' : ''}">${cards}</div></div>`;
+      <button class="memCard" data-act="test"><span class="mcL"><small>MEMORY TEST · NO BOOSTERS</small><b>Memory Score ${mb || '?'}</b><em>${mb ? `${rk.name}${nr ? ` · ${nr.min - mb} tile${nr.min - mb > 1 ? 's' : ''} to ${nr.name}` : ''}` : 'How many tiles can you remember?'}</em></span><span class="mcGo">${ART.ic('brain')} TEST</span></button>
+    </div>`;
+  }
+  /* star chest: one tap opens, optional 2× with a rewarded ad */
+  async function starChest(k) {
+    const st = S.st, x = D.STAR_CHESTS[k]; st.starChests = st.starChests || [];
+    if (!x || st.starChests.includes(k) || totalStars() < x.stars) return;
+    st.starChests.push(k); S.save();
+    await chest(x.chest, true, `${x.stars} star chest`);
+    const g = { coins: x.coins, gems: x.gems || 0 };
+    if (x.skin && !st.skins.includes(x.skin)) S.grant({ skin: x.skin });
+    S.grant(g); S.save();
+    const pick = await ask(h`<div class="rwRays"></div><div class="mdK">${x.stars} STAR BONUS</div><div class="rwItems">${rwItems(g)}</div>${x.skin ? `<div class="mdS">+ Star Legend skin unlocked!</div>` : ''}
+      <button class="btn big pulse" data-pick="ad">${ART.ic('ad')} WATCH AD · 2× BONUS</button><button class="btn ghost" data-pick="no">Collect</button>`, 'rw');
+    if (pick === 'ad' && await ADS.rewarded('starChest')) { S.grant(g); S.save(); reward(g, '2× bonus'); }
+    if (x.skin) { FX.win('fireworks'); }
+    renderChall(); refresh();
   }
   function cPlay(id) {
     if (!NET.gate()) return; closeModal();
     const c = D.CHALLENGES.find(x => x.id === id);
-    G.start({ mode: c.mode, ladder: { start: 2, grid: c.grid || 3 }, ev: { id: 'ch_' + id, name: c.name.toUpperCase(), icon: c.icon, title: `★ ${c.stars.join(' / ')} tiles`, hearts: c.hearts || 3, noRevive: true, boss: false, ladder: true, grid: c.grid || 3, theme: ['#743ae8', '#14063a'],
+    G.start({ mode: c.mode, ladder: { start: 2, grid: c.grid || 3 }, ev: { id: 'ch_' + id, name: c.name.toUpperCase(), icon: c.icon, title: `★ ${c.stars.join(' / ')} tiles`, hearts: c.hearts || 3, maxAdRevive: 1, adOnly: true, reviveHearts: 1, boss: false, ladder: true, grid: c.grid || 3, theme: ['#743ae8', '#14063a'],
       onStep: R => { const k = c.stars.filter(t => R.maxLen >= t).length; if (k > (R.cStars || 0)) { R.cStars = k; G.info('★'.repeat(k) + ` ${k} star${k > 1 ? 's' : ''}!`); } },
       onEnd: r => cEnd(c, r) } });
   }
-  function cEnd(c, r) {
+  async function cEnd(c, r) {
     const st = S.st, rec = st.cstars[c.id] = st.cstars[c.id] || { s: 0, b: 0 };
     const k = c.stars.filter(t => r.tiles >= t).length, old = rec.s;
     rec.b = Math.max(rec.b, r.tiles); const g = { coins: 0, gems: 0 };
     for (let i = old; i < k; i++) { g.coins += D.STAR_RW[i].coins || 0; g.gems += D.STAR_RW[i].gems || 0; }
     rec.s = Math.max(old, k); S.grant(g); S.save();
+    const full = k === 3 && old < 3;
     show('chall');
+    await ADS.inter('run');
     modal(h`<div class="rw2"><div class="rwRib"><span>${c.name}</span></div><div class="cStars">${c.stars.map((t, i) => `<i class="${i < k ? 'on' : ''} ${i >= old && i < k ? 'new' : ''}" style="--d:${i * 220}ms">${ART.ic('star')}</i>`).join('')}</div>
       <div class="erBig"><span>${r.tiles}</span><small>tiles remembered</small></div><div class="mdS">${k === 3 ? 'All 3 stars!' : `Next star at ${c.stars[k]} tiles`}</div>
       ${g.coins || g.gems ? `<div class="rwItems">${rwItems(g)}</div>` : ''}
-      <button class="btn big collect" data-act="cplay:${c.id}">${ART.ic('refresh')} TRY AGAIN</button>${clipBtn(G.last)}<button class="btn ghost" data-act="closeModal">Back</button></div>`, 'rw');
+      ${full ? `<button class="btn big pulse" data-act="star3ad:${c.id}">${ART.ic('ad')} 3 STARS! WATCH AD · 2× ${fmt(D.STAR3_COINS * 2)} COINS</button>` : ''}
+      <button class="btn big collect" data-act="cplay:${c.id}">${ART.ic('refresh')} TRY AGAIN</button><button class="btn ghost" data-act="closeModal">Back</button></div>`, 'rw');
+    if (full) { S.grant({ coins: D.STAR3_COINS }); S.save(); }
     if (k > old) { SND.win(); FX.win('stars'); } else SND.lose();
     if (totalStars() >= D.STARS_FOR_SKIN && !st.skins.includes('starlord')) setTimeout(() => toast('30 stars! Claim the Star Legend skin', 'star'), 900);
   }
@@ -628,7 +716,7 @@ const UI = (() => {
       <div class="secT">Achievements <span class="muted">${nAch}/${D.ACH.length}</span></div><div class="achList">${achs}</div>
       <div class="secT">Settings</div>
       <div class="setList">
-        ${tog('sfx', 'sound', 'Sound effects')}${tog('music', 'music', 'Music')}${tog('vib', 'vibrate', 'Vibration')}
+        ${tog('sfx', 'sound', 'Sound effects')}${tog('music', 'music', 'Music')}${tog('vib', 'vibrate', 'Vibration')}${tog('bg', 'image', 'Animated background')}
         <div class="volRow">${ART.ic('music')}<span>Music volume</span><input type="range" class="volR" data-vol="musicVol" min="0" max="1" step="0.05" value="${st.set.musicVol == null ? 0.7 : st.set.musicVol}"></div>
         <div class="volRow">${ART.ic('sound')}<span>Tile sound volume</span><input type="range" class="volR" data-vol="sfxVol" min="0" max="1" step="0.05" value="${st.set.sfxVol == null ? 1 : st.set.sfxVol}"></div>
         ${window.BS_PRIV ? `<button class="setRow" data-act="privOpts">${ART.ic('shield')}<span>Ad privacy choices</span>${ART.ic('next')}</button>` : ''}
@@ -649,9 +737,9 @@ const UI = (() => {
       <div class="ovT">${o.label || 'Level ' + o.level}</div>
       ${o.near ? `<div class="nearMiss">${o.near}</div>` : ''}
       ${o.nearPB ? `<div class="nearPB">${ART.ic('fire')} So close to your record of ${o.best} levels!</div>` : ''}
-      <div class="ovS">Continue from this level?</div>
+      <div class="ovS">${o.ev && o.ev.reviveHearts ? 'Keep your tiles and go on with 1 heart?' : 'Continue from this level?'}</div>
       <div class="ovBtns">
-        ${o.canAd ? `<button class="btn big pulse" data-act="revAd">${ART.ic('ad')} Watch ad · Continue ${o.adMax > 1 ? `<small>${o.adMax - o.adN} left</small>` : ''}</button>` : ''}
+        ${o.canAd ? `<button class="btn big pulse" data-act="revAd">${ART.ic('ad')} ${o.ev && o.ev.reviveHearts ? 'Watch ad · +1 heart' : 'Watch ad · Continue'} ${o.adMax > 1 ? `<small>${o.adMax - o.adN} left</small>` : ''}</button>` : ''}
         ${o.canShield ? `<button class="btn big alt" data-act="revShield">${ART.shieldC(20)} Use shield <small>(${S.st.shields})</small></button>` : ''}
         <button class="btn ghost" data-act="giveUp">${o.canAd || o.canShield ? 'No thanks' : 'See result'}</button>
       </div></div>`;
@@ -769,7 +857,9 @@ const UI = (() => {
     lastRes = r;
   }
   /* ================= v1.4 SAVE CLIP: your run as a short game video ================= */
-  const clipBtn = r => r && r.clip && (typeof CLIP !== 'undefined') && CLIP.canRecord() ? `<button class="btn alt clipBtn" data-act="clip">${ART.ic('play')} SAVE CLIP <small>video for Reels / Shorts</small></button>` : '';
+  /* v1.6: reaction / Save Clip live only in the laptop Studio (creator build), never in the app */
+  const CREATOR_UI = () => !!window.BS_CREATOR && typeof REC !== 'undefined' && REC.ok();
+  const clipBtn = r => window.BS_CREATOR && r && r.clip && (typeof CLIP !== 'undefined') && CLIP.canRecord() ? `<button class="btn alt clipBtn" data-act="clip">${ART.ic('play')} SAVE CLIP <small>video for Reels / Shorts</small></button>` : '';
   async function saveClip(r) {
     if (!r || !r.clip) return;
     const n = r.tiles || r.clip.seq.length, mb = S.memBest();
@@ -931,12 +1021,12 @@ const UI = (() => {
       else if (!S.st.boosters[d.boost]) { toast('None left · get more with coins or a free ad', 'coins'); return; }
       else if (selBoosts.length >= D.MAX_BOOSTS) { toast(`Max ${D.MAX_BOOSTS} boosters per run`, 'info'); return; }
       else selBoosts.push(d.boost);
-      readySheet(selMode); return;
+      readyBoosts(); return;
     }
     if (d.claim) { const c = S.claimQuest(d.claim); if (c) { S.passAdd('quest'); SND.coin(); toast(`+${c} coins`, 'check'); } questsSheet(); refresh(); return; }
     if (d.chest) { const c = D.CHESTS.find(x => x.id === d.chest); if (!S.spend('coins', c.price)) { toast('Not enough coins', 'coins'); return; } closeSheet(); await chest(c.id); refresh(); return; }
     if (d.tab || d.equip || d.buyskin || d.buyb || d.cos) { SHOP.click(d, t); return; }
-    if (d.tog) { S.st.set[d.tog] = !S.st.set[d.tog]; S.save(); if (d.tog === 'music') SND.music(S.st.set.music && cur !== 'game'); if (cur === 'profile') renderProfile(); else t.classList.toggle('on', S.st.set[d.tog]); return; }
+    if (d.tog) { S.st.set[d.tog] = !S.st.set[d.tog]; S.save(); if (d.tog === 'music') SND.music(S.st.set.music && cur !== 'game'); if (d.tog === 'bg' && typeof BG !== 'undefined') BG.refresh(); if (cur === 'profile') renderProfile(); else if (cur === 'shop') SHOP.render(); else t.classList.toggle('on', S.st.set[d.tog]); return; }
     const a = d.act; const st = S.st;
     if (!a || a === 'none') return;
     const [k, v] = a.split(':');
@@ -950,6 +1040,9 @@ const UI = (() => {
       case 'rwDouble': if (rwLast && await ADS.rewarded('double')) { const g = rwLast; rwLast = null; S.grant(g); t.remove(); toast('Doubled!', 'coins'); FX.flyCoins(document.querySelector('.rwI')); } break;
       case 'cplay': cPlay(v); break;
       case 'cstarClaim': starSkin(); break;
+      case 'passTab': passSheet(v); break;
+      case 'schest': starChest(+v); break;
+      case 'star3ad': { const bt = t; if (bt) bt.disabled = true; if (await ADS.rewarded('star3')) { S.grant({ coins: D.STAR3_COINS }); S.save(); reward({ coins: D.STAR3_COINS }, '2× star coins'); } else if (bt) bt.disabled = false; refresh(); } break;
       case 'passGold': passGold(); break;
       case 'passClaim2': passClaim2(+v); break;
       case 'passMis': passMis(v); break;
@@ -1033,7 +1126,7 @@ const UI = (() => {
       default:
         if (k === 'ev') EV.act(a.slice(3), t);
         else if (k.startsWith('ch')) CH.act(a, t);
-        else if (k.startsWith('sh')) SHOP.act(a, t);
+        else if (k.startsWith('sh') || k.startsWith('bg')) SHOP.act(a, t);
     }
   }
   /* home: login → comeback → event-of-the-day → challenge in clipboard */

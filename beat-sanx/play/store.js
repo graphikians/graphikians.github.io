@@ -19,7 +19,7 @@ const S = (() => {
     noAds: false,
     ads: { clears: 0, lastInter: 0, runs: 0 },
     ev: {}, lb: { wk: '', claimed: false }, rival: { wk: '', beaten: false },
-    set: { sfx: true, music: true, vib: true },
+    set: { sfx: true, music: true, vib: true, bg: true },
     seenTut: false, created: Date.now(),
     pid: '', cos: {}, own: {}, trials: {}, trialDay: { d: '', n: 0 }, badges: [], collect: [],
     imp: { best: 0, day: '', entries: 0, gemDay: {}, wins: 0 },
@@ -37,6 +37,7 @@ const S = (() => {
   st.imp = Object.assign(fresh().imp, st.imp); st.chal = Object.assign(fresh().chal, st.chal); st.pass = Object.assign(fresh().pass, st.pass);
   st.badges = st.badges || []; st.collect = st.collect || [];
   st.avOwned = st.avOwned || ['ace', 'nova']; st.mem = Object.assign(fresh().mem, st.mem); st.dbeat = Object.assign(fresh().dbeat, st.dbeat); st.unlockSeen = st.unlockSeen || [];
+  st.bg = Object.assign({ own: ['glow', 'aurora', 'spot'], on: 'glow', trial: null, tday: { d: '', n: 0 } }, st.bg || {}); st.starChests = st.starChests || []; st.modeSeen = st.modeSeen || {}; st.twistFree = st.twistFree || {};
   /* v1.4 migration: retired boosters become coins; old players keep every feature unlocked */
   if (!st.v14) {
     let refund = 0;
