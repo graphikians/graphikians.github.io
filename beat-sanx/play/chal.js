@@ -134,7 +134,7 @@ const CH = (() => {
     if (v === 'ad' && !(await ADS.rewarded('chalEntry'))) return;
     if (v === 'bet' && !S.spend('coins', p.stake)) return UI.toast('Not enough coins', 'coins');
     UI.closeSheet();
-    G.start({ mode: p.mode, chal: { role: 'play', id: p.id, cid: p.cid, seed: p.seed, target: p.tiles, terr: p.err, tsecs: p.secs, stake: p.stake, bet: v === 'bet', practice: v === 'practice', name: p.name, ts: p.ts, how: v, ghost: !!p.ghost, gpid: p.gpid } });
+    G.start({ mode: p.mode, chal: { role: 'play', id: p.id, cid: p.cid, seed: p.seed, target: p.tiles, terr: p.err, tsecs: p.secs, stake: p.stake, bet: v === 'bet', practice: v === 'practice', name: p.name, ts: p.ts, how: v, ghost: !!p.ghost, gpid: p.gpid, guid: p.guid } });
   }
   async function acceptOnline(id) {
     if (!NET.gate()) return;
@@ -146,7 +146,7 @@ const CH = (() => {
     if (!NET.gate()) return;
     UI.toast('Finding a real opponent…', 'globe');
     try { const g = await FB.randomRun(st().pid); if (!g) return UI.toast('No opponents yet. Try again soon!', 'globe');
-      accept({ kind: 'C', id: 'G' + rid(), cid: 'ghost:' + g.pid, mode: g.mode, seed: g.seed, tiles: g.tiles, stake: 0, ts: now(), name: g.name, err: g.err, secs: g.secs, ghost: true, gpid: g.pid });
+      accept({ kind: 'C', id: 'G' + rid(), cid: 'ghost:' + g.pid, mode: g.mode, seed: g.seed, tiles: g.tiles, stake: 0, ts: now(), name: g.name, err: g.err, secs: g.secs, ghost: true, gpid: g.pid, guid: g.uid || '' });
     } catch (e) { UI.toast('Could not reach the duel server', 'wifi'); }
   }
   /* ---------- settle (offline result code or online result) ---------- */
@@ -195,7 +195,7 @@ const CH = (() => {
     p.code = makeResult(p);
     s.chal.played.push(p); if (s.chal.played.length > 40) s.chal.played.splice(0, 10);
     s.chal.invites = (s.chal.invites || []).filter(d => d._id !== ch.id); S.save();
-    if (FB.on) { try { if (ch.ghost) { if (won) await FB.sendBonus(ch.gpid, 50, s.pid); } else await FB.finishDuel(ch.id, { fid: s.pid, fname: s.name, tiles: res.tiles, err, secs }); } catch (e) { } }
+    if (FB.on) { try { if (ch.ghost) { if (won && ch.guid) await FB.sendBonus(ch.guid, 50, s.pid); } else await FB.finishDuel(ch.id, { fid: s.pid, fname: s.name, tiles: res.tiles, err, secs }); } catch (e) { } }
     resultScreen({ role: 'played', p, won, paid });
   }
 

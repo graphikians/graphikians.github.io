@@ -8,6 +8,7 @@ const EVS = (() => {
   /* seeded so a scene looks the same every time it is drawn */
   const rng = seed => { let t = seed >>> 0 || 7; return () => { t = (t * 1664525 + 1013904223) >>> 0; return t / 4294967296; }; };
   function parts(kind, n, seed = 3) {
+    n = Math.max(3, Math.round(n * (document.body.classList.contains('smooth') ? 0.3 : 0.6)));   // v1.7: lighter on phones
     const r = rng(seed); let s = '';
     for (let i = 0; i < n; i++) {
       const x = (r() * 100).toFixed(1), d = (r() * 6).toFixed(2), du = (4 + r() * 6).toFixed(2), sz = (0.6 + r() * 0.9).toFixed(2), y = (r() * 80).toFixed(1);

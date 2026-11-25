@@ -24,6 +24,8 @@ const FB = (() => {
     s.fbAuth = { id: r.id_token || r.idToken, refresh: r.refresh_token || r.refreshToken, uid: r.user_id || r.localId, exp: Date.now() + (+(r.expires_in || r.expiresIn || 3600)) * 1000 };
     S.save(); return (tok = s.fbAuth.id);
   }
+  /* v1.7: every document carries the Firebase uid of its owner, so the security rules can check ownership */
+  const myUid = async () => { await auth(); return S.st.fbAuth.uid; };
   async function post(url, body, noAuth) {
     const h = { 'Content-Type': 'application/json' }; if (!noAuth) h.Authorization = 'Bearer ' + (await auth());
     const r = await fetch(url, { method: 'POST', headers: h, body: JSON.stringify(body) });
@@ -49,13 +51,13 @@ const FB = (() => {
   const F = (field, op, v) => ({ field: { fieldPath: field }, op, value: enc({ v }).fields.v });
 
   /* ---------- duels ---------- */
-  async function putDuel(d) { return req('PATCH', `/duels/${d.id}`, enc(d)); }
+  async function putDuel(d) { return req('PATCH', `/duels/${d.id}`, enc({ ...d, cuid: await myUid() })); }
   async function getDuel(id) { return dec(await req('GET', `/duels/${id}`)); }
-  async function finishDuel(id, r) { const o = { status: 'done', fid: r.fid, fname: r.fname, ftiles: r.tiles, ferr: r.err, fsecs: r.secs, fts: Date.now() }; return req('PATCH', `/duels/${id}?${mask(o)}`, enc(o)); }
+  async function finishDuel(id, r) { const o = { status: 'done', fid: r.fid, fname: r.fname, ftiles: r.tiles, ferr: r.err, fsecs: r.secs, fts: Date.now(), fuid: await myUid() }; return req('PATCH', `/duels/${id}?${mask(o)}`, enc(o)); }
   async function myOpen(pid) { return query('duels', [F('cid', 'EQUAL', pid)], 30); }
   async function invites(pid) { return (await query('duels', [F('toPid', 'EQUAL', pid), F('status', 'EQUAL', 'open')], 10)); }
   /* ---------- random opponent ---------- */
-  async function saveRun(r) { return req('POST', '/runs', enc({ ...r, r: Math.random() })); }
+  async function saveRun(r) { return req('POST', '/runs', enc({ ...r, r: Math.random(), uid: await myUid() })); }
   /* single-field range query (no composite index needed); the duel uses the ghost run's mode */
   async function randomRun(myPid) {
     const x = Math.random();
@@ -63,9 +65,9 @@ const FB = (() => {
     if (a.filter(z => z.pid !== myPid).length === 0) a = await query('runs', [F('r', 'LESS_THAN', x)], 8, 'r');
     return a.filter(z => z.pid !== myPid)[0] || null;
   }
-  async function sendBonus(to, coins, from) { return req('POST', '/inbox', enc({ to, coins, from, ts: Date.now() })); }
+  async function sendBonus(touid, coins, from) { return req('POST', '/inbox', enc({ touid, coins, from, fuid: await myUid(), ts: Date.now() })); }
   async function collectInbox(pid) {
-    const a = await query('inbox', [F('to', 'EQUAL', pid)], 20);
+    const a = await query('inbox', [F('touid', 'EQUAL', await myUid())], 20);
     let sum = 0; for (const m of a) { sum += m.coins || 0; try { await req('DELETE', `/inbox/${m._id}`); } catch (e) { } }
     return sum;
   }
@@ -76,9 +78,9 @@ const FB = (() => {
   }
   async function dstat(no) { return dec(await req('GET', `/dstats/d${no}`)); }
   /* ---------- v1.4 groups (family / office WhatsApp groups) ---------- */
-  async function putGroup(code, name, by) { return req('PATCH', `/groups/${code}`, enc({ code, name, by, ts: Date.now() })); }
+  async function putGroup(code, name, by) { return req('PATCH', `/groups/${code}`, enc({ code, name, by, uid: await myUid(), ts: Date.now() })); }
   async function getGroup(code) { return dec(await req('GET', `/groups/${code}`)); }
-  async function groupScore(code, no, pid, name, score, av) { const id = `${code}_${no}_${pid}`; return req('PATCH', `/gscores/${id}`, enc({ gn: `${code}_${no}`, pid, name, score, av: av || '', ts: Date.now() })); }
+  async function groupScore(code, no, pid, name, score, av) { const id = `${code}_${no}_${pid}`; return req('PATCH', `/gscores/${id}`, enc({ gn: `${code}_${no}`, pid, name, score, av: av || '', uid: await myUid(), ts: Date.now() })); }
   async function groupBoard(code, no) { return (await query('gscores', [F('gn', 'EQUAL', `${code}_${no}`)], 60)).sort((a, b) => b.score - a.score); }
   return { on, dstatAdd, dstat, putGroup, getGroup, groupScore, groupBoard, auth, putDuel, getDuel, finishDuel, myOpen, invites, saveRun, randomRun, sendBonus, collectInbox };
 })();

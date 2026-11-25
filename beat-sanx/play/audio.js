@@ -27,8 +27,9 @@ const SND = (() => {
     if (ctx.state === 'suspended') ctx.resume().catch(() => { });
     return ctx;
   }
+  let RC = null, RD = null;   // v1.7: when set, beat sounds are drawn into an offline render (see BAR CACHE)
   function tone(f, t0, dur, { type = 'sine', vol = 0.25, attack = 0.008, release = 0.18, to = null, dest = null, lp = 0, detune = 0 } = {}) {
-    const c = ac(); if (!c) return;
+    const c = RC || ac(); if (!c) return;
     const o = c.createOscillator(), g = c.createGain();
     o.type = type; o.frequency.setValueAtTime(f, t0); if (detune) o.detune.value = detune; if (to) o.frequency.exponentialRampToValueAtTime(to, t0 + dur);
     g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + attack);
@@ -115,27 +116,72 @@ const SND = (() => {
      so the game timing is the same for everybody. */
   const B = { on: false, bpm: 100, t0: 0, step: 0, next: 0, timer: null, mode: 'full', gain: null, dropUntil: 0, fill: false, onKick: null, onBeat: null, bar: 0 };
   const ROOTS = [0, 5, 3, 4];                     // C  A  G  ->  scale degrees of NOTES (C D E G A ...)
-  const bGain = () => { const c = ac(); if (!c) return null; if (!B.gain) { B.gain = c.createGain(); B.gain.gain.value = BEAT_LEVEL(); B.gain.connect(master); } return B.gain; };
-  const kick = (t, v = 0.9) => { const c = ac(), o = c.createOscillator(), g = c.createGain(); o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.14); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32); o.connect(g); g.connect(bGain()); o.start(t); o.stop(t + 0.35); };
-  const hat = (t, v = 0.07, open = false) => { const c = ac(); if (!noiseBuf) noise(t, 0.001, { vol: 0.0001 }); const s = c.createBufferSource(); s.buffer = noiseBuf; const f = c.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7000; const g = c.createGain(); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + (open ? 0.22 : 0.05)); s.connect(f); f.connect(g); g.connect(bGain()); s.start(t); s.stop(t + 0.3); };
-  const clap = (t, v = 0.22) => { const c = ac(); if (!noiseBuf) noise(t, 0.001, { vol: 0.0001 }); [0, 0.012, 0.024].forEach(d => { const s = c.createBufferSource(); s.buffer = noiseBuf; const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1500; f.Q.value = 0.8; const g = c.createGain(); g.gain.setValueAtTime(v, t + d); g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.14); s.connect(f); f.connect(g); g.connect(bGain()); s.start(t + d); s.stop(t + d + 0.2); }); };
+  const bGain = () => { if (RD) return RD; const c = ac(); if (!c) return null; if (!B.gain) { B.gain = c.createGain(); B.gain.gain.value = BEAT_LEVEL(); B.gain.connect(master); } return B.gain; };
+  const kick = (t, v = 0.9) => { const c = RC || ac(), o = c.createOscillator(), g = c.createGain(); o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.14); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32); o.connect(g); g.connect(bGain()); o.start(t); o.stop(t + 0.35); };
+  const hat = (t, v = 0.07, open = false) => { const c = RC || ac(); if (!noiseBuf) noise(t, 0.001, { vol: 0.0001 }); const s = c.createBufferSource(); s.buffer = noiseBuf; const f = c.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7000; const g = c.createGain(); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + (open ? 0.22 : 0.05)); s.connect(f); f.connect(g); g.connect(bGain()); s.start(t); s.stop(t + 0.3); };
+  const clap = (t, v = 0.22) => { const c = RC || ac(); if (!noiseBuf) noise(t, 0.001, { vol: 0.0001 }); [0, 0.012, 0.024].forEach(d => { const s = c.createBufferSource(); s.buffer = noiseBuf; const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1500; f.Q.value = 0.8; const g = c.createGain(); g.gain.setValueAtTime(v, t + d); g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.14); s.connect(f); f.connect(g); g.connect(bGain()); s.start(t + d); s.stop(t + d + 0.2); }); };
   const bass = (t, f, d) => { tone(f, t, d, { type: 'sawtooth', vol: 0.11, release: 0.08, lp: 420, dest: bGain() }); tone(f, t, d, { type: 'sine', vol: 0.16, release: 0.08, dest: bGain() }); };
   const pad = (t, d, deg) => [0, 2, 4].forEach(k => tone(NOTES[(deg + k) % 9] / 2, t, d, { type: 'triangle', vol: 0.025, attack: 0.3, release: 0.5, dest: bGain() }));
+  /* ===== v1.7 BAR CACHE =====
+     Before: every 16th note built new oscillators/filters (about 300 audio nodes a level) and on slow
+     phones the game got sticky after long play. Now each bar (mode + tempo + chord) is drawn ONCE into a
+     small sound buffer in the background, and plays as a single sound. Same notes, same timing.
+     The live synth is still used for the first bar of a new tempo (while the buffer is being made),
+     for the level-clear fill, and for video recording (Studio). */
+  const BC = new Map(), BCbusy = new Set(), BC_MAX = 16, BC_SR = 32000;
+  const bcKey = (mode, bpm, deg) => mode + '|' + bpm + '|' + deg;
+  function bcRender(mode, bpm, deg) {
+    const k = bcKey(mode, bpm, deg); if (BC.has(k) || BCbusy.has(k)) return;
+    const O = window.OfflineAudioContext || window.webkitOfflineAudioContext; if (!O || !ctx) return;
+    const barS = 60 / bpm * 4, len = Math.ceil((barS + 0.9) * BC_SR);
+    let oc; try { oc = new O(1, len, BC_SR); } catch (e) { return; }
+    if (!noiseBuf) noise(ctx.currentTime, 0.001, { vol: 0.0001 });
+    BCbusy.add(k);
+    const keep = { mode: B.mode, bpm: B.bpm };
+    RC = oc; RD = oc.destination; B.mode = mode; B.bpm = bpm;
+    try { for (let s = 0; s < 16; s++) synthStep(s, deg, s * barS / 16, bpm); } catch (e) { }
+    RC = null; RD = null; B.mode = keep.mode; B.bpm = keep.bpm;
+    const p = oc.startRendering(), done = buf => { BCbusy.delete(k); if (!buf) return; BC.set(k, buf); if (BC.size > BC_MAX) BC.delete(BC.keys().next().value); };
+    if (p && p.then) p.then(done).catch(() => BCbusy.delete(k)); else oc.oncomplete = e => done(e.renderedBuffer);
+  }
+  const bcPrefetch = () => { if (force || !ctx || B.mode === 'still') return; [0, 1, 2, 3].forEach(i => bcRender(B.mode, B.bpm, ROOTS[i])); };
+  function bcKill(t) { const c = B.cur; B.cur = null; if (!c || !ctx) return; const now = Math.max(ctx.currentTime, t || 0); try { c.g.gain.cancelScheduledValues(now); c.g.gain.setValueAtTime(1, now); c.g.gain.linearRampToValueAtTime(0.0001, now + 0.015); c.src.stop(now + 0.03); } catch (e) { } }
+  function bcPlay(bar, deg, t) {
+    if (force || AT != null) return false;
+    const buf = BC.get(bcKey(B.mode, B.bpm, deg));
+    if (!buf) { bcRender(B.mode, B.bpm, deg); return false; }
+    const src = ctx.createBufferSource(), g = ctx.createGain(); src.buffer = buf; src.connect(g); g.connect(bGain());
+    if (t < B.dropUntil) { g.gain.setValueAtTime(0.0001, t); g.gain.setValueAtTime(1, B.dropUntil); }
+    src.start(t); src.stop(t + buf.duration);
+    src.onended = () => { try { g.disconnect(); } catch (e) { } };
+    B.cur = { src, g, bar, mode: B.mode, bpm: B.bpm };
+    return true;
+  }
   function schedStep(st, t) {
     const audible = opt().music && t >= B.dropUntil;
-    const s = st % 16, bar = Math.floor(st / 16), deg = ROOTS[bar % 4], root = NOTES[deg] / 4;
+    const s = st % 16, bar = Math.floor(st / 16), deg = ROOTS[bar % 4];
     if (s % 4 === 0) { const ms = Math.max(0, (t - ctx.currentTime) * 1000); setTimeout(() => { if (B.on && B.onBeat) B.onBeat(s === 0); if (B.on && B.onKick && audible && B.mode !== 'still') B.onKick(); }, ms); }
+    const fillBar = B.fill && bar === B.fillBar;
+    if (s === 0) {                                              // a new bar: one ready-made sound if we have it
+      if (B.cur && B.cur.bar !== bar) B.cur = null;
+      if (opt().music && B.mode !== 'still' && !fillBar && bcPlay(bar, deg, t)) return;
+    }
+    if (B.cur && B.cur.bar === bar && B.cur.mode === B.mode) return;   // this bar is already playing from the buffer
     if (!audible || B.mode === 'still') return;
+    synthStep(s, deg, t, B.bpm, fillBar);
+  }
+  function synthStep(s, deg, t, bpm, fillBar) {
+    const root = NOTES[deg] / 4;
     const full = B.mode === 'full', hype = B.mode === 'hype';
-    if (B.fill && bar === B.fillBar) {                       // level-clear fill: snare roll + crash on the next bar
+    if (fillBar) {                                           // level-clear fill: snare roll + crash on the next bar
       if (s >= 8) clap(t, 0.08 + (s - 8) * 0.02); if (s === 0) kick(t); return;
     }
     if (s === 0 || s === 8 || ((full || hype) && s === 10) || (hype && (s === 4 || s === 12))) kick(t, s === 0 ? 0.95 : 0.75);
     if ((full || hype) && (s === 4 || s === 12)) clap(t, hype ? 0.26 : 0.2);
     if (s % 2 === 0) hat(t, s % 4 === 2 ? 0.08 : 0.045, s === 14 && full);
     else if (hype) hat(t, 0.03);
-    if (full || hype) { if (s === 0 || s === 6 || s === 8 || s === 11) bass(t, s === 11 ? root * 1.5 : root, 60 / B.bpm * 0.4); }
-    if (s === 0 && B.mode !== 'light') pad(t, 60 / B.bpm * 4, deg);
+    if (full || hype) { if (s === 0 || s === 6 || s === 8 || s === 11) bass(t, s === 11 ? root * 1.5 : root, 60 / bpm * 0.4); }
+    if (s === 0 && B.mode !== 'light') pad(t, 60 / bpm * 4, deg);
   }
   function tick() {
     if (!B.on || !ctx) return;
@@ -149,23 +195,23 @@ const SND = (() => {
       if (B.on) return;
       B.on = true; B.step = 0; B.t0 = c.currentTime + 0.06; B.next = B.t0;
       if (B.gain) { B.gain.gain.cancelScheduledValues(c.currentTime); B.gain.gain.setValueAtTime(BEAT_LEVEL(), c.currentTime); }
-      clearInterval(B.timer); B.timer = setInterval(tick, 25); tick();
+      clearInterval(B.timer); B.timer = setInterval(tick, 25); tick(); bcPrefetch();
     },
     /* change tempo without losing the groove: re-anchor the clock on the next 16th */
-    tempo(bpm) { if (!B.on || !ctx || bpm === B.bpm) { B.bpm = bpm; return; } const t = B.next; B.bpm = bpm; B.t0 = t; B.step = 0; B.next = t; },
-    mode(m) { if (!B.locked) B.mode = m; },
-    lock(on) { B.locked = !!on; if (on) B.mode = 'still'; },
+    tempo(bpm) { if (!B.on || !ctx || bpm === B.bpm) { B.bpm = bpm; return; } const t = B.next; bcKill(t); B.bpm = bpm; B.t0 = t; B.step = 0; B.next = t; bcPrefetch(); },
+    mode(m) { if (B.locked || m === B.mode) return; B.mode = m; if (B.cur) bcKill(); bcPrefetch(); },
+    lock(on) { B.locked = !!on; if (on) { B.mode = 'still'; bcKill(); } },
     stop(slow) {
-      if (!B.on) return; B.on = false; clearInterval(B.timer); B.timer = null;
+      if (!B.on) return; B.on = false; clearInterval(B.timer); B.timer = null; bcKill();
       if (slow && ctx && opt().music) { tone(160, ctx.currentTime, 0.6, { type: 'sawtooth', vol: 0.1, to: 30, lp: 600 }); }
     },
     pause() { if (B.on) { B.paused = true; beat.stop(); } },
     resume() { if (B.paused) { B.paused = false; beat.start(B.bpm, B.mode); } },
     /* a mistake: the music cuts out for one bar (silence hurts) */
-    drop() { if (!B.on || !ctx) return; B.dropUntil = ctx.currentTime + 60 / B.bpm * 2; if (opt().music) tone(110, ctx.currentTime, 0.35, { type: 'square', vol: 0.06, to: 55, lp: 500 }); },
+    drop() { if (!B.on || !ctx) return; B.dropUntil = ctx.currentTime + 60 / B.bpm * 2; if (B.cur) { const g = B.cur.g.gain, n = ctx.currentTime; try { g.cancelScheduledValues(n); g.setValueAtTime(g.value, n); g.linearRampToValueAtTime(0.0001, n + 0.02); g.setValueAtTime(1, B.dropUntil); } catch (e) { } } if (opt().music) tone(110, ctx.currentTime, 0.35, { type: 'square', vol: 0.06, to: 55, lp: 500 }); },
     /* level clear: drum fill at the end of the current bar */
-    fill() { if (!B.on) return; B.fill = true; B.fillBar = Math.floor(B.step / 16); setTimeout(() => { B.fill = false; }, 60 / B.bpm * 4000 + 200); },
-    get on() { return B.on; }, get bpm() { return B.bpm; },
+    fill() { if (!B.on) return; B.fill = true; B.fillBar = Math.floor(B.step / 16); if (B.cur && B.cur.bar === B.fillBar && ctx) { bcKill(); } setTimeout(() => { B.fill = false; }, 60 / B.bpm * 4000 + 200); },
+    get on() { return B.on; }, get bpm() { return B.bpm; }, get cached() { return BC.size; },
     set onKick(f) { B.onKick = f; }, set onBeat(f) { B.onBeat = f; },
     beatMs() { return 60000 / B.bpm; },
     /* ms until the next grid line (div 1 = beat, 2 = 8th, 4 = 16th) */

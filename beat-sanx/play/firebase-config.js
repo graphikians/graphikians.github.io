@@ -2,6 +2,6 @@
    Firebase console -> Project settings -> Your apps -> Web app -> SDK setup (Config).
    Only projectId and apiKey are needed. Leave empty to keep duels working by link only. */
 window.BS_FIREBASE = {
-  projectId: '',
-  apiKey: ''
+  projectId: 'beat-sanx',
+  apiKey: 'AIzaSyDrEdyatxSav3tNyX3ojX_Yb6TDd93ISlw'
 };

@@ -716,7 +716,7 @@ const UI = (() => {
       <div class="secT">Achievements <span class="muted">${nAch}/${D.ACH.length}</span></div><div class="achList">${achs}</div>
       <div class="secT">Settings</div>
       <div class="setList">
-        ${tog('sfx', 'sound', 'Sound effects')}${tog('music', 'music', 'Music')}${tog('vib', 'vibrate', 'Vibration')}${tog('bg', 'image', 'Animated background')}
+        ${tog('sfx', 'sound', 'Sound effects')}${tog('music', 'music', 'Music')}${tog('vib', 'vibrate', 'Vibration')}${tog('bg', 'image', 'Animated background')}<button class="setRow" data-tog="smooth">${ART.ic('zap')}<span>Smooth mode <small class="muted">${S.st.set.smooth == null ? '· auto' : ''}</small></span><i class="sw ${PERF.smooth() ? 'on' : ''}"></i></button>
         <div class="volRow">${ART.ic('music')}<span>Music volume</span><input type="range" class="volR" data-vol="musicVol" min="0" max="1" step="0.05" value="${st.set.musicVol == null ? 0.7 : st.set.musicVol}"></div>
         <div class="volRow">${ART.ic('sound')}<span>Tile sound volume</span><input type="range" class="volR" data-vol="sfxVol" min="0" max="1" step="0.05" value="${st.set.sfxVol == null ? 1 : st.set.sfxVol}"></div>
         ${window.BS_PRIV ? `<button class="setRow" data-act="privOpts">${ART.ic('shield')}<span>Ad privacy choices</span>${ART.ic('next')}</button>` : ''}
@@ -1051,6 +1051,7 @@ const UI = (() => {
     if (d.claim) { const c = S.claimQuest(d.claim); if (c) { S.passAdd('quest'); SND.coin(); toast(`+${c} coins`, 'check'); } questsSheet(); refresh(); return; }
     if (d.chest) { const c = D.CHESTS.find(x => x.id === d.chest); if (!S.spend('coins', c.price)) { toast('Not enough coins', 'coins'); return; } closeSheet(); await chest(c.id); refresh(); return; }
     if (d.tab || d.equip || d.buyskin || d.buyb || d.cos) { SHOP.click(d, t); return; }
+    if (d.tog === 'smooth') { S.st.set.smooth = !PERF.smooth(); S.save(); PERF.apply(); if (cur === 'profile') renderProfile(); return; }
     if (d.tog) { S.st.set[d.tog] = !S.st.set[d.tog]; S.save(); if (d.tog === 'music') SND.music(S.st.set.music && cur !== 'game'); if (d.tog === 'bg' && typeof BG !== 'undefined') BG.refresh(); if (cur === 'profile') renderProfile(); else if (cur === 'shop') SHOP.render(); else t.classList.toggle('on', S.st.set[d.tog]); return; }
     const a = d.act; const st = S.st;
     if (!a || a === 'none') return;

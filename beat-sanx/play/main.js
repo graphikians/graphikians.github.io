@@ -10,7 +10,7 @@ window.BS_VERSION = '1.7';
   S.st.lastSeen = Date.now(); S.save();
   setInterval(() => { S.st.lastSeen = Date.now(); S.save(); }, 60000);
   document.body.insertAdjacentHTML('afterbegin', ART.defs());
-  G.build(); UI.init(); NET.init(); try { BG.init(); } catch (e) { }
+  G.build(); UI.init(); NET.init(); try { PERF.apply(); PERF.probe(); BG.init(); } catch (e) { }
   const go = () => {
     const sp = document.getElementById('splash'); sp.classList.add('out'); setTimeout(() => sp.remove(), 500);
     UI.show('home');

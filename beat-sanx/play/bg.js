@@ -81,14 +81,15 @@ const BG = (() => {
         c.fillStyle = bgr; c.beginPath(); c.moveTo(-20, 0); c.lineTo(20, 0); c.lineTo(120, H * 1.2); c.lineTo(-120, H * 1.2); c.closePath(); c.fill(); c.restore();
       }
     }
-    if (world !== 'space' && world !== 'rain' && world !== 'galaxy') for (const d of dust) { const y = ((d.y - t * d.s) % H + H) % H; c.fillStyle = `rgba(214,196,255,${d.a * 0.7})`; c.beginPath(); c.arc(d.x + Math.sin(t * 0.5 + d.y) * 5, y, d.r, 0, 7); c.fill(); }
+    if (world !== 'space' && world !== 'rain' && world !== 'galaxy' && !(typeof document !== 'undefined' && document.body.classList.contains('smooth'))) for (const d of dust) { const y = ((d.y - t * d.s) % H + H) % H; c.fillStyle = `rgba(214,196,255,${d.a * 0.7})`; c.beginPath(); c.arc(d.x + Math.sin(t * 0.5 + d.y) * 5, y, d.r, 0, 7); c.fill(); }
     c.restore();
   }
   function hexA(h, a) { const n = parseInt((h || '#9a6df5').trim().replace('#', '').slice(0, 6), 16); if (isNaN(n)) return `rgba(154,109,245,${a})`; return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`; }
 
   function size() {
     if (!cv) return;
-    const w = Math.max(1, Math.round(innerWidth / 2)), h = Math.max(1, Math.round(innerHeight / 2));
+    const dv = document.body.classList.contains('smooth') ? 4 : 2.5;   // v1.7: lower resolution, it is a soft background
+    const w = Math.max(1, Math.round(innerWidth / dv)), h = Math.max(1, Math.round(innerHeight / dv));
     if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
     /* cover: keep aspect of the virtual space */
     const s = Math.max(w / W, h / H); sx = s; sy = s;
@@ -96,9 +97,12 @@ const BG = (() => {
   function frame(now) {
     raf = 0; if (!running) return;
     raf = requestAnimationFrame(frame);
-    if (now - last < 33) return;   // ~30 fps is plenty for slow motion
+    /* v1.7: 30 fps on home, 20 fps while playing, 10 fps in Smooth mode; nothing while a popup covers it */
+    const sm = document.body.classList.contains('smooth'), game = document.body.dataset.scr === 'game';
+    if (now - last < (sm ? 100 : game ? 50 : 33)) return;
     last = now;
     if (document.hidden || (typeof ADS !== 'undefined' && ADS.showing)) return;
+    const md = document.getElementById('modal'); if (md && md.classList.contains('on') && glowA < 0.02) return;
     const t = (now - t0) / 1000;
     glowA *= 0.94;
     dimA += ((dimT ? 0.55 : 0) - dimA) * 0.12;
@@ -112,7 +116,8 @@ const BG = (() => {
     const scr = document.body.dataset.scr, want = on() && (scr === 'home' || scr === 'game');
     document.body.classList.toggle('bgOn', want);
     id = active();
-    if (want && !running) { running = true; size(); raf = requestAnimationFrame(frame); }
+    size();
+    if (want && !running) { running = true; raf = requestAnimationFrame(frame); }
     else if (!want && running) { running = false; cancelAnimationFrame(raf); raf = 0; }
   }
   return {

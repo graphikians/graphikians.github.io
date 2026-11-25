@@ -72,7 +72,7 @@ a{color:inherit;text-decoration:none}
 @keyframes blink{50%{opacity:.4}}
 
 /* ---------- nav ---------- */
-#nav{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;justify-content:space-around;padding:6px 8px calc(var(--sab) + 6px);background:rgba(12,5,35,.92);border-top:1px solid var(--line);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+#nav{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;justify-content:space-around;padding:6px 8px calc(var(--sab) + 6px);background:rgba(12,5,35,.92);border-top:1px solid var(--line)}
 #nav button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 14px;border-radius:12px;color:var(--mut);font-size:11px;font-weight:700}
 #nav button.on{color:#fff;background:rgba(116,58,232,.3)}#nav button.on .ic{color:var(--p3)}
 body.isApp #nav{padding-bottom:calc(var(--sab) + 6px)}
@@ -175,7 +175,7 @@ body.hasBanner #modal{padding-bottom:calc(var(--bnr,90px) + 20px)}
 .rwI b{font-size:17px;font-weight:900}.rwI small{font-size:10px;color:var(--mut)}
 .rbIc{width:30px;height:30px;display:grid;place-items:center;color:var(--p3)}.rbIc .ic{width:28px;height:28px}
 .xpBig{font-weight:900;font-size:20px;color:var(--p3)}
-.chestBox{width:170px;margin:14px auto 4px;cursor:pointer;filter:drop-shadow(0 14px 30px rgba(0,0,0,.5))}
+.chestBox{width:170px;margin:14px auto 4px;cursor:pointer}
 .chestBox.shaking{animation:shk .6s ease-in-out infinite}
 @keyframes shk{0%,100%{transform:rotate(0)}25%{transform:rotate(-5deg)}75%{transform:rotate(5deg)}}
 .chestBox.open{animation:none}.chestBox.open .lid{transform:translateY(-12px) rotate(-7deg);transform-origin:10% 100%;transition:transform .35s cubic-bezier(.2,1.6,.4,1)}
@@ -422,7 +422,7 @@ body::after{background-size:410px 410px;animation-duration:150s;opacity:.7}
 .btn.danger{background:linear-gradient(180deg,#ff8aac,#ff5c8a 30%,#d6245a);box-shadow:0 5px 0 #7a0f31,0 12px 24px rgba(214,36,90,.35),inset 0 2px 0 rgba(255,255,255,.35)}
 .btn.gemB{background:linear-gradient(180deg,#8e86ff,#6d5dfc 40%,#4f46e5);box-shadow:0 3px 0 #2d278f}
 .btn.pulse{animation:btnPulse 1.8s ease-in-out infinite}
-@keyframes btnPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.025);filter:brightness(1.08)}}
+@keyframes btnPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.025)}}
 .pgSub{font-size:12px;font-weight:800;color:#ff8ab0;padding:3px 8px;border-radius:9px;background:rgba(255,61,127,.15);vertical-align:middle;margin-left:6px;animation:blink 1.6s infinite}
 .center{text-align:center}.muted.sm{font-size:12px}
 .rcAv,.pfAv{background:none;overflow:visible}
@@ -559,7 +559,7 @@ body::after{background-size:410px 410px;animation-duration:150s;opacity:.7}
 
 /* ---------- game extras ---------- */
 .gFx{position:absolute;inset:0;pointer-events:none;z-index:0}
-.gCount{position:absolute;inset:0;z-index:28;display:grid;place-items:center;background:rgba(8,3,24,.55);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+.gCount{position:absolute;inset:0;z-index:28;display:grid;place-items:center;background:rgba(8,3,24,.7)}
 .gCount b{font-weight:900;font-size:120px;color:#fff;text-shadow:0 0 40px rgba(154,109,245,.9);animation:cntPop .6s cubic-bezier(.2,1.6,.4,1)}
 .gCount b.rd{font-size:44px;letter-spacing:4px}
 @keyframes cntPop{from{transform:scale(2.2);opacity:0}to{transform:none;opacity:1}}
@@ -1144,7 +1144,7 @@ body.isCreator{background:#07041a}
 .tile.eyeC .tEye{display:grid}
 .tile.rev{animation:okP .3s ease-out}
 /* mode / twist card */
-.gCard{position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(8,3,24,.86);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.gCard{position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(8,3,24,.93)}
 .gcIn{width:min(92vw,360px);padding:22px 18px 18px;border-radius:26px;text-align:center;background:linear-gradient(170deg,#2b0e6b,#12052e);border:1.5px solid #9a6df5;box-shadow:0 20px 60px rgba(0,0,0,.6),0 0 40px rgba(116,58,232,.4);animation:pop .35s cubic-bezier(.2,1.6,.4,1)}
 .gcK{font-size:11px;font-weight:900;letter-spacing:3px;color:#c4a7ff}
 .gcT{display:flex;align-items:center;justify-content:center;gap:8px;font-size:26px;font-weight:900;letter-spacing:1px;margin:6px 0 14px}
@@ -1219,10 +1219,11 @@ body[data-scr=game] #nav{display:none}
 .ccSt i.on .ic{color:#c4a7ff!important;filter:drop-shadow(0 0 4px #9a6df5)}
 /* v1.6 3D chest */
 .ch3d{position:relative;perspective:600px}
-.ch3d svg{display:block;width:100%;transform:rotateX(8deg) rotateY(-12deg);transform-style:preserve-3d;animation:ch3dFloat 2.6s ease-in-out infinite;filter:drop-shadow(0 18px 24px rgba(0,0,0,.55))}
-.ch3dGlow{position:absolute;left:50%;top:48%;width:140%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--cc,#9a6df5) 55%,transparent) 0%,transparent 60%);opacity:.55;animation:ch3dPulse 2.6s ease-in-out infinite;pointer-events:none}
-@keyframes ch3dFloat{50%{transform:rotateX(8deg) rotateY(-6deg) translateY(-6px)}}
-@keyframes ch3dPulse{50%{opacity:.85;transform:translate(-50%,-50%) scale(1.06)}}
+.ch3d svg{position:relative;display:block;width:100%;transform:rotateX(8deg) rotateY(-12deg);animation:ch3dFloat 2.6s ease-in-out infinite;will-change:transform}
+.ch3d::after{content:'';position:absolute;left:14%;right:14%;bottom:-4%;height:14%;border-radius:50%;background:radial-gradient(ellipse at center,rgba(0,0,0,.5),transparent 70%);pointer-events:none}
+.ch3dGlow{position:absolute;left:50%;top:48%;width:140%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--cc,#9a6df5) 55%,transparent) 0%,transparent 60%);opacity:.55;animation:ch3dPulse 2.6s ease-in-out infinite;pointer-events:none;will-change:opacity}
+@keyframes ch3dFloat{50%{transform:rotateX(8deg) rotateY(-12deg) translateY(-6px)}}
+@keyframes ch3dPulse{50%{opacity:.85}}
 .ch3d .cSweep{animation:ch3dSweep 2.8s ease-in-out infinite}
 @keyframes ch3dSweep{0%,40%{transform:skewX(-20deg) translateX(0)}80%,100%{transform:skewX(-20deg) translateX(300px)}}
 .chestBox .cLid{transform-origin:20px 88px}
@@ -1588,3 +1589,21 @@ body.bgOn #home .heroBg{opacity:.35}
 .escStat b{text-shadow:0 2px 0 rgba(0,0,0,.55),0 0 14px rgba(0,0,0,.65)}
 .escStat small{text-shadow:0 1px 3px rgba(0,0,0,.8)}
 .escStat.dark b{text-shadow:none}.escStat.dark small{text-shadow:none}
+
+/* ===== v1.7 performance: glows drawn once, only opacity/transform animate (no repaint every frame) ===== */
+.evPlay .btn.big{animation:none;position:relative;box-shadow:0 6px 0 #3b1580}
+.evPlay .btn.big::after{content:'';position:absolute;inset:-5px;border-radius:26px;box-shadow:0 0 26px 4px rgba(154,109,245,.6);opacity:0;animation:evGlow2 2s ease-in-out infinite;pointer-events:none;will-change:opacity}
+.evPlay .btn.big.off::after{display:none}
+@keyframes evGlow2{50%{opacity:1}}
+.escPin.s-now span{animation:none;position:relative}
+.escPin.s-now span::after{content:'';position:absolute;inset:-4px;border-radius:50%;border:3px solid #c4a7ff;animation:escPing2 1.6s ease-out infinite;will-change:transform,opacity}
+@keyframes escPing2{from{transform:scale(1);opacity:.9}to{transform:scale(1.6);opacity:0}}
+.escSplash i{filter:none}
+.p-fog{filter:none;background:radial-gradient(ellipse at center,rgba(220,210,255,.1),transparent 70%)}
+.escP i,.escBig,.escSanx,.escEq i,.escBeam,.escDoor i,.escOrbit,.escGhosts i,.escSplash i,.escRing i,.epNode.ready .epChest{will-change:transform}
+/* Smooth mode (auto on slow phones, or chosen in Settings) */
+body.smooth .rwRays,body.smooth .escBeam,body.smooth .escEq i,body.smooth .escDoor i,body.smooth .escOrbit,body.smooth .escGhosts i,body.smooth .escSplash i,body.smooth .escRing i,body.smooth .escBig,body.smooth .escSanx,body.smooth .escLens,body.smooth .escPlanet,body.smooth .escLane,body.smooth .escTorch{animation:none!important}
+body.smooth .ch3d svg,body.smooth .ch3dGlow,body.smooth .ch3d .cSweep{animation:none!important}
+body.smooth .evPlay .btn.big::after,body.smooth .escPin.s-now span::after{animation:none!important;opacity:.6}
+body.smooth .pulse{animation:none!important}
+body.smooth .arenaBg i{animation:none!important}
