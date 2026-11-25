@@ -95,7 +95,7 @@ const G = (() => {
     if (!R) return;
     if (typeof REC !== 'undefined' && REC.recording) { const k = [R.level, R.hearts, R.coins, gridN].join(); if (k !== R._recHud) { R._recHud = k; REC.evt('hud', { level: R.level, hearts: R.imp ? 3 : R.hearts, max: R.imp ? 3 : R.maxHearts, coins: R.coins, g: gridN }); } }
     const h = $('gHearts');
-    if (R.imp) h.innerHTML = `<span class="impTag">${ART.ic('refresh')} ${D.IMP.continues(R.imp.target) - R.imp.cont}${R.imp.cp ? ` · ${ART.ic('flag')} ${R.imp.cp}` : ''}</span>`;
+    if (R.imp) h.innerHTML = `<span class="impTag">${R.imp.grid}×${R.imp.grid}${R.imp.cp ? ` · ${ART.ic('flag')} ${R.imp.cp}` : ''}</span>`;
     else if (R.noHearts) h.innerHTML = R.mode === 'zen' ? `<span class="zenTag">${ART.ic('leaf')}</span>` : '';
     else { let s2 = ''; for (let i = 0; i < Math.max(R.maxHearts, R.hearts); i++) s2 += ART.heartC(22, i < R.hearts); h.innerHTML = s2; }
     /* one clear pill: what level, and what is special about it (boss / bonus / twist / mode) */
@@ -120,24 +120,19 @@ const G = (() => {
     const el = $('gRounds'); if (!R || R.ladder || R.imp || R.daily || R.blitz || !R.steps.length || R.steps.length > 6) { el.innerHTML = ''; return; }
     el.innerHTML = R.steps.map((_, i) => `<i class="${i < R.stepIdx ? 'done' : i === R.stepIdx ? 'cur' : ''}"></i>`).join('');
   }
-  /* ---------- v1.6 booster row: max 6 slots in one line ----------
-     up to 3 picked boosters (own count first, then an ad refills the slot)
-     + 3 ad boosters (X-Ray, Freeze Time, 2nd Chance), each once per level */
+  /* ---------- v1.7 booster row ----------
+     owned boosters are instant (no ad). One ad booster per level: REPLAY (the pattern plays again,
+     you continue from the same tile). No ad ever interrupts a round you are tapping in,
+     except Replay which the player asks for. 2nd Chance is offered with an ad after a wrong tap.
+     IMPOSSIBLE 100: one Replay booster, up to 10 per run. */
   const BOOST_ON = () => R && !R.pure && !R.dbeat && !R.test && !R.imp && !(R.ev && /^ch_/.test(R.ev.id));
   const hasClock = () => R && (R.blitz || R.mode === 'speed' || R.mode === 'rush' || (R.ev && (R.ev.timer || R.ev.stepTimer)));
   const left = b => b === 'hint' ? R.hintLeft : b === 'xray' ? R.xrayLeft : b === 'skip' ? R.skipLeft : b === 'second' ? R.secondLeft : b === 'shield' ? (R.shieldAuto ? 1 : 0) : b === 'combo' ? R.comboKeep : b === 'freeze' ? (frozen() ? 1 : -1) : -1;
   function slots() {
+    if (R && R.imp) return [{ b: 'replay', k: 'imp' }];
     if (!BOOST_ON()) return [];
-    const own = R.boosts.slice(0, 3).map(b => ({ b, k: 'own' }));
-    const used = new Set(R.boosts), ad = [];
-    D.AD_BOOSTS.forEach(b => {
-      let x = b;
-      if (x === 'freeze' && !hasClock()) x = 'hint';
-      if (used.has(x)) x = D.AD_BOOST_ALT.find(a => !used.has(a) && !(a === 'freeze' && !hasClock()));
-      if (x === 'skip' && (R.ladder || R.ev)) x = null;
-      if (x) { used.add(x); ad.push({ b: x, k: 'ad' }); }
-    });
-    const out = own.concat(ad);
+    const out = R.boosts.slice(0, 3).map(b => ({ b, k: 'own' }));
+    out.push({ b: 'replay', k: 'ad' });
     if (R.showTimeAd && !R.timeAdUsed) out.push({ b: 'time', k: 'ad' });
     return out.slice(0, 6);
   }
@@ -148,15 +143,14 @@ const G = (() => {
     el.classList.remove('none');
     const html = sl.map(({ b, k }) => {
       if (b === 'time') return `<button class="bs ad" data-bs="ad:time">${ART.ic('clock')}<small>+30s</small><em>${ART.ic('ad')}</em></button>`;
-      const B = D.BOOST[b], n = left(b), tapable = D.TAP_BOOSTS.includes(b);
-      if (k === 'own') {
-        if (n > 0) return `<button class="bs own ${tapable ? 'tap' : 'on'}" data-bs="own:${b}">${ART.ic(B.icon)}<small>${tapable ? B.name.split(' ')[0] : 'ON'}</small><em class="n">${n}</em></button>`;
-        if (n === -1) return `<button class="bs own on" data-bs="none">${ART.ic(B.icon)}<small>ACTIVE</small></button>`;
-        if ((R.adB[b] || 0) >= 1) return `<button class="bs used" data-bs="none">${ART.ic(B.icon)}<small>USED</small></button>`;
-        return `<button class="bs ad" data-bs="ad:${b}">${ART.ic(B.icon)}<small>Refill</small><em>${ART.ic('ad')}</em></button>`;
+      if (b === 'replay') {
+        if (k === 'imp') { const n = D.IMP.replays - R.imp.rep; return n > 0 ? `<button class="bs ad rep" data-bs="imp:replay">${ART.ic('refresh')}<small>Replay</small><em class="n">${n}</em><i class="adMini">${ART.ic('ad')}</i></button>` : `<button class="bs used" data-bs="none">${ART.ic('refresh')}<small>USED</small></button>`; }
+        return R.adB.replay ? `<button class="bs used" data-bs="none">${ART.ic('refresh')}<small>USED</small></button>` : `<button class="bs ad rep" data-bs="ad:replay">${ART.ic('refresh')}<small>Replay</small><em>${ART.ic('ad')}</em></button>`;
       }
-      if (R.adB[b]) { const act = b === 'freeze' ? frozen() : b === 'second' ? R.secondLeft > 0 && R.adB[b] === 1 : false; return `<button class="bs ${act ? 'on' : 'used'}" data-bs="none">${ART.ic(B.icon)}<small>${act ? 'ACTIVE' : 'USED'}</small></button>`; }
-      return `<button class="bs ad" data-bs="ad:${b}">${ART.ic(B.icon)}<small>${B.name.split(' ')[0]}</small><em>${ART.ic('ad')}</em></button>`;
+      const B = D.BOOST[b], n = left(b), tapable = D.TAP_BOOSTS.includes(b);
+      if (n > 0) return `<button class="bs own ${tapable ? 'tap' : 'on'}" data-bs="own:${b}">${ART.ic(B.icon)}<small>${tapable ? B.name.split(' ')[0] : 'ON'}</small><em class="n">${n}</em></button>`;
+      if (n === -1) return `<button class="bs own on" data-bs="none">${ART.ic(B.icon)}<small>ACTIVE</small></button>`;
+      return `<button class="bs used" data-bs="none">${ART.ic(B.icon)}<small>USED</small></button>`;
     }).join('');
     if (el.innerHTML !== html) el.innerHTML = html;
   }
@@ -168,25 +162,25 @@ const G = (() => {
   async function boostTap(key) {
     if (!R || R.ended || key === 'none') return;
     const [k, b] = key.split(':');
-    if (k === 'own') { if (R.phase !== 'input') return info('Use it on your turn'); return useOwn(b); }
-    if (b === 'time') return adTime();
     if (R.phase !== 'input') return info('Use it on your turn');
-    if (R.adB[b]) return;
-    const sq = R.seq; R.phase = 'wait'; clearTimeout(R.xrayT);
-    let ok = false;
-    const go = await midRun(async () => { ok = await ADS.rewarded('boost'); return ok; });
-    if (!go || !R) return;
-    if (!ok) { info('Ad not ready. Try again'); R.phase = 'input'; boosts(); return; }
-    R.adB[b] = 1; R.phase = 'input';
-    if (R.seq !== sq) return;
-    if (b === 'xray') { R.xrayLeft++; xray(true); }
-    else if (b === 'freeze') { R.frozenUntil = Date.now() + 8000; info('Time frozen for 8s'); drawClock(); setTimeout(() => { if (R) { hud(); drawClock(); } }, 8100); }
-    else if (b === 'second') { R.secondLeft++; info('2nd Chance ready'); }
-    else if (b === 'hint') { R.hintLeft++; useHint(); }
-    else if (b === 'skip') { R.skipLeft++; skipLevel(); }
-    else if (b === 'combo') { R.comboKeep++; }
-    else if (b === 'shield') { R.shieldAuto = true; }
-    hud();
+    if (k === 'own') return useOwn(b);
+    if (b === 'time') return adTime();
+    if (b === 'replay') return adReplay(k === 'imp');
+  }
+  /* between levels only: refill owned tap boosters that ran out this level (never mid-round) */
+  async function refillOffer() {
+    if (!BOOST_ON() || R.ev) return;
+    const empty = R.boosts.filter(b => D.TAP_BOOSTS.includes(b) && b !== 'xray' && left(b) <= 0 && !(R.refilled || {})[b]);
+    if (!empty.length) return;
+    R.refilled = R.refilled || {};
+    await midRun(async () => {
+      const v = await UI.ask(`<div class="mdK">Between levels</div><div class="mdT">Refill your boosters?</div><div class="rfRow">${empty.map(b => `<span>${ART.ic(D.BOOST[b].icon)}<b>${D.BOOST[b].name}</b></span>`).join('')}</div><div class="mdS">Watch one ad to refill them for the next level.</div>
+        <button class="btn big pulse" data-pick="ad">${ART.ic('ad')} REFILL</button><button class="btn ghost" data-pick="no">No thanks</button>`, 'refillM');
+      if (v !== 'ad') return false;
+      const ok = await ADS.rewarded('boost');
+      if (ok) empty.forEach(b => { R.refilled[b] = 1; if (b === 'hint') R.hintLeft++; if (b === 'skip') R.skipLeft++; });
+      return ok;
+    });
   }
   /* ---------- v1.6 mode / twist card: demo + GOT IT (first 3 times), short banner later ---------- */
   function modeCard(m, kicker) {
@@ -233,7 +227,7 @@ const G = (() => {
   }
   function setWorld() {
     const w = D.world(R.level);
-    $('gWorld').textContent = R.dbeat ? 'Same pattern for every player today' : R.test ? `Memory Score ${S.memBest()} · ${D.memRank(S.memBest()).name}` : R.imp ? `Target ${R.imp.target} tiles · ${D.IMP.coins(R.imp.target).toLocaleString('en-IN')} coins` : R.chal ? (R.chal.role === 'make' ? 'Set the score: longest pattern' : `Beat ${R.chal.target} tiles`) : R.ev ? R.ev.title : (R.daily ? 'Daily Challenge' : `World ${D.WORLDS.indexOf(D.WORLDS.find(x => x.name === w.name)) + 1} · ${w.name}`);
+    $('gWorld').textContent = R.dbeat ? 'Same pattern for every player today' : R.test ? `Memory Score ${S.memBest()} · ${D.memRank(S.memBest()).name}` : R.imp ? `Target ${R.imp.target} tiles · ${D.IMP.coins(R.imp.target, R.imp.grid).toLocaleString('en-IN')} coins` : R.chal ? (R.chal.role === 'make' ? 'Set the score: longest pattern' : `Beat ${R.chal.target} tiles`) : R.ev ? R.ev.title : (R.daily ? 'Daily Challenge' : `World ${D.WORLDS.indexOf(D.WORLDS.find(x => x.name === w.name)) + 1} · ${w.name}`);
     const th = R.ev && R.ev.theme;
     $('game').style.setProperty('--wa', R.boss ? '#3a0820' : th ? th[0] + '55' : w.a); $('game').style.setProperty('--wb', R.boss ? '#12030a' : th ? '#07041a' : w.b);
     $('game').classList.toggle('isBoss', R.boss); $('game').classList.toggle('isBonus', R.bonus);
@@ -273,7 +267,7 @@ const G = (() => {
     const ladCfg = cfg.ladder || (pure ? D.CHAL.ladder : null) || (ev && ev.ladder !== false ? {} : null);
     R = {
       cfg, mode, baseMode: mode, ev, daily: cfg.daily || null, blitz, chal: cfg.chal || null, pure,
-      imp: cfg.imp ? { target: cfg.imp.target, len: 1, cont: 0, cp: 0, seq: [], cleared: 0 } : null,
+      imp: cfg.imp ? { target: cfg.imp.target, grid: cfg.imp.grid || 3, len: 1, rep: 0, cp: 0, seq: [], cleared: 0 } : null,
       level: ev ? (ev.startLevel || 1) : (cfg.daily || blitz || pure || cfg.imp) ? 1 : S.lv(mode),
       startLevel: 0, levelsDone: 0, stepsDone: 0, stepIdx: 0, steps: [],
       seq: [], input: 0, phase: 'idle',
@@ -326,7 +320,7 @@ const G = (() => {
 
     $('gMode').textContent = R.imp ? 'IMPOSSIBLE 100' : R.chal ? 'DUEL LADDER' : R.dbeat ? `DAILY BEAT #${R.dbeat.no}${R.dbeat.practice ? ' · PRACTICE' : ''}` : R.test ? 'MEMORY TEST' : ev ? ev.name : D.MODE[mode].name.toUpperCase();
     $('game').dataset.gm = mode;
-    $('game').classList.toggle('isImp', !!R.imp); $('game').classList.toggle('isChal', pure);
+    $('game').classList.toggle('isImp', !!R.imp); $('game').classList.toggle('isChal', pure); $('game').classList.toggle('isBlackout', !!(ev && ev.blackout));
     buildBoard(gridFor(R.level)); paintSkin(); clearFx();
     if (blitz || (ev && ev.timer)) { R.timeLeft = blitz ? D.BLITZ_SECS : ev.timer; R.timeMax = R.timeLeft; startClock(); }
     else $('gTimer').classList.add('hide');
@@ -338,7 +332,26 @@ const G = (() => {
     SND.beat.start(bpmNow(), 'light');
     intro().then(() => { if (R && !R.ended) R.imp ? impRound(true) : beginLevel(true); });
   }
-  const gridFor = lv => R && R.ladder ? R.ladder.grid : (R && (R.imp || R.daily || (R.ev && !R.ev.grid))) ? 3 : R && R.ev && R.ev.grid ? R.ev.grid : D.gridFor(lv);
+  const gridFor = lv => R && R.imp ? R.imp.grid : R && R.ladder ? R.ladder.grid : R && R.daily ? 3 : R && R.ev ? (R.ev.grid || 3) : D.gridFor(lv);
+  /* v1.7 event grid mix (never in duels, Daily Beat, Memory Test or Challenges: those keep a fixed grid) */
+  const mixOn = () => R && R.ev && !R.pure && !R.dbeat && !R.test && !/^ch_/.test(R.ev.id) && !R.ev.grid && R.ev.gridMix !== false;
+  /* the 3x3 pattern is kept; on a bigger board every 3x3 cell maps to one tile inside its zone,
+     so the player keeps building the same pattern while the board gets bigger */
+  function zoneMap(g) {
+    const Z = g === 4 ? [[0], [1, 2], [3]] : [[0, 1], [2], [3, 4]], m = [];
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) { const zr = Z[r][rnd(Z[r].length)], zc = Z[c][rnd(Z[c].length)]; m.push(zr * g + zc); }
+    return m;
+  }
+  async function mixGrid(i, total) {
+    const t = token, g = R.ev.gridAt ? R.ev.gridAt(i) : D.evGrid(i, total);
+    if (g === gridN) return true;
+    const up = g > gridN;
+    buildBoard(g); paintSkin(); R.gmap = g > 3 ? zoneMap(g) : null;
+    SND.whoosh && SND.whoosh();
+    await banner(`<div class="bnK">${up ? 'BIG BOARD!' : 'BACK TO 3×3'}</div><div class="bnT">${g}×${g}</div><div class="bnS big">${up ? 'Same pattern, bigger board · coins ×' + D.GRID_MULT[g] : 'Breathe. Same pattern continues'}</div>`, up ? 'bonus' : 'intro', up ? 1600 : 1100, up ? 'shock' : null);
+    return t === token;
+  }
+  const P = v => R && R.gmap ? R.gmap[v] : v;
 
   /* ---------- beat helpers (v1.4) ---------- */
   function bpmNow() {
@@ -409,8 +422,9 @@ const G = (() => {
       $('gMode').textContent = twist ? `TWIST · ${D.MODE[twist].name.toUpperCase()}` : 'CLASSIC';
     }
     R.twist = twist; R.adB = {};
-    const g = gridFor(R.level), grew = g !== gridN;
-    buildBoard(g); paintSkin();
+    const mixL = !R.ladder && mixOn();
+    const g = mixL ? D.evGrid(R.levelsDone, R.ev.levels || 0) : R.ladder && mixOn() ? gridN || 3 : gridFor(R.level), grew = g !== gridN;
+    buildBoard(g); paintSkin(); if (!R.ladder) R.gmap = null;
     R.steps = D.levelSteps(R.level); R.stepIdx = 0; R.lvWrong = 0; R.lvCoins = 0; R.xrayLeft = R.xrayPer;
     if (R.ladder) { R.steps = Array.from({ length: 200 }, (_, k) => R.ladder.start + k); }
     R.boss = !R.ladder && !R.blitz && !R.daily && D.isBoss(R.level) && (!R.ev || R.ev.boss !== false);
@@ -420,7 +434,7 @@ const G = (() => {
     else if (R.sudden) { R.sudden = false; R.hearts = R.heartsBefore; }
     setWorld(); hud();
     const w = D.world(R.level), newWorld = !first && !R.ev && !R.daily && R.level === w.min && R.level > 1;
-    if (grew && !first) await banner(`<div class="bnK">NEW GRID</div><div class="bnT">${g}×${g}</div><div class="bnS">${g * g} tiles now. Stay sharp!</div>`, 'bonus', 1700, 'shock');
+    if (grew && !first) await banner(`<div class="bnK">${g > 3 ? 'BIG BOARD!' : 'NEW GRID'}</div><div class="bnT">${g}×${g}</div><div class="bnS">${g * g} tiles now. Stay sharp!</div>`, 'bonus', 1700, 'shock');
     else if (newWorld) await banner(`<div class="bnK">NEW WORLD</div><div class="bnT bnIc">${ART.ic(w.icon)}</div><div class="bnS big">${w.name}</div>`, 'intro', 1600);
     if (t !== token) return;
     groove(R.boss ? 'hype' : 'full');
@@ -436,7 +450,7 @@ const G = (() => {
 
   function makeSeq(len) {
     if (R.daily) return R.daily.slice();
-    const n = N(), rng = R.pure || R.dbeat ? mulberry(hash(R.seed, R.level, R.stepIdx)) : Math.random;
+    const n = R.gmap ? 9 : N(), rng = R.pure || R.dbeat ? mulberry(hash(R.seed, R.level, R.stepIdx)) : Math.random;
     const s = R.seq.slice(0, len);
     while (s.length < len) {
       if (R.mode === 'twin') { const a = rndOf(rng, n); let b = rndOf(rng, n); while (b === a) b = rndOf(rng, n); s.push([a, b]); }
@@ -452,6 +466,7 @@ const G = (() => {
       const m = R.ev.modeAtRound(R.stepIdx, R);
       if (m && m !== R.mode) { R.mode = m; R.evMode = m !== 'classic'; $('game').dataset.gm = m; $('gMode').textContent = `${R.ev.name} · ${D.MODE[m].name.toUpperCase()}`; hud(); await modeCard(m, 'NEXT MODE'); if (t !== token) return; }
     }
+    if (fresh && R.ladder && mixOn()) { if (!(await mixGrid(R.stepIdx, R.ev.rounds || 0))) return; }
     if (fresh) {
       if (R.mode === 'rush') {
         /* Rhythm Rush: a fresh pattern each round; ask for the LAST N in order */
@@ -474,7 +489,7 @@ const G = (() => {
     if (m === 'ghost') tiles().forEach(x => { x.classList.add('dark'); if (R.fogLens) x.classList.add('fogL'); });
     if (m === 'eye') tiles().forEach(x => x.classList.add('eyeC'));
     hud(); armXray();
-    if (R.imp) { roundTimer(D.IMP.secs(R.seq.length)); return; }
+    if (R.imp) { roundTimer(D.IMP.secs(R.seq.length, R.imp.grid)); return; }
     if (m === 'rush') { roundTimer((R.ladder ? R.ask * 1.4 + 3 : D.rushPlan(R.level).secs) * R.timeMul); return; }
     if (m === 'speed' || (R.ev && R.ev.stepTimer)) roundTimer(Math.max(3, R.seq.length * 0.95 + 1.5) * R.timeMul);
   }
@@ -489,7 +504,7 @@ const G = (() => {
   }
   function xray(manual) {
     if (!R || R.phase !== 'input' || !(R.xrayLeft > 0)) return;
-    const exp = R.mode === 'twin' ? R.seq[R.input].find(x => !R.got.includes(x)) : expAt(R.input);
+    const exp = R.mode === 'twin' ? R.seq[R.input].map(P).find(x => !R.got.includes(x)) : P(expAt(R.input));
     R.xrayLeft--; const el = tiles()[exp]; if (!el) return;
     el.classList.add('xray'); setTimeout(() => el.classList.remove('xray'), 1400);
     info(manual ? 'X-Ray!' : 'Stuck? X-Ray shows the next tile'); hud();
@@ -542,7 +557,7 @@ const G = (() => {
       } else await sleep(k === 0 ? 300 : gap);
       if (t !== token) return;
       while (R.paused) { await sleep(120); if (t !== token) return; }
-      const v = R.seq[k];
+      const v = R.mode === 'twin' ? R.seq[k].map(P) : P(R.seq[k]);
       if (R.mode === 'twin') { lit(v, true); if (isNew) lit(v, true, 'newT'); SND.tile(v[0], d0 / 1000); SND.tile(v[1], d0 / 1000); }
       else if (R.mode === 'negative') { lit([...Array(n).keys()].filter(x => x !== v), true); lit([v], true, 'hole'); if (isNew) lit([v], true, 'newT'); SND.tile(v, d0 / 1000); }
       else { lit([v], true); if (isNew) lit([v], true, 'newT'); SND.tile(v, Math.max(0.12, d0 / 1000)); }
@@ -563,14 +578,14 @@ const G = (() => {
     R.taps++; S.st.stats.taps++;
     const tEl = tiles()[i];
     if (R.mode === 'twin') {
-      const pair = R.seq[R.input];
+      const pair = R.seq[R.input].map(P);
       if (pair.includes(i) && !R.got.includes(i)) {
         R.got.push(i); good(tEl, i);
         if (R.got.length === 2) { R.got = []; R.input++; dots(R.seq.length, R.input); if (R.input >= R.seq.length) stepDone(); }
       } else if (!R.got.includes(i)) wrong(i);
       return;
     }
-    const exp = expAt(R.input);
+    const exp = P(expAt(R.input));
     if (i === exp) {
       if (R.mode === 'eye') { tEl.classList.remove('eyeC'); tEl.classList.add('rev'); }
       good(tEl, i); R.input++; dots(need(), R.input);
@@ -613,7 +628,7 @@ const G = (() => {
     } else if (per < 0.55 && L >= 3) { grade = 'GREAT!'; flyText('GREAT!', 'great'); }
     if (R.ladder && !R.pure) { const xp = Math.round(L * 3 * (R.xpMul || 1)); R.xp += xp; S.add('xp', xp); }
     SND.step(); msg(grade, 'ok'); dots(need(), need()); hud();
-    if (R.ev && R.ev.onStep) { const r = R.ev.onStep(R); if (r === 'win') { finish(true); return; } }
+    if (R.ev && R.ev.onStep) { let r = R.ev.onStep(R); if (r && r.then) { r = await r; if (t !== token) return; } if (r === 'win') { finish(true); return; } }
     if (R.blitz) { R.level++; R.steps = D.levelSteps(R.level); R.stepIdx = 0; hud(); nextStep(true); return; }
     if (R.ladder) {
       if (R.chal && R.chal.role === 'play' && R.maxLen > R.chal.target) { FX.win(S.active('win')); await banner(`<div class="bnK">YOU BEAT IT</div><div class="bnT">${R.maxLen}</div><div class="bnS big">tiles · more than ${R.chal.target}!</div>`, 'win', 1700, 'shock'); finish(true); return; }
@@ -695,6 +710,7 @@ const G = (() => {
     if (!R.ev && !R.pure && !R.daily && R.levelsDone % R.luckyEvery === 0) {
       await midRun(() => UI.lucky(lv)); if (t !== token) return;
     }
+    await refillOffer(); if (t !== token) return;
     // natural break: interstitial (rules inside ADS). never inside challenges
     if (!R.pure && !(R.ev && /^ch_/.test(R.ev.id))) { await midRun(() => ADS.inter('level')); if (t !== token) return; }
     R.level++; beginLevel(false);
@@ -727,6 +743,20 @@ const G = (() => {
       setTimeout(() => { if (t === token) nextStep(false); }, 1500); return;
     }
     if (R.secondLeft > 0) { R.secondLeft--; msg('2ND CHANCE · NO HEART LOST', 'ok'); hud(); setTimeout(() => { if (t === token) nextStep(false); }, 900); return; }
+    if (BOOST_ON() && !R.adB.second && R.hearts > 1 && !R.noHearts && !(R.ev && R.ev.noRevive)) {
+      R.adB.second = 1; msg(why || 'WRONG!', 'bad');
+      setTimeout(async () => {
+        if (t !== token) return;
+        const v = await secondOffer(); if (t !== token || !R) return;
+        if (v === 'ok') { msg('2ND CHANCE · NO HEART LOST', 'ok'); hud(); setTimeout(() => { if (t === token) nextStep(false); }, 500); }
+        else loseHeart(why);
+      }, 550);
+      return;
+    }
+    loseHeart(why);
+  }
+  function loseHeart(why) {
+    const t = token;
     R.hearts--; R.fails++;
     if (R.fails >= 2 && !R.pure && !R.dbeat && !R.test) R.adapt = Math.min(1.45, R.adapt * 1.1);   // invisible mercy (not in challenges)
     msg(why || 'WRONG!', 'bad'); hud();
@@ -756,19 +786,47 @@ const G = (() => {
     R.hintLeft--; hud();
     replayPattern();
   }
-  function replayPattern() {
+  /* replay the whole pattern; keep = continue from the tile the player was on */
+  function replayPattern(keep) {
     R.phase = 'wait'; const t = token; clearInterval(R.stepClock);
     tiles().forEach(x => x.classList.remove('dark'));
-    show().then(() => { if (t !== token) return; startInput(); });
+    show().then(() => {
+      if (t !== token) return;
+      startInput();
+      if (keep > 0 && R.mode !== 'twin') { R.input = keep; dots(need(), keep); info(`Continue from tile ${keep + 1}`); }
+    });
   }
-  /* rewarded: see the pattern again (max 3 per run) */
-  async function adReplay() {
-    if (!R || R.phase !== 'input' || R.replays >= D.ADCAP.replay) return;
-    R.phase = 'wait'; clearInterval(R.stepClock);
+  /* v1.7 REPLAY booster (rewarded): normal game 1 per level, IMPOSSIBLE 100 up to 10 per run */
+  async function adReplay(imp) {
+    if (!R || R.phase !== 'input') return;
+    if (imp ? R.imp.rep >= D.IMP.replays : R.adB.replay) return;
+    const keep = R.input;
+    R.phase = 'wait'; clearInterval(R.stepClock); clearTimeout(R.xrayT);
     let ok = false;
     const go = await midRun(async () => { ok = await ADS.rewarded('replay'); return ok; });
-    if (!go) return;
-    if (ok) { R.replays++; replayPattern(); } else startInput();
+    if (!go || !R) return;
+    if (!ok) { info('Ad not ready. Try again'); startInput(); R.input = keep; dots(need(), keep); return; }
+    if (imp) R.imp.rep++; else R.adB.replay = 1;
+    R.replays++; hud(); replayPattern(keep);
+  }
+  /* v1.7 2nd Chance after a wrong tap: watch an ad, keep the heart, the round replays */
+  function secondOffer() {
+    const t = token; R.paused = true; SND.beat.pause();
+    return new Promise(res => {
+      const c = $('gCard');
+      c.innerHTML = `<div class="gcIn sc"><div class="gcK">WRONG TILE</div><div class="gcT">${ART.ic('refresh')} 2ND CHANCE?</div><div class="gcTx">Keep your heart. The pattern plays again.</div><div class="scBar"><i></i></div><button class="btn big pulse" id="scAd">${ART.ic('ad')} WATCH AD</button><button class="btn ghost" id="scNo">No, lose a heart</button></div>`;
+      c.className = 'gCard show';
+      let done = false;
+      const end = v => { if (done) return; done = true; clearTimeout(tm); c.className = 'gCard hide'; c.innerHTML = ''; res(v); };
+      const tm = setTimeout(() => end(false), 6000);
+      $('scNo').onclick = () => end(false);
+      $('scAd').onclick = async () => {
+        if (done) return; done = true; clearTimeout(tm); c.className = 'gCard hide'; c.innerHTML = '';
+        let ok = false;
+        await midRun(async () => { ok = await ADS.rewarded('second'); return ok; });
+        res(t === token && ok ? 'ok' : false);
+      };
+    }).then(v => { if (t === token && R && v !== 'ok') { R.paused = false; SND.beat.resume(); } return v; });
   }
   /* rewarded: +30 seconds (Beat the Sanx) */
   async function adTime() {
@@ -784,7 +842,7 @@ const G = (() => {
   /* ================= IMPOSSIBLE 100 ================= */
   async function impRound(first) {
     const t = token, I = R.imp;
-    if (first) { const rng = Math.random; I.seq = []; for (let k = 0; k < I.target; k++) { let v = rndOf(rng, 9); if (k && v === I.seq[k - 1] && rng() < 0.6) v = rndOf(rng, 9); I.seq.push(v); } }
+    if (first) { const rng = Math.random, nn = I.grid * I.grid; I.seq = []; for (let k = 0; k < I.target; k++) { let v = rndOf(rng, nn); if (k && v === I.seq[k - 1] && rng() < 0.6) v = rndOf(rng, 9); I.seq.push(v); } }
     R.seq = I.seq.slice(0, I.len); R.steps = [I.len]; R.stepIdx = 0;
     setWorld(); hud();
     await sleep(first ? 300 : 500); if (t !== token) return;
@@ -805,10 +863,11 @@ const G = (() => {
   async function impFail() {
     const t = token, I = R.imp;
     R.paused = true; SND.beat.pause();
-    const choice = await UI.impFail({ len: I.len, cleared: I.cleared, target: I.target, contLeft: D.IMP.continues(I.target) - I.cont, cp: I.cp });
+    const keep = R.input;
+    const choice = await UI.impFail({ len: I.len, at: keep + 1, cleared: I.cleared, target: I.target, repLeft: D.IMP.replays - I.rep, cp: I.cp, grid: I.grid });
     if (t !== token) return;
     R.paused = false; UI.show('game'); if (choice !== 'end') SND.beat.resume();
-    if (choice === 'cont') { I.cont++; hud(); await countdown(); if (t !== token) return; impRound(false); return; }
+    if (choice === 'rep') { I.rep++; R.replays++; hud(); await countdown(); if (t !== token) return; replayPattern(keep); return; }
     if (choice === 'cp') { I.len = I.cp; I.cp = 0; hud(); await countdown(); if (t !== token) return; impRound(false); return; }
     finish(false, 'imp');
   }
@@ -908,5 +967,5 @@ const G = (() => {
   const pick = a => a[rnd(a.length)];
 
   let lastResult = null;
-  return { build, start, revive, doubleCoins, endFromOver, say, info, paintSkin, hash, mulberry, get run() { return R; }, get last() { return lastResult; }, quitSilently() { token++; SND.beat.stop(); if (typeof REC !== 'undefined' && REC.recording) REC.disarm(); if (R) { stopAll(); R.ended = true; } } };
+  return { build, start, revive, doubleCoins, endFromOver, say, info, paintSkin, hash, mulberry, tileOf: v => P(v), pauseFor: fn => midRun(fn), get run() { return R; }, get last() { return lastResult; }, quitSilently() { token++; SND.beat.stop(); if (typeof REC !== 'undefined' && REC.recording) REC.disarm(); if (R) { stopAll(); R.ended = true; } } };
 })();

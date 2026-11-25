@@ -36,7 +36,7 @@ const S = (() => {
   for (const k of ['cos', 'own', 'trials', 'fest']) st[k] = st[k] || {};
   st.imp = Object.assign(fresh().imp, st.imp); st.chal = Object.assign(fresh().chal, st.chal); st.pass = Object.assign(fresh().pass, st.pass);
   st.badges = st.badges || []; st.collect = st.collect || [];
-  st.avOwned = st.avOwned || ['ace', 'nova']; st.mem = Object.assign(fresh().mem, st.mem); st.dbeat = Object.assign(fresh().dbeat, st.dbeat); st.unlockSeen = st.unlockSeen || [];
+  st.avOwned = st.avOwned || ['ace', 'nova']; for (const a of D.AVATARS) if (a.unlock && a.unlock.free && !st.avOwned.includes(a.id)) st.avOwned.push(a.id); st.mem = Object.assign(fresh().mem, st.mem); st.dbeat = Object.assign(fresh().dbeat, st.dbeat); st.unlockSeen = st.unlockSeen || [];
   st.bg = Object.assign({ own: ['glow', 'aurora', 'spot'], on: 'glow', trial: null, tday: { d: '', n: 0 } }, st.bg || {}); st.starChests = st.starChests || []; st.modeSeen = st.modeSeen || {}; st.twistFree = st.twistFree || {};
   /* v1.4 migration: retired boosters become coins; old players keep every feature unlocked */
   if (!st.v14) {
@@ -83,6 +83,28 @@ const S = (() => {
     /* newly reached unlocks that were not announced yet */
     newUnlocks() { const out = Object.keys(D.UNLOCK).filter(k => api.best() >= D.UNLOCK[k].lv && !st.unlockSeen.includes(k)); if (out.length) { st.unlockSeen.push(...out); save(); } return out; },
     avatarImg() { const a = st.avatar && D.AV[st.avatar]; return a ? `img/av/${a.id}.webp` : null; },
+    /* v1.7 avatar unlocks: what each collection avatar needs and how far the player is */
+    avReq(a) {
+      const u = a.unlock || {}, s = st.stats;
+      const stars = Object.values(st.cstars || {}).reduce((x, r) => x + ((r && r.s) || 0), 0);
+      const streak = Math.max(s.bestStreak || 0, st.login.streak || 0);
+      const R = (cur, need, txt) => ({ ok: cur >= need, cur: Math.min(cur, need), need, txt });
+      if (u.free) return R(1, 1, 'Free');
+      if (u.lv) return R(api.best(), u.lv, `Reach level ${u.lv}`);
+      if (u.evWins) return R(s.evWins || 0, u.evWins, `Win ${u.evWins} events`);
+      if (u.festWins) return R(s.festWins || 0, u.festWins, 'Win a festival event');
+      if (u.stars) return R(stars, u.stars, `Earn ${u.stars} Challenge stars`);
+      if (u.streak) return R(streak, u.streak, `${u.streak}-day login streak`);
+      if (u.ads) return R(st.adsTotal || 0, u.ads, `Watch ${u.ads} reward ads`);
+      if (u.mem) return R(st.mem.best || 0, u.mem, `Memory Score ${u.mem}+`);
+      return R(0, 1, 'Locked');
+    },
+    avCheck() {
+      const got = [];
+      for (const a of D.AVATARS) if (a.set === 'collection' && !st.avOwned.includes(a.id) && api.avReq(a).ok) { st.avOwned.push(a.id); got.push(a); }
+      if (got.length) { st.avNew = (st.avNew || []).concat(got.map(a => a.id)); save(); }
+      return got;
+    },
     /* Memory Score */
     memBest() { return st.mem.best || 0; },
     memAdd(n, src) { if (!n) return false; st.mem.hist = (st.mem.hist || []).concat([{ n, src, t: Date.now() }]).slice(-30); const rec = n > st.mem.best; if (rec) st.mem.best = n; save(); emit(); return rec; },
@@ -98,7 +120,7 @@ const S = (() => {
         const y = new Date(); y.setDate(y.getDate() - 1);
         const kept = st.login.last === dayKey(y);
         st.login.lost = !kept && st.login.last && st.login.streak >= 2 ? st.login.streak : 0;
-        st.login.streak = kept ? st.login.streak + 1 : 1;
+        st.login.streak = kept ? st.login.streak + 1 : 1; st.stats.bestStreak = Math.max(st.stats.bestStreak || 0, st.login.streak);
         st.login.day = (st.login.day % 7) + 1; if (st.login.streak === 1) st.login.day = 1;
         st.login.last = today; st.login.pending = true;
       }

@@ -497,7 +497,7 @@ const CLIP = (() => {
       const last = i === levels.length - 1, boss = last, n = Math.min(10, 3 + Math.floor(lv / 2.2)), beat = Math.max(0.3, b * (1 - i * 0.1));
       const intro = t; T.tr(intro); T.cue(intro, () => { SND.beat.tempo(Math.round(60 / beat)); SND.beat.mode(boss ? 'hype' : 'full'); SND.whoosh(); if (boss) SND.boss(); });
       if (boss) { T.flash(intro, '#ff2d5a', 0.5, 0.35); T.shake(intro, 16, 0.6); }
-      const R = round(T, { seq: makeSeq(rng, n, 3), beat, start: intro + (boss ? 1.5 : 0.95), wrongAt: last ? n - 1 : -1, slowLast: last });
+      const gg = D.gridFor ? D.gridFor(lv) : 3; const R = round(T, { seq: makeSeq(rng, n, gg), g: gg, beat, start: intro + (boss ? 1.5 : 0.95), wrongAt: last ? n - 1 : -1, slowLast: last });
       R.markNew = true; rounds.push({ R, lv, intro, boss, last }); if (boss) T.drop = R.t0;
       hs.push({ t: intro, level: lv, coins, hearts, boss });
       if (last) { const tl = R.taps[R.taps.length - 1]; T.cam(tl - 1.3, 1.32, 0, -40, 1.0); T.cam(tl + 0.45, 1, 0, 0, 0.5); hs.push({ t: tl, level: lv, coins, hearts: hearts - 1, boss }); }
@@ -511,7 +511,7 @@ const CLIP = (() => {
       const cur = rounds.filter(r => t >= r.intro).pop() || rounds[0], R = cur.R;
       hud(x, A, Object.assign({ max: 3 }, hs.filter(h => h.t <= t).pop() || hs[0]));
       const { b: bd, st } = drawRound(x, A, T, R, t);
-      if (t < R.t0) { x.fillStyle = 'rgba(6,2,26,.45)'; x.fillRect(0, 300, W, 1500); slam(x, cur.boss ? 'BOSS LEVEL' : `LEVEL ${cur.lv}`, cur.intro, t, W / 2, 1040, cur.boss ? 160 : 130, R.t0 - cur.intro + 0.1, cur.boss ? { c2: '#ffb3c6' } : {}); }
+      if (t < R.t0) { x.fillStyle = 'rgba(6,2,26,.45)'; x.fillRect(0, 300, W, 1500); slam(x, cur.boss ? (R.g >= 5 ? 'BOSS · 5×5' : 'BOSS LEVEL') : R.g > 3 ? `BIG BOARD ${R.g}×${R.g}` : `LEVEL ${cur.lv}`, cur.intro, t, W / 2, 1040, cur.boss ? 160 : 130, R.t0 - cur.intro + 0.1, cur.boss ? { c2: '#ffb3c6' } : {}); }
       else if (st.phase === 'show') progress(x, st.cur + 1, R.seq.length, bd.bottom + 110);
       else if (t < R.end + 0.1) label(x, cur.last && t > fail.taps[fail.taps.length - 2] ? 'THE LAST TILE…' : 'YOUR TURN', bd.bottom + 110, cur.last && t > fail.taps[fail.taps.length - 2] ? '#ffb3c6' : '#fff');
       const f = fingerAt(R, t, bd.pos); if (f && t < R.taps[R.taps.length - 1] + 0.5) finger(x, f.x, f.y, f.press);
@@ -820,7 +820,7 @@ const CLIP = (() => {
     lines.forEach((l, i) => { if (u > 0.6 + i * 0.25) { x.globalAlpha = clamp((u - 0.6 - i * 0.25) / 0.3); if (i === 0) sub(x, l, W / 2, 1020, 44, '#efe6ff', 700); else chip(x, l, W / 2, 1110 + (i - 1) * 100, 36); x.globalAlpha = 1; } });
   }
   STYLES.spot = (S, A, rng) => {
-    const T = TL(S.bpm || 110); T.world = 'studio'; const b = T.beat, f = S.feature || { kind: 'booster', id: 'xray', name: 'X-Ray', desc: 'Next tile glows', price: '500 coins' }, g = 3;
+    const T = TL(S.bpm || 110); T.world = 'studio'; const b = T.beat, f = S.feature || { kind: 'booster', id: 'xray', name: 'X-Ray', desc: 'Next tile glows', price: '500 coins' }, g = f.grid || 3;
     const hk1 = S.hook1 || 'THIS BOOSTER', hk2 = S.hook2 || 'IS ILLEGAL 😳';
     T.seg(0, 3.0, (x, t) => {
       if (f.kind === 'skin') { const bd = board(x, A, t, { g, size: 620, cy: 1300, alpha: clamp((t - 0.6) / 0.4), lit: { [Math.floor(t * 3) % 9]: 1 } }); }
@@ -838,7 +838,7 @@ const CLIP = (() => {
       t = R.end + (opt.after != null ? opt.after : 1.0); return sc;
     };
     if (f.kind === 'booster') {
-      const arch = { xray: 'glow', fog: 'glow', hint: 'replay', slow: 'slow', freeze: 'freeze', shield: 'save', second: 'save', heart: 'save', combo: 'save', double: 'reward', magnet: 'reward', lucky: 'reward', xp: 'reward', pass: 'reward', skip: 'skip' }[f.id] || 'glow';
+      const arch = { replay: 'replay', xray: 'glow', fog: 'glow', hint: 'replay', slow: 'slow', freeze: 'freeze', shield: 'save', second: 'save', heart: 'save', combo: 'save', double: 'reward', magnet: 'reward', lucky: 'reward', xp: 'reward', pass: 'reward', skip: 'skip' }[f.id] || 'glow';
       const s1 = playRound(6, { label: `LEVEL ${lv}`, lv });
       T.cue(s1.R.end, () => { SND.beat.fill(); SND.crash(); SND.level(); }); coins += 60;
       const intro2 = t, actT = intro2 + 1.1, tapT = actT - 0.05;

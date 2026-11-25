@@ -26,14 +26,14 @@ const CH = (() => {
   const unb64 = s => { try { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; return decodeURIComponent(escape(atob(s))); } catch (e) { return ''; } };
   const sig = body => (G.hash(body, SECRET) >>> 0).toString(36).slice(0, 6).padStart(6, '0') + (G.hash(SECRET, body, 7) >>> 0).toString(36).slice(0, 3);
   const rid = () => { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < 8; i++) s += A[Math.floor(Math.random() * A.length)]; return s; };
-  function makeCode(c) { const body = ['C2', c.id, st().pid, MODES.indexOf(c.mode), (c.seed >>> 0).toString(36), c.tiles, c.stake, Math.floor(c.ts / 6e4).toString(36), b64(st().name), c.err || 0, Math.round(c.secs || 0)].join('.'); return 'BSX-' + body + '.' + sig(body); }
+  function makeCode(c) { const body = ['C2', c.id, st().pid, MODES.indexOf(c.mode), (c.seed >>> 0).toString(36), c.tiles, c.stake, Math.floor(c.ts / 6e4).toString(36), b64(st().name), c.err || 0, Math.round(c.secs || 0), st().avatar || ''].join('.'); return 'BSX-' + body + '.' + sig(body); }
   function makeResult(p) { const body = ['R2', p.id, st().pid, p.tiles, p.bet ? 1 : 0, Math.floor(p.ts / 6e4).toString(36), b64(st().name), p.target, p.err || 0, Math.round(p.secs || 0)].join('.'); return 'BSX-' + body + '.' + sig(body); }
   function parse(txt) {
     const m = String(txt || '').match(/BSX-([CR][12]\.[A-Za-z0-9_\-.]+)/); if (!m) return null;
     const parts = m[1].split('.'); const s = parts.pop(), body = parts.join('.');
     if (sig(body) !== s) return { bad: true };
     if (parts[0] === 'C1' || parts[0] === 'R1') return { old: true };
-    if (parts[0] === 'C2') { const [, id, cid, mi, seed, t, stake, ts, nm, err, secs] = parts; return { kind: 'C', id, cid, mode: MODES[+mi] || 'classic', seed: parseInt(seed, 36), tiles: +t, stake: +stake, ts: parseInt(ts, 36) * 6e4, name: unb64(nm) || 'Friend', err: +err || 0, secs: +secs || 0, code: 'BSX-' + m[1] }; }
+    if (parts[0] === 'C2') { const [, id, cid, mi, seed, t, stake, ts, nm, err, secs] = parts; return { av: D.AV[parts[11]] ? parts[11] : '', kind: 'C', id, cid, mode: MODES[+mi] || 'classic', seed: parseInt(seed, 36), tiles: +t, stake: +stake, ts: parseInt(ts, 36) * 6e4, name: unb64(nm) || 'Friend', err: +err || 0, secs: +secs || 0, code: 'BSX-' + m[1] }; }
     if (parts[0] === 'R2') { const [, id, fid, t, bet, ts, nm, target, err, secs] = parts; return { kind: 'R', id, fid, tiles: +t, bet: bet === '1', ts: parseInt(ts, 36) * 6e4, name: unb64(nm) || 'Friend', target: +target, err: +err || 0, secs: +secs || 0, code: 'BSX-' + m[1] }; }
     return null;
   }
@@ -122,7 +122,7 @@ const CH = (() => {
     const practice = !canWinCoins();
     const canBet = p.stake > 0 && s.coins >= p.stake && !practice;
     const mult = rakhi() ? 2 : 1;
-    const v = await UI.ask(`<div class="chVs">${ART.avatar('none', 'angry')}<b>VS</b><span class="chVsN">${UI.esc(p.name)}</span></div>
+    const v = await UI.ask(`<div class="chVs">${S.avatarImg() ? `<img class="chVsAv" src="${S.avatarImg()}" alt="">` : ART.avatar('none', 'smug')}<b>VS</b><span class="chVsN"><img class="chVsAv" src="${p.av ? 'img/av/' + p.av + '.webp' : ART.avFor(p.name)}" alt=""><br>${UI.esc(p.name)}</span></div>
       <div class="mdK">${D.MODE[p.mode].name} · ${left}h left</div><div class="mdT">Beat ${p.tiles} tiles</div>
       <div class="mdS">Same pattern for both. Starts at 2 tiles, +1 every round. Remember <b>more than ${p.tiles} tiles</b> to win. Accepting starts the duel now.</div>
       ${practice ? `<div class="mdS warnT">Reach level ${D.CHAL.minLevel} to win coins. This one is practice.</div><button class="btn big" data-pick="practice">${ART.ic('play')} PLAY FOR FUN</button>` :

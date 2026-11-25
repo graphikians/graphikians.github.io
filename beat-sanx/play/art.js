@@ -192,3 +192,6 @@ ART.me = (frame, cls = '') => { const a = typeof S !== 'undefined' && S.st && S.
 ART.logo = () => `<div class="logo"><span class="lgBeat">BEAT</span><span class="lgSanx">SANX</span></div>`;
 /* self-contained gold coin (for canvas / share images, where page defs are not available) */
 ART.coinFull = (s = 64) => ART.coin(s).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ').replace(/(<svg[^>]*>)/, '$1' + ART.defs().replace(/^<svg[^>]*>|<\/svg>$/g, ''));
+/* v1.7: every rival gets a face. AI names map to a fixed avatar; the player shows their own */
+ART.avFor = name => { const L = D.AVATARS; let h = 7; for (const c of String(name || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0; return 'img/av/' + L[h % L.length].id + '.webp'; };
+ART.lbAv = r => r && r.me ? (S.avatarImg() ? `<img class="lbAv" src="${S.avatarImg()}" alt="">` : `<span class="lbAv lbMe">${ART.sanx('smug')}</span>`) : `<img class="lbAv" src="${r && r.av ? r.av : ART.avFor(r && r.name)}" alt="" loading="lazy">`;

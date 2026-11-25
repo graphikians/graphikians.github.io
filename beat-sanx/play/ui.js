@@ -35,7 +35,7 @@ const UI = (() => {
     $('nav').classList.toggle('hide', !tab || WEB);
     document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.go === id));
     document.body.dataset.scr = id;
-    if (tab) { render(id); navLocks(); ADS.banner(id !== 'home'); SND.music(true); }
+    if (tab) { render(id); navLocks(); ADS.banner(id !== 'home'); SND.music(true); setTimeout(avUnlockCheck, 1200); }
   }
   function segBar(id) {
     const g = GROUP[id]; if (!SEGS[g]) return; lastSub[g] = id;
@@ -520,7 +520,7 @@ const UI = (() => {
   function rankSheet() {
     lbTouch();
     const st = S.st, b = aiBoard(st.lb.wk, st.lb.score || 0);
-    const rows = b.map((r, i) => `<div class="lbRow ${r.me ? 'me' : ''} ${i < 3 ? 'top' + (i + 1) : ''}"><span class="lbN">${i + 1}</span><span class="lbName">${esc(r.name)} ${r.ai ? '<em class="aiTag">AI</em>' : '<em class="youTag">YOU</em>'}</span><b>${r.score}</b></div>`).join('');
+    const rows = b.map((r, i) => `<div class="lbRow ${r.me ? 'me' : ''} ${i < 3 ? 'top' + (i + 1) : ''}"><span class="lbN">${i + 1}</span>${ART.lbAv(r)}<span class="lbName">${esc(r.name)} ${r.ai ? '<em class="aiTag">AI</em>' : '<em class="youTag">YOU</em>'}</span><b>${r.score}</b></div>`).join('');
     const pend = pendingLB();
     sheet(h`<div class="shT">Weekly ranking</div><div class="shS">You vs AI rivals · levels cleared this week · resets Monday</div>
       ${pend ? `<div class="lbClaim">${ART.ic('trophy')}<span>Last week you finished <b>#${pend}</b></span><button class="btn sm" data-act="lbClaim">${ART.gem(14)} ${LB_REWARD[pend - 1]}</button></div>` : ''}
@@ -878,26 +878,47 @@ const UI = (() => {
   let avSet = 'collection', avG = 'all', recOn = !!window.BS_CREATOR;
   function avatars() {
     const st = S.st, list = D.AVATARS.filter(a => a.set === avSet && (avG === 'all' || a.g === avG));
-    const have = id => st.avOwned.includes(id), coming = D.AV_TOTAL[avSet] - D.AVATARS.filter(a => a.set === avSet).length;
+    const have = id => st.avOwned.includes(id), fresh = st.avNew || [];
+    const nOwn = D.AVATARS.filter(a => a.set === avSet && have(a.id)).length, nAll = D.AVATARS.filter(a => a.set === avSet).length;
     const card = a => { const own = have(a.id), on = st.avatar === a.id, tier = D.AV_TIERS[a.tier];
-      return `<button class="avCard t-${a.tier} ${on ? 'on' : ''} ${own ? '' : 'lock'}" data-act="avPick:${a.id}"><img src="img/av/${a.id}.webp" alt=""><b>${esc(a.name)}</b><small>${on ? `${ART.ic('check')} Using` : own ? 'Tap to use' : a.set === 'premium' ? `${ART.coin(13)} ${short(tier.coins)}` : 'Keep playing'}</small>${a.set === 'premium' ? `<em>${tier.name}</em>` : ''}</button>`; };
-    sheet(h`<div class="shT">Your avatar</div><div class="shS">This is how other players see you in duels, groups and your videos.</div>
+      let sub, bar = '';
+      if (on) sub = `${ART.ic('check')} Using`;
+      else if (own) sub = fresh.includes(a.id) ? '<i class="avNewT">NEW</i>' : 'Tap to use';
+      else if (a.set === 'premium') sub = `${ART.coin(13)} ${short(tier.coins)}`;
+      else { const q = S.avReq(a); sub = esc(q.txt); bar = `<span class="avBar"><i style="width:${Math.round(q.cur / q.need * 100)}%"></i></span><span class="avNum">${short(q.cur)}/${short(q.need)}</span>`; }
+      return `<button class="avCard t-${a.tier} ${on ? 'on' : ''} ${own ? '' : 'lock'}" data-act="avPick:${a.id}"><span class="avPic"><img src="img/av/${a.id}.webp" alt="" loading="lazy">${own ? '' : `<span class="avLk">${ART.ic('lock')}</span>`}</span><b>${esc(a.name)}</b><small>${sub}</small>${bar}${a.set === 'premium' ? `<em>${tier.name}</em>` : ''}</button>`; };
+    sheet(h`<div class="shT">Your avatar</div><div class="shS">This is how other players see you in duels, rankings and your videos.</div>
       <div class="segBar"><button class="${avSet === 'collection' ? 'on' : ''}" data-act="avSet:collection">${ART.ic('star')}<span>Collection</span></button><button class="${avSet === 'premium' ? 'on' : ''}" data-act="avSet:premium">${ART.ic('crown')}<span>Premium</span></button></div>
+      <div class="avHead"><b>${nOwn} / ${nAll}</b><small>${avSet === 'collection' ? 'unlocked · play to earn the rest' : 'owned · Rare 10K · Epic 50K · Mythic 2L · Legend 5L'}</small><span class="avBar big"><i style="width:${Math.round(nOwn / nAll * 100)}%"></i></span></div>
       <div class="avFil">${['all', 'm', 'f'].map(g => `<button class="${avG === g ? 'on' : ''}" data-act="avG:${g}">${{ all: 'All', m: 'Male', f: 'Female' }[g]}</button>`).join('')}</div>
-      <div class="avGrid">${list.map(card).join('')}${coming > 0 ? `<div class="avSoon">${ART.ic('sparkle')}<b>+${coming} more</b><small>coming in the next updates</small></div>` : ''}</div>
+      <div class="avGrid">${list.map(card).join('')}</div>
       ${st.avatar ? `<button class="btn ghost" data-act="avPick:">Use the Sanx face instead</button>` : ''}`, 'avs');
+    if (fresh.length) { st.avNew = []; S.save(); }
   }
   async function avPick(id) {
     const st = S.st;
     if (!id) { st.avatar = ''; S.save(); avatars(); refresh(); return; }
     const a = D.AV[id]; if (!a) return;
     if (st.avOwned.includes(id)) { st.avatar = id; S.save(); toast(`${a.name} equipped`, 'check'); avatars(); refresh(); return; }
-    if (a.set !== 'premium') { toast('Unlock it by playing · more ways coming soon', 'lock'); return; }
+    if (a.set !== 'premium') { const q = S.avReq(a); toast(`${q.txt} · ${short(q.cur)}/${short(q.need)}`, 'lock'); return; }
     const price = D.AV_TIERS[a.tier].coins;
     if (st.coins < price) { toast(`You need ${short(price - st.coins)} more coins`, 'coin'); return; }
     const ok = await ask(h`<img class="avBuy" src="img/av/${a.id}.webp" alt=""><div class="mdK">${D.AV_TIERS[a.tier].name} avatar</div><div class="mdT">${esc(a.name)}</div><div class="mdS">Buy for ${ART.coin(16)} <b>${fmt(price)}</b> coins?</div><button class="btn big" data-pick="yes">${ART.ic('check')} BUY</button><button class="btn ghost" data-pick="no">Cancel</button>`);
     if (ok !== 'yes') { avatars(); return; }
     st.coins -= price; st.avOwned.push(id); st.avatar = id; S.save(); SND.win(); toast(`${a.name} is yours!`, 'crown'); avatars(); refresh();
+  }
+  /* v1.7: a collection avatar was earned -> one celebratory popup (never during play) */
+  let avBusy = false;
+  async function avUnlockCheck() {
+    if (avBusy || cur === 'game' || $('modal').classList.contains('on')) return;
+    const got = S.avCheck(); if (!got.length) return;
+    avBusy = true;
+    const a = got[0], more = got.length - 1;
+    const v = await ask(h`<div class="avUnl"><div class="rwRays"></div><img src="img/av/${a.id}.webp" alt=""><div class="mdK">New avatar unlocked</div><div class="mdT">${esc(a.name)}</div><div class="mdS">${esc(S.avReq(a).txt)} ✓${more ? ` · +${more} more unlocked` : ''}</div>
+      <button class="btn big pulse" data-pick="use">${ART.ic('check')} USE IT NOW</button><button class="btn ghost" data-pick="all">See all avatars</button></div>`, 'avUnlM');
+    avBusy = false; SND.win && SND.win();
+    if (v === 'use') { S.st.avatar = a.id; S.save(); toast(`${a.name} equipped`, 'check'); refresh(); }
+    else if (v === 'all') { avSet = 'collection'; avatars(); }
   }
   function pause(resume, quit, pure) {
     modal(h`<div class="mdK">Paused</div><div class="mdT">Take a breath</div>
@@ -909,21 +930,25 @@ const UI = (() => {
   }
 
   /* ================= IMPOSSIBLE 100 ================= */
-  let impN = 10;
+  let impN = 10, impG = 3;
   function impSheet() {
     const st = S.st, I = st.imp, d = S.dayKey();
     if (I.day !== d) { I.day = d; I.entries = 0; S.save(); }
+    I.bestG = I.bestG || { 3: I.best || 0 };
     impN = Math.max(D.IMP.min, Math.min(D.IMP.max, impN));
-    const free = I.entries < D.IMP.freeEntries, gemOk = (I.gemDay[impN] || '') !== d;
-    const mins = Math.max(1, Math.round(impN * impN / 2 / 60));
-    sheet(h`<div class="impHead"><small>THE ULTIMATE MEMORY TEST</small><b>IMPOSSIBLE <i>100</i></b><span>${I.best ? `Your best: <b>${I.best} tiles</b>` : 'Nobody has reached 100. Will you?'}</span><button class="rulesBtn" data-act="rules:imp">${ART.ic('info')} Rules</button></div>
+    const free = I.entries < D.IMP.freeEntries, gk = impG + ':' + impN, gemOk = (I.gemDay[gk] || '') !== d;
+    const secs = D.IMP.secs(impN, impG), mins = Math.max(1, Math.round((impN * (impN + 1) / 2 * 0.75 + impN * secs * 0.35) / 60));
+    const bestG = I.bestG[impG] || 0;
+    sheet(h`<div class="impHead"><small>THE ULTIMATE MEMORY TEST</small><b>IMPOSSIBLE <i>100</i></b><span>${bestG ? `Your best on ${impG}×${impG}: <b>${bestG} tiles</b>` : 'Nobody has reached 100. Will you?'}</span><button class="rulesBtn" data-act="rules:imp">${ART.ic('info')} Rules</button></div>
+      <div class="impGrid">${D.IMP.grids.map(g => `<button class="${g === impG ? 'on' : ''}" data-act="impG:${g}"><span class="igB" style="--g:${g}">${'<i></i>'.repeat(g * g)}</span><b>${g}×${g}</b><em>×${D.IMP.mult[g]} prize</em><small>best ${I.bestG[g] || 0}</small></button>`).join('')}</div>
       <div class="impPick"><button class="impPm" data-act="impN:-1">−</button><div class="impVal"><b id="impV">${impN}</b><small>tiles</small></div><button class="impPm" data-act="impN:1">+</button></div>
       <input type="range" id="impRange" min="${D.IMP.min}" max="${D.IMP.max}" value="${impN}" class="impRange">
       <div class="impChips">${D.IMP.quick.map(n => `<button class="${n === impN ? 'on' : ''}" data-act="impSet:${n}">${n}</button>`).join('')}</div>
-      <div class="impRw"><div>${ART.coin(22)}<b>${fmt(D.IMP.coins(impN))}</b><small>coins</small></div><div class="${gemOk ? '' : 'used'}">${ART.gem(22)}<b>${D.IMP.gems(impN)}</b><small>${gemOk ? 'diamonds' : 'claimed today'}</small></div><div>${ART.ic('clock')}<b>~${mins}m</b><small>to finish</small></div></div>
-      ${impN >= 60 ? `<div class="impWarn">${ART.ic('skull')} ${impN === 100 ? 'Nobody has ever done this.' : 'Only the top 1% get here.'}</div>` : ''}
-      <button class="btn big pulse" data-act="impGo">${free ? `${ART.ic('play')} START · FREE ENTRY` : `${ART.ic('ad')} WATCH AD · START`}</button>
-      <div class="shS center">${free ? '1 free entry today' : 'Free entry used today · more with ads'}</div>`, 'imp');
+      <div class="impRw"><div>${ART.coin(22)}<b>${short(D.IMP.coins(impN, impG))}</b><small>coins</small></div><div class="${gemOk ? '' : 'used'}">${ART.gem(22)}<b>${D.IMP.gems(impN, impG)}</b><small>${gemOk ? 'diamonds' : 'claimed today'}</small></div><div>${ART.ic('clock')}<b>${Math.round(secs)}s</b><small>to tap ${impN} tiles</small></div></div>
+      <div class="impBoost">${ART.ic('refresh')}<span><b>Replay booster · ${D.IMP.replays} per run</b><small>Forgot? Watch an ad, the pattern plays again and you continue from the same tile.</small></span></div>
+      ${impN >= 60 || impG > 3 ? `<div class="impWarn">${ART.ic('skull')} ${impG === 5 ? '5×5 is truly impossible. That is why it pays ×5.' : impG === 4 ? '4×4 pays ×3. Very few players finish it.' : impN === 100 ? 'Nobody has ever done this.' : 'Only the top 1% get here.'}</div>` : ''}
+      <div class="impEntry ${free ? 'free' : ''}">${free ? `${ART.ic('gift')} 1 free entry today` : `${ART.ic('ad')} Free entry used today · more with ads`}</div>
+      <button class="btn big pulse impGo" data-act="impGo">${free ? `${ART.ic('play')} START · ${impG}×${impG}` : `${ART.ic('ad')} WATCH AD · START`}</button>`, 'imp');
     const rg = $('impRange'); rg.oninput = () => { impN = +rg.value; $('impV').textContent = impN; }; rg.onchange = () => impSheet();
   }
   async function impGo() {
@@ -931,7 +956,7 @@ const UI = (() => {
     const I = S.st.imp;
     if (I.entries >= D.IMP.freeEntries) { if (!(await ADS.rewarded('impEntry'))) return; }
     I.entries++; S.save(); closeSheet();
-    G.start({ mode: 'classic', imp: { target: impN } });
+    G.start({ mode: 'classic', imp: { target: impN, grid: impG } });
   }
   async function impCheckpoint(len) {
     const v = await ask(h`<div class="mdK">Checkpoint</div><div class="cpFlag">${ART.ic('flag')}<b>${len}</b></div><div class="mdT">Save your progress?</div><div class="mdS">If you make a mistake later, restart from <b>${len} tiles</b> instead of giving up.</div>
@@ -941,16 +966,16 @@ const UI = (() => {
   }
   async function impFail(o) {
     while (true) {
-      const v = await ask(h`<div class="ovFace sm">${ART.sanx('laugh')}</div><div class="mdK">Mistake at ${o.len} tiles</div><div class="mdT">${o.cleared ? `You remembered ${o.cleared}!` : 'So soon?'}</div>
-        ${o.contLeft > 0 ? `<button class="btn big pulse" data-pick="cont">${ART.ic('ad')} CONTINUE AT ${o.len} <small>${o.contLeft} left</small></button>` : ''}
+      const v = await ask(h`<div class="ovFace sm">${ART.sanx('laugh')}</div><div class="mdK">Mistake at tile ${o.at} of ${o.len}</div><div class="mdT">${o.cleared ? `You remembered ${o.cleared}!` : 'So soon?'}</div>
+        ${o.repLeft > 0 ? `<button class="btn big pulse" data-pick="rep">${ART.ic('ad')} REPLAY · FROM TILE ${o.at}</button><div class="shS center">Pattern plays again · ${o.repLeft} replays left</div>` : ''}
         ${o.cp ? `<button class="btn big alt" data-pick="cp">${ART.ic('flag')} RESTART FROM ${o.cp}</button>` : ''}
         <button class="btn ghost" data-pick="end">End here</button>`, 'impFail');
-      if (v === 'cont') {
-        if (await ADS.rewarded('impCont')) return 'cont';
-        const st = S.st, w = await ask(h`<div class="mdK">No ad right now</div><div class="mdT">Continue at ${o.len} anyway?</div><div class="mdS">Use diamonds or coins instead.</div>
+      if (v === 'rep') {
+        if (await ADS.rewarded('impCont')) return 'rep';
+        const st = S.st, w = await ask(h`<div class="mdK">No ad right now</div><div class="mdT">Replay anyway?</div><div class="mdS">Use diamonds or coins instead.</div>
           <button class="btn big ${st.gems >= D.IMP.contGems ? 'pulse' : 'off'}" data-pick="gem">${ART.gem(18)} ${D.IMP.contGems} DIAMONDS</button><button class="btn big alt ${st.coins >= D.IMP.contCoins ? '' : 'off'}" data-pick="coin">${ART.coin(18)} ${fmt(D.IMP.contCoins)} COINS</button><button class="btn ghost" data-pick="back">Back</button>`);
-        if (w === 'gem' && S.spend('gems', D.IMP.contGems)) return 'cont';
-        if (w === 'coin' && S.spend('coins', D.IMP.contCoins)) return 'cont';
+        if (w === 'gem' && S.spend('gems', D.IMP.contGems)) return 'rep';
+        if (w === 'coin' && S.spend('coins', D.IMP.contCoins)) return 'rep';
         if (w === 'gem' || w === 'coin') toast('Not enough', 'info');
         continue;
       }
@@ -958,18 +983,18 @@ const UI = (() => {
     }
   }
   function impEnd(r) {
-    const st = S.st, I = st.imp, d = S.dayKey(), t = r.imp.target, won = r.won;
+    const st = S.st, I = st.imp, d = S.dayKey(), t = r.imp.target, won = r.won, gr = r.imp.grid || 3, gk = gr + ':' + t;
     const cleared = won ? t : r.imp.cleared;
     let g = {};
-    if (won) { g.coins = D.IMP.coins(t); if ((I.gemDay[t] || '') !== d) { g.gems = D.IMP.gems(t); I.gemDay[t] = d; } I.wins++; S.passAdd('imp'); }
-    else g.coins = Math.floor(cleared * cleared / 4);
-    const pb = cleared > (I.best || 0); if (pb) I.best = cleared;
+    if (won) { g.coins = D.IMP.coins(t, gr); if ((I.gemDay[gk] || '') !== d) { g.gems = D.IMP.gems(t, gr); I.gemDay[gk] = d; } I.wins++; S.passAdd('imp'); }
+    else g.coins = Math.floor(cleared * cleared / 4 * D.IMP.mult[gr]);
+    I.bestG = I.bestG || {}; const pb = cleared > (I.bestG[gr] || 0); if (pb) I.bestG[gr] = cleared; I.best = Math.max(I.best || 0, cleared);
     if (cleared >= 50) badge('imp50'); if (won && t >= 100) badge('imp100');
     S.grant(g); S.save();
     show('result');
     $('result').innerHTML = h`<div class="resCard imp">
       <div class="resFace">${ART.sanx(won ? 'shock' : cleared >= 20 ? 'angry' : 'laugh')}<div class="heroBubble sm">${won ? 'IMPOSSIBLE?! How...' : cleared >= 20 ? 'Your brain is scary.' : 'Ha! Told you.'}</div></div>
-      <div class="resK">IMPOSSIBLE 100 · TARGET ${t}</div>
+      <div class="resK">IMPOSSIBLE 100 · ${gr}×${gr} · TARGET ${t}</div>
       <div class="resBig"><span id="resN">0</span><small>tiles remembered</small></div>
       ${pb ? `<div class="recTag">${ART.ic('trophy')} NEW PERSONAL BEST</div>` : ''}
       <div class="resRow">${g.coins ? `<span>${ART.coin(18)} <b>+${fmt(g.coins)}</b></span>` : ''}${g.gems ? `<span>${ART.gem(18)} <b>+${g.gems}</b></span>` : ''}${won ? '' : `<span>Goal <b>${t}</b></span>`}</div>
@@ -999,9 +1024,9 @@ const UI = (() => {
       <button class="btn big" data-act="${first ? 'firstPlay' : 'closeModal'}">${first ? 'ACCEPT CHALLENGE' : 'GOT IT'}</button>`, 'howto');
   }
   function rulesModal(id) {
-    const fest = D.FESTS.find(f => f.id === id);
-    const list = fest ? fest.rules : D.RULES[id] || [];
-    const name = fest ? fest.name : ({ bts: 'Beat the Sanx', champ: 'Beat the Champion', oma: 'One Man Army', bco: 'Beat the Coins', tour: 'World Flash Tour', mania: 'Sanx Mania', daily: 'Daily Challenge', imp: 'IMPOSSIBLE 100', chal: 'Duel a Friend' })[id] || 'Rules';
+    const fest = D.FESTS.find(f => f.id === id), er = EV.rules(id);
+    const list = fest ? fest.rules : er ? er.list : D.RULES[id] || [];
+    const name = fest ? fest.name : er ? er.name : ({ bts: 'Beat the Sanx', champ: 'Beat the Champion', oma: 'One Man Army', bco: 'Beat the Coins', tour: 'World Flash Tour', mania: 'Sanx Mania', daily: 'Daily Challenge', imp: 'IMPOSSIBLE 100', chal: 'Duel a Friend' })[id] || 'Rules';
     modal(h`<div class="mdK">Rules</div><div class="mdT">${name}</div><ol class="rlList">${list.map(r => `<li>${r}</li>`).join('')}</ol>${fest ? `<div class="rlRw">${ART.ic('gift')} Win: ${fest.reward.coins ? ART.coin(14) + fmt(fest.reward.coins) : ''} ${fest.reward.gems ? ART.gem(14) + fest.reward.gems : ''} + ${D.skin(fest.skin).name} skin</div>` : ''}<button class="btn big" data-act="closeModal">GOT IT</button>`, 'rules');
   }
 
@@ -1121,6 +1146,7 @@ const UI = (() => {
       case 'imp': if (!['home', 'chall'].includes(cur)) show('home'); impSheet(); break;
       case 'impN': impN = Math.max(D.IMP.min, Math.min(D.IMP.max, impN + (+v))); impSheet(); break;
       case 'impSet': impN = +v; impSheet(); break;
+      case 'impG': impG = +v; impSheet(); break;
       case 'impGo': impGo(); break;
       case 'chal': CH.open(); break;
       default:
@@ -1145,5 +1171,5 @@ const UI = (() => {
     setInterval(() => { if (cur === 'home' && !$('sheet').classList.contains('on') && !$('modal').classList.contains('on')) renderHome(); }, 30000);
   }
 
-  return { init, show, render, refresh, sheet, closeSheet, modal, closeModal, ask, toast, achToast, reward, rwItems, chest, chestSvg, bossExtraChest, lucky, trialEnded, gameOver, runEnd, dailyEnd, dbeat, dbeatEnd, testEnd, startTest, clipBtn, pause, howto, loginModal, afterHome, comeback, play, fmt, short, esc, left, topbar, badge, impCheckpoint, impFail, impEnd, rulesModal, readySheet, get cur() { return cur; }, adProgress() { SHOP.adProgress(); } };
+  return { init, show, render, refresh, sheet, closeSheet, modal, closeModal, ask, toast, achToast, reward, rwItems, chest, chestSvg, bossExtraChest, lucky, trialEnded, gameOver, runEnd, dailyEnd, dbeat, dbeatEnd, testEnd, startTest, clipBtn, pause, howto, loginModal, afterHome, comeback, play, fmt, short, esc, left, topbar, badge, impCheckpoint, impFail, impEnd, avUnlockCheck, avatars, rulesModal, readySheet, get cur() { return cur; }, adProgress() { SHOP.adProgress(); } };
 })();

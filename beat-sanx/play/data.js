@@ -23,7 +23,7 @@ D.MODE = Object.fromEntries(D.MODES.map(m => [m.id, m]));
 D.GAP = 200;
 D.HEARTS = 3;
 D.BLITZ_SECS = 90;
-D.BOSS_SPEED = 0.65;
+D.BOSS_SPEED = 0.75;   // v1.7: boss now plays on the 5x5 board, so a little gentler
 D.BONUS_CHANCE = 0.22;
 
 /* ---------- Level plan (v1.3) ----------
@@ -45,8 +45,11 @@ D.twistFor = lv => (lv >= 15 && lv % 10 === 5) ? D.TWISTS[Math.floor(lv / 10) % 
 D.bpmFor = lv => Math.min(150, 96 + D.band(lv).i * 5 + (lv % 10 === 0 ? 10 : 0) - (D.isRelief(lv) ? 6 : 0));
 D.bpmLadder = len => Math.min(150, 94 + Math.floor(len / 3) * 4);
 D.gridChunk = lv => Math.floor(((lv - D.band(lv).from) % 30) / 10);      // 0,1,2 inside a band
-D.gridFor = lv => [3, 4, 5][D.gridChunk(lv)];
-D.speedFor = lv => (D.gridChunk(lv) === 2 ? 0.88 : 1) * (D.isRelief(lv) ? 1.12 : 1) * Math.max(0.78, 1 - D.band(lv).i * 0.025);
+/* v1.7 grid mix: in every 10 levels -> 3x3 seven times, 4x4 on levels 4 and 8, 5x5 on the boss level (10th) */
+D.gridFor = lv => { const k = lv % 10; return k === 0 ? 5 : (k === 4 || k === 8) ? 4 : 3; };
+/* events: finite runs -> first 70% of rounds 3x3, next 20% 4x4, last 10% 5x5; endless runs repeat 7-2-1 every 10 rounds */
+D.evGrid = (i, total) => { if (total) { const p = i / total; return p < 0.7 ? 3 : p < 0.9 ? 4 : 5; } const k = i % 10; return k < 7 ? 3 : k < 9 ? 4 : 5; };
+D.speedFor = lv => (D.isRelief(lv) ? 1.12 : 1) * Math.max(0.78, 1 - D.band(lv).i * 0.025);
 /* v1.4: always 3 rounds per level: target-2, target-1, target (level 1-30: 2, 3, 4 tiles) */
 D.levelSteps = lv => { const n = D.levelLen(lv); return [Math.max(2, n - 2), Math.max(2, n - 1), n].filter((v, i, a) => i === 0 || v > a[i - 1]); };
 D.LADDER_LV = 3;               // in ladder runs (duels / events) every 3 rounds count as one "level"
@@ -225,11 +228,107 @@ D.MEM_RANKS = [
 ];
 /* ---------- v1.4 AVATARS ----------
    Collection (unlock by playing) + Premium (coins: Rare 10k · Epic 50k · Mythic 2 lakh · Legend 5 lakh).
-   The first 4 are ready; the rest are added as their art arrives. */
+   v1.7: all 100 avatars. 10 free, 50 earned (levels, events, stars, streak, ads, memory), 40 premium. */
 D.AV_TIERS = { free: { name: 'Free', coins: 0 }, rare: { name: 'Rare', coins: 10000 }, epic: { name: 'Epic', coins: 50000 }, mythic: { name: 'Mythic', coins: 200000 }, legend: { name: 'Legend', coins: 500000 } };
 D.AVATARS = [
   { id: 'ace', name: 'Ace', g: 'm', set: 'collection', tier: 'free', unlock: { free: true } },
   { id: 'nova', name: 'Nova', g: 'f', set: 'collection', tier: 'free', unlock: { free: true } },
+  { id: 'blaze', name: 'Blaze', g: 'm', set: 'collection', tier: 'free', unlock: { free: true } },
+  { id: 'kai', name: 'Kai', g: 'm', set: 'collection', tier: 'free', unlock: { free: true } },
+  { id: 'leo', name: 'Leo', g: 'm', set: 'collection', tier: 'free', unlock: { free: true } },
+  { id: 'zion', name: 'Zion', g: 'm', set: 'collection', tier: 'free', unlock: { free: true } },
+  { id: 'arjun', name: 'Arjun', g: 'm', set: 'collection', tier: 'earn', unlock: { lv: 10 } },
+  { id: 'mateo', name: 'Mateo', g: 'm', set: 'collection', tier: 'earn', unlock: { lv: 20 } },
+  { id: 'finn', name: 'Finn', g: 'm', set: 'collection', tier: 'earn', unlock: { lv: 30 } },
+  { id: 'omar', name: 'Omar', g: 'm', set: 'collection', tier: 'earn', unlock: { lv: 45 } },
+  { id: 'jay', name: 'Jay', g: 'm', set: 'collection', tier: 'earn', unlock: { lv: 60 } },
+  { id: 'marcus', name: 'Marcus', g: 'm', set: 'collection', tier: 'earn', unlock: { lv: 75 } },
+  { id: 'ravi', name: 'Ravi', g: 'm', set: 'collection', tier: 'earn', unlock: { lv: 90 } },
+  { id: 'diego', name: 'Diego', g: 'm', set: 'collection', tier: 'earn', unlock: { lv: 110 } },
+  { id: 'oliver', name: 'Oliver', g: 'm', set: 'collection', tier: 'earn', unlock: { lv: 130 } },
+  { id: 'tenzin', name: 'Tenzin', g: 'm', set: 'collection', tier: 'earn', unlock: { lv: 150 } },
+  { id: 'kofi', name: 'Kofi', g: 'm', set: 'collection', tier: 'earn', unlock: { lv: 175 } },
+  { id: 'hiro', name: 'Hiro', g: 'm', set: 'collection', tier: 'earn', unlock: { lv: 200 } },
+  { id: 'noah', name: 'Noah', g: 'm', set: 'collection', tier: 'earn', unlock: { lv: 250 } },
+  { id: 'samir', name: 'Samir', g: 'm', set: 'collection', tier: 'earn', unlock: { lv: 300 } },
+  { id: 'axel', name: 'Axel', g: 'm', set: 'collection', tier: 'earn', unlock: { lv: 400 } },
+  { id: 'dev', name: 'Dev', g: 'm', set: 'collection', tier: 'earn', unlock: { evWins: 3 } },
+  { id: 'rio', name: 'Rio', g: 'm', set: 'collection', tier: 'earn', unlock: { evWins: 10 } },
+  { id: 'ethan', name: 'Ethan', g: 'm', set: 'collection', tier: 'earn', unlock: { festWins: 1 } },
+  { id: 'tariq', name: 'Tariq', g: 'm', set: 'collection', tier: 'earn', unlock: { stars: 10 } },
+  { id: 'liam', name: 'Liam', g: 'm', set: 'collection', tier: 'earn', unlock: { stars: 20 } },
+  { id: 'sora', name: 'Sora', g: 'm', set: 'collection', tier: 'earn', unlock: { stars: 30 } },
+  { id: 'aryan', name: 'Aryan', g: 'm', set: 'collection', tier: 'earn', unlock: { streak: 7 } },
+  { id: 'boris', name: 'Boris', g: 'm', set: 'collection', tier: 'earn', unlock: { streak: 30 } },
+  { id: 'nico', name: 'Nico', g: 'm', set: 'collection', tier: 'earn', unlock: { ads: 50 } },
+  { id: 'max', name: 'Max', g: 'm', set: 'collection', tier: 'earn', unlock: { mem: 12 } },
+  { id: 'luna', name: 'Luna', g: 'f', set: 'collection', tier: 'free', unlock: { free: true } },
+  { id: 'aisha', name: 'Aisha', g: 'f', set: 'collection', tier: 'free', unlock: { free: true } },
+  { id: 'mei', name: 'Mei', g: 'f', set: 'collection', tier: 'free', unlock: { free: true } },
+  { id: 'sofia', name: 'Sofia', g: 'f', set: 'collection', tier: 'free', unlock: { free: true } },
+  { id: 'priya', name: 'Priya', g: 'f', set: 'collection', tier: 'earn', unlock: { lv: 10 } },
+  { id: 'emma', name: 'Emma', g: 'f', set: 'collection', tier: 'earn', unlock: { lv: 20 } },
+  { id: 'zara', name: 'Zara', g: 'f', set: 'collection', tier: 'earn', unlock: { lv: 30 } },
+  { id: 'yuna', name: 'Yuna', g: 'f', set: 'collection', tier: 'earn', unlock: { lv: 45 } },
+  { id: 'amara', name: 'Amara', g: 'f', set: 'collection', tier: 'earn', unlock: { lv: 60 } },
+  { id: 'chloe', name: 'Chloe', g: 'f', set: 'collection', tier: 'earn', unlock: { lv: 75 } },
+  { id: 'ananya', name: 'Ananya', g: 'f', set: 'collection', tier: 'earn', unlock: { lv: 90 } },
+  { id: 'isla', name: 'Isla', g: 'f', set: 'collection', tier: 'earn', unlock: { lv: 110 } },
+  { id: 'freya', name: 'Freya', g: 'f', set: 'collection', tier: 'earn', unlock: { lv: 130 } },
+  { id: 'kiara', name: 'Kiara', g: 'f', set: 'collection', tier: 'earn', unlock: { lv: 150 } },
+  { id: 'nia', name: 'Nia', g: 'f', set: 'collection', tier: 'earn', unlock: { lv: 175 } },
+  { id: 'sakura', name: 'Sakura', g: 'f', set: 'collection', tier: 'earn', unlock: { lv: 200 } },
+  { id: 'lena', name: 'Lena', g: 'f', set: 'collection', tier: 'earn', unlock: { lv: 250 } },
+  { id: 'maya', name: 'Maya', g: 'f', set: 'collection', tier: 'earn', unlock: { lv: 300 } },
+  { id: 'valentina', name: 'Valentina', g: 'f', set: 'collection', tier: 'earn', unlock: { lv: 400 } },
+  { id: 'riya', name: 'Riya', g: 'f', set: 'collection', tier: 'earn', unlock: { evWins: 3 } },
+  { id: 'jade', name: 'Jade', g: 'f', set: 'collection', tier: 'earn', unlock: { evWins: 10 } },
+  { id: 'ella', name: 'Ella', g: 'f', set: 'collection', tier: 'earn', unlock: { festWins: 1 } },
+  { id: 'tamara', name: 'Tamara', g: 'f', set: 'collection', tier: 'earn', unlock: { stars: 10 } },
+  { id: 'ivy', name: 'Ivy', g: 'f', set: 'collection', tier: 'earn', unlock: { stars: 20 } },
+  { id: 'hana', name: 'Hana', g: 'f', set: 'collection', tier: 'earn', unlock: { stars: 30 } },
+  { id: 'meera', name: 'Meera', g: 'f', set: 'collection', tier: 'earn', unlock: { streak: 7 } },
+  { id: 'olga', name: 'Olga', g: 'f', set: 'collection', tier: 'earn', unlock: { streak: 30 } },
+  { id: 'noor', name: 'Noor', g: 'f', set: 'collection', tier: 'earn', unlock: { ads: 50 } },
+  { id: 'willow', name: 'Willow', g: 'f', set: 'collection', tier: 'earn', unlock: { mem: 12 } },
+  { id: 'drift', name: 'Street Drift', g: 'm', set: 'premium', tier: 'rare' },
+  { id: 'dj', name: 'DJ Pulse', g: 'm', set: 'premium', tier: 'rare' },
+  { id: 'skater', name: 'Skate King', g: 'm', set: 'premium', tier: 'rare' },
+  { id: 'hoops', name: 'Hoop Star', g: 'm', set: 'premium', tier: 'rare' },
+  { id: 'gamer', name: 'Pro Gamer', g: 'm', set: 'premium', tier: 'rare' },
+  { id: 'pilot', name: 'Sky Pilot', g: 'm', set: 'premium', tier: 'epic' },
+  { id: 'samurai', name: 'Neo Samurai', g: 'm', set: 'premium', tier: 'epic' },
+  { id: 'rapper', name: 'Gold Mic', g: 'm', set: 'premium', tier: 'epic' },
+  { id: 'knight', name: 'Pixel Knight', g: 'm', set: 'premium', tier: 'epic' },
+  { id: 'detective', name: 'Mind Detective', g: 'm', set: 'premium', tier: 'epic' },
+  { id: 'mech', name: 'Mech Pilot', g: 'm', set: 'premium', tier: 'mythic' },
+  { id: 'pharaoh', name: 'Pharaoh', g: 'm', set: 'premium', tier: 'mythic' },
+  { id: 'viking', name: 'Viking Lord', g: 'm', set: 'premium', tier: 'mythic' },
+  { id: 'wizard', name: 'Arch Wizard', g: 'm', set: 'premium', tier: 'mythic' },
+  { id: 'dragon', name: 'Dragon Rider', g: 'm', set: 'premium', tier: 'legend' },
+  { id: 'cosmic', name: 'Cosmic King', g: 'm', set: 'premium', tier: 'legend' },
+  { id: 'neon', name: 'Neon Phantom', g: 'm', set: 'premium', tier: 'legend' },
+  { id: 'titan', name: 'Thunder Titan', g: 'm', set: 'premium', tier: 'legend' },
+  { id: 'maharaja', name: 'The Maharaja', g: 'm', set: 'premium', tier: 'legend' },
+  { id: 'racer', name: 'Street Racer', g: 'f', set: 'premium', tier: 'rare' },
+  { id: 'popstar', name: 'Pop Star', g: 'f', set: 'premium', tier: 'rare' },
+  { id: 'skatergirl', name: 'Skate Queen', g: 'f', set: 'premium', tier: 'rare' },
+  { id: 'tennis', name: 'Ace Smash', g: 'f', set: 'premium', tier: 'rare' },
+  { id: 'streamer', name: 'Live Streamer', g: 'f', set: 'premium', tier: 'rare' },
+  { id: 'aviator', name: 'Sky Aviator', g: 'f', set: 'premium', tier: 'epic' },
+  { id: 'kunoichi', name: 'Shadow Ninja', g: 'f', set: 'premium', tier: 'epic' },
+  { id: 'rockstar', name: 'Rock Diva', g: 'f', set: 'premium', tier: 'epic' },
+  { id: 'paladin', name: 'Crystal Knight', g: 'f', set: 'premium', tier: 'epic' },
+  { id: 'agent', name: 'Secret Agent', g: 'f', set: 'premium', tier: 'epic' },
+  { id: 'android', name: 'Android', g: 'f', set: 'premium', tier: 'mythic' },
+  { id: 'cleo', name: 'Nile Queen', g: 'f', set: 'premium', tier: 'mythic' },
+  { id: 'valkyrie', name: 'Valkyrie', g: 'f', set: 'premium', tier: 'mythic' },
+  { id: 'sorceress', name: 'Arch Sorceress', g: 'f', set: 'premium', tier: 'mythic' },
+  { id: 'mermaid', name: 'Ocean Queen', g: 'f', set: 'premium', tier: 'mythic' },
+  { id: 'phoenix', name: 'Phoenix', g: 'f', set: 'premium', tier: 'legend' },
+  { id: 'galaxy', name: 'Galaxy Empress', g: 'f', set: 'premium', tier: 'legend' },
+  { id: 'cyber', name: 'Cyber Angel', g: 'f', set: 'premium', tier: 'legend' },
+  { id: 'maharani', name: 'The Maharani', g: 'f', set: 'premium', tier: 'legend' },
   { id: 'ronin', name: 'Cyber Ronin', g: 'm', set: 'premium', tier: 'mythic' },
   { id: 'astro', name: 'Astro Queen', g: 'f', set: 'premium', tier: 'legend' }
 ];
@@ -524,12 +623,14 @@ D.SKINS.push({ id: 'legend', name: 'Legend', cost: -6, desc: 'Only for players w
 /* ---------- IMPOSSIBLE 100 ---------- */
 D.IMP = {
   min: 10, max: 100, quick: [10, 20, 30, 50, 60, 100],
-  coins: n => n * n, gems: n => Math.floor(n * n / 100),
-  secs: n => 5 + 2 * n,               // tap time for a round with n tiles (generous)
+  /* v1.7: the player picks the grid first and keeps it for the whole run */
+  grids: [3, 4, 5], mult: { 3: 1, 4: 3, 5: 5 }, perTile: { 3: 2.5, 4: 3, 5: 3.5 },
+  coins: (n, g = 3) => n * n * D.IMP.mult[g], gems: (n, g = 3) => Math.floor(n * n / 100) * D.IMP.mult[g],
+  secs: (n, g = 3) => 10 + D.IMP.perTile[g] * n,   // tap time; the clock never runs while the pattern plays
   flash: 520, gap: 230,               // same comfortable speed for the whole run
   checkpointEvery: 5, freeEntries: 1,
-  continues: n => Math.ceil(n * 0.5),     // continues = 50% of the target (10 -> 5, 100 -> 50)
-  contGems: 5, contCoins: 1000            // when no ad is available
+  replays: 10,                        // Replay booster: ad -> pattern replays -> continue from the same tile
+  contGems: 5, contCoins: 1000        // when no ad is available
 };
 
 /* ---------- Challenge a Friend ---------- */
@@ -595,47 +696,80 @@ D.SKINS.push(
   { id: 'f_tri',   fest: 'tri',   name: 'Tiranga',   cost: -4, icons: ['star', 'sun', 'star', 'circle', 'compass', 'circle', 'star', 'sun', 'star'], colors: ['#ff9933', '#ff9933', '#ff9933', '#ffffff', '#ffffff', '#ffffff', '#138808', '#138808', '#138808'] },
   { id: 'f_love',  fest: 'love',  name: 'Hearts',    cost: -4, icons: ['heart', 'heart', 'star', 'heart', 'diamond', 'heart', 'sparkle', 'heart', 'heart'], colors: ['#ff006e', '#ff4d6d', '#ff8fab', '#c9184a', '#ffb3c1', '#ff758f', '#e5383b', '#ffccd5', '#a4133c'] },
   { id: 'f_holi',  fest: 'holi',  name: 'Holi',      cost: -4, icons: ['drop', 'sparkle', 'drop', 'star', 'drop', 'heart', 'drop', 'sun', 'drop'], colors: ['#ff006e', '#ffbe0b', '#3a86ff', '#8338ec', '#06d6a0', '#fb5607', '#ff4d6d', '#00bbf9', '#9b5de5'] },
-  { id: 'f_eid',   fest: 'eid',   name: 'Chand',     cost: -4, icons: ['moon', 'star', 'moon', 'star', 'sparkle', 'star', 'moon', 'star', 'moon'], colors: ['#2a9d8f', '#e9c46a', '#264653', '#90e0ef', '#ffd166', '#1d3557', '#a8dadc', '#f4a261', '#457b9d'] },
-  { id: 'f_azadi', fest: 'azadi', name: 'Azadi',     cost: -4, icons: ['flag', 'star', 'flag', 'sun', 'compass', 'sun', 'flag', 'star', 'flag'], colors: ['#ff9933', '#ffb366', '#ff9933', '#ffffff', '#000080', '#ffffff', '#138808', '#2db34a', '#138808'] },
+  { id: 'f_eid',   fest: 'eid',   name: 'Moonlight',     cost: -4, icons: ['moon', 'star', 'moon', 'star', 'sparkle', 'star', 'moon', 'star', 'moon'], colors: ['#2a9d8f', '#e9c46a', '#264653', '#90e0ef', '#ffd166', '#1d3557', '#a8dadc', '#f4a261', '#457b9d'] },
+  { id: 'f_azadi', fest: 'azadi', name: 'Freedom',     cost: -4, icons: ['flag', 'star', 'flag', 'sun', 'compass', 'sun', 'flag', 'star', 'flag'], colors: ['#ff9933', '#ffb366', '#ff9933', '#ffffff', '#000080', '#ffffff', '#138808', '#2db34a', '#138808'] },
   { id: 'f_rakhi', fest: 'rakhi', name: 'Rakhi',     cost: -4, icons: ['sun', 'heart', 'star', 'sparkle', 'sun', 'sparkle', 'star', 'heart', 'sun'], colors: ['#ff006e', '#ffbe0b', '#e63946', '#fb8500', '#d00000', '#ffd166', '#c1121f', '#ff7b00', '#f72585'] },
   { id: 'f_modak', fest: 'modak', name: 'Modak',     cost: -4, icons: ['drop', 'flame', 'drop', 'sun', 'star', 'sun', 'drop', 'flame', 'drop'], colors: ['#ffb703', '#fb8500', '#e85d04', '#ffd60a', '#d00000', '#f48c06', '#ffba08', '#dc2f02', '#faa307'] },
   { id: 'f_garba', fest: 'garba', name: 'Garba',     cost: -4, icons: ['sun', 'star', 'circle', 'diamond', 'sparkle', 'diamond', 'circle', 'star', 'sun'], colors: ['#ff006e', '#ffbe0b', '#06d6a0', '#ef476f', '#118ab2', '#ffd166', '#8338ec', '#fb5607', '#3a86ff'] },
   { id: 'f_diya',  fest: 'diya',  name: 'Diwali',    cost: -4, icons: ['flame', 'sparkle', 'flame', 'star', 'sun', 'star', 'flame', 'sparkle', 'flame'], colors: ['#ff9f1c', '#ffbf69', '#e85d04', '#ffd60a', '#d00000', '#ffba08', '#f48c06', '#ffe066', '#dc2f02'] },
-  { id: 'f_ghost', fest: 'ghost', name: 'Spooky',    cost: -4, icons: ['ghost', 'skull', 'moon', 'eye', 'ghost', 'eye', 'moon', 'skull', 'ghost'], colors: ['#ff7b00', '#7209b7', '#3c096c', '#ff9e00', '#10002b', '#ff6d00', '#5a189a', '#ff8500', '#240046'] }
+  { id: 'f_ghost', fest: 'ghost', name: 'Spooky',    cost: -4, icons: ['ghost', 'skull', 'moon', 'eye', 'ghost', 'eye', 'moon', 'skull', 'ghost'], colors: ['#ff7b00', '#7209b7', '#3c096c', '#ff9e00', '#10002b', '#ff6d00', '#5a189a', '#ff8500', '#240046'] },
+  { id: 'f_lunar',  fest: 'lunar',  name: 'Lantern',  cost: -4, icons: ['sun', 'star', 'flame', 'sparkle', 'sun', 'sparkle', 'flame', 'star', 'sun'], colors: ['#d00000', '#ffba08', '#e85d04', '#ffd60a', '#9d0208', '#faa307', '#dc2f02', '#ffe066', '#6a040f'] },
+  { id: 'f_easter', fest: 'easter', name: 'Easter',   cost: -4, icons: ['drop', 'star', 'drop', 'heart', 'sun', 'heart', 'drop', 'star', 'drop'], colors: ['#9b5de5', '#f15bb5', '#fee440', '#00bbf9', '#00f5d4', '#c77dff', '#ff99c8', '#a9def9', '#e4c1f9'] },
+  { id: 'f_earth',  fest: 'earth',  name: 'Earth',    cost: -4, icons: ['leaf', 'drop', 'sun', 'cloud', 'planet', 'cloud', 'sun', 'drop', 'leaf'], colors: ['#2d6a4f', '#52b788', '#00b4d8', '#95d5b2', '#0077b6', '#74c69d', '#48cae4', '#40916c', '#1b4332'] },
+  { id: 'f_music',  fest: 'music',  name: 'Music',    cost: -4, icons: ['music', 'star', 'zap', 'music', 'sparkle', 'music', 'zap', 'star', 'music'], colors: ['#7b2cbf', '#ff006e', '#3a86ff', '#c77dff', '#fb5607', '#9d4edd', '#ff4d6d', '#4cc9f0', '#5a189a'] },
+  { id: 'f_friend', fest: 'friend', name: 'Friends',  cost: -4, icons: ['users', 'heart', 'star', 'sparkle', 'users', 'sparkle', 'star', 'heart', 'users'], colors: ['#06d6a0', '#118ab2', '#ffd166', '#ef476f', '#073b4c', '#26c485', '#4cc9f0', '#ff99c8', '#0096c7'] },
+  { id: 'f_thanks', fest: 'thanks', name: 'Feast',    cost: -4, icons: ['leaf', 'sun', 'gift', 'star', 'leaf', 'star', 'gift', 'sun', 'leaf'], colors: ['#bc6c25', '#dda15e', '#606c38', '#d4a373', '#9c6644', '#e9c46a', '#7f5539', '#a3b18a', '#283618'] }
 );
 
-/* ---------- FESTIVAL EVENTS (national + international). Dates for the next 12 months.
-   Moving festivals (Holi, Eid, Rakhi, Ganesh, Navratri, Diwali) are updated every year.
+/* ---------- FESTIVAL EVENTS (national + international). v1.7: every year automatically (see D.festWin).
    No deity images, no flag images: only colors and symbols. ---------- */
 D.FESTS = [
-  { id: 'xmas',  name: "Santa's Gifts",      fest: 'Christmas',       icon: 'gift',    from: '2026-12-15', to: '2026-12-26', skin: 'f_xmas',  kind: 'advent', theme: ['#c1121f', '#1b4332'],
+  { id: 'xmas',  name: "Santa's Gifts",      fest: 'Christmas',       icon: 'gift',    date: { fixed: '12-15', days: 12 }, skin: 'f_xmas',  kind: 'advent', theme: ['#c1121f', '#1b4332'],
     tag: 'A gift every day + snowy Classic challenge', rules: ['A new gift box opens every day from 15 to 25 December.', 'Play the Snow Challenge: remember a 9-tile Classic pattern (starts at 2, +1 every round). 3 hearts.', 'Win the Snow Challenge to unlock the Christmas tile skin.', '3 tries a day. Watch an ad for 1 extra try.'], goal: 8, mode: 'classic', reward: { coins: 1500, gems: 10 } },
-  { id: 'ny',    name: 'New Year Countdown', fest: 'New Year',        icon: 'clock',   from: '2026-12-31', to: '2027-01-02', skin: 'f_ny',    kind: 'speed', theme: ['#ffd700', '#3a0ca3'],
+  { id: 'ny',    name: 'New Year Countdown', fest: 'New Year',        icon: 'clock',   date: { fixed: '12-31', days: 3 }, skin: 'f_ny',    kind: 'speed', theme: ['#ffd700', '#3a0ca3'],
     tag: '60 second speed race into the new year', rules: ['60 seconds on the clock.', 'Clear as many steps as you can in Speed mode.', 'Wrong tap costs 3 seconds.', '20+ steps unlocks the New Year skin.'], goal: 20, mode: 'speed', secs: 60, reward: { coins: 2026, gems: 12 } },
-  { id: 'kite',  name: 'Kite Cut',           fest: 'Uttarayan',       icon: 'diamond', from: '2027-01-12', to: '2027-01-16', skin: 'f_kite',  kind: 'kite', theme: ['#fb5607', '#3a86ff'],
+  { id: 'kite',  name: 'Kite Cut',           fest: 'Uttarayan',       icon: 'diamond', date: { fixed: '01-12', days: 5 }, skin: 'f_kite',  kind: 'kite', theme: ['#fb5607', '#3a86ff'],
     tag: 'Every round you clear cuts an AI kite', rules: ['Each round you clear cuts one AI kite.', 'Cut 7 kites to win (pattern starts at 2 tiles, +1 every round).', '3 hearts. A wrong tap lets an AI kite cut yours (lose a heart).', 'Win to unlock the Kite Fest skin.'], goal: 7, mode: 'classic', reward: { coins: 1400, gems: 8 } },
-  { id: 'tri',   name: 'Tiranga Challenge',  fest: 'Republic Day',    icon: 'flag',    from: '2027-01-24', to: '2027-01-27', skin: 'f_tri',   kind: 'tri', theme: ['#ff9933', '#138808'],
+  { id: 'tri',   name: 'Tiranga Challenge',  fest: 'Republic Day',    icon: 'flag',    date: { fixed: '01-24', days: 4 }, skin: 'f_tri',   kind: 'tri', theme: ['#ff9933', '#138808'],
     tag: 'Three colors. Speed rises every level', rules: ['The board uses only three colors.', 'Every level the flashes get 8% faster.', 'Survive 6 levels to win.', 'Win to unlock the Tiranga skin.'], goal: 6, mode: 'classic', reward: { coins: 1950, gems: 8 } },
-  { id: 'love',  name: 'Heart Match',        fest: "Valentine's Day", icon: 'heart',   from: '2027-02-12', to: '2027-02-15', skin: 'f_love',  kind: 'twin', theme: ['#ff006e', '#a4133c'],
+  { id: 'love',  name: 'Heart Match',        fest: "Valentine's Day", icon: 'heart',   date: { fixed: '02-12', days: 4 }, skin: 'f_love',  kind: 'twin', theme: ['#ff006e', '#a4133c'],
     tag: 'Twin mode: two hearts at once', rules: ['Twin mode: two tiles light together. Tap both.', 'Match 14 pairs to win.', '3 hearts, no revives.', 'Win to unlock the Hearts skin.'], goal: 14, mode: 'twin', reward: { coins: 1400, gems: 8 } },
-  { id: 'eid',   name: 'Chand Raat',         fest: 'Eid',             icon: 'moon',    from: '2027-03-08', to: '2027-03-11', skin: 'f_eid',   kind: 'ghost', theme: ['#2a9d8f', '#1d3557'],
+  { id: 'eid',   name: 'Moon Night',         fest: 'Eid',             icon: 'moon',    date: { on: { 2027: '03-09', 2028: '02-26', 2029: '02-14' }, before: 1, after: 2 }, skin: 'f_eid',   kind: 'ghost', theme: ['#2a9d8f', '#1d3557'],
     tag: 'Play in the dark under the moon', rules: ['Ghost mode: tiles go dark after the pattern.', 'Remember an 8-tile pattern from memory (starts at 2, +1 every round).', '3 hearts.', 'Win to unlock the Chand skin.'], goal: 7, mode: 'ghost', reward: { coins: 1500, gems: 10 } },
-  { id: 'holi',  name: 'Color Splash',       fest: 'Holi',            icon: 'drop',    from: '2027-03-20', to: '2027-03-24', skin: 'f_holi',  kind: 'holi', theme: ['#ff006e', '#3a86ff'],
+  { id: 'holi',  name: 'Color Splash',       fest: 'Holi',            icon: 'drop',    date: { on: { 2027: '03-22', 2028: '03-11', 2029: '03-01' }, before: 2, after: 2 }, skin: 'f_holi',  kind: 'holi', theme: ['#ff006e', '#3a86ff'],
     tag: 'Tile colors swap every round', rules: ['Every round the tile colors get shuffled.', 'Remember the position, not the color.', 'Remember a 9-tile pattern to win (starts at 2, +1 every round).', 'Win to unlock the Holi skin + diamonds.'], goal: 12, mode: 'classic', reward: { coins: 1500, gems: 15 } },
-  { id: 'azadi', name: 'Azadi Run',          fest: 'Independence Day',icon: 'flag',    from: '2027-08-13', to: '2027-08-16', skin: 'f_azadi', kind: 'marathon', theme: ['#ff9933', '#138808'],
+  { id: 'azadi', name: 'Freedom Run',          fest: 'Independence Day',icon: 'flag',    date: { fixed: '08-13', days: 4 }, skin: 'f_azadi', kind: 'marathon', theme: ['#ff9933', '#138808'],
     tag: '15 level marathon', rules: ['Classic marathon: clear 15 levels in one run.', '3 hearts. One ad revive allowed.', 'Every 5 levels: bonus coins.', 'Win to unlock the Azadi skin.'], goal: 15, mode: 'classic', reward: { coins: 1947, gems: 15 } },
-  { id: 'rakhi', name: 'Sibling Duo',        fest: 'Raksha Bandhan',  icon: 'heart',   from: '2027-08-15', to: '2027-08-18', skin: 'f_rakhi', kind: 'duo', theme: ['#ff006e', '#fb8500'],
+  { id: 'rakhi', name: 'Sibling Duo',        fest: 'Raksha Bandhan',  icon: 'heart',   date: { on: { 2027: '08-17', 2028: '08-05', 2029: '08-23' }, before: 2, after: 1 }, skin: 'f_rakhi', kind: 'duo', theme: ['#ff006e', '#fb8500'],
     tag: 'Friend Challenges pay double', rules: ['Every Friend Challenge win pays double during the festival.', 'Duo round: Twin mode, clear 10 pairs.', '3 hearts.', 'Win the duo round to unlock the Rakhi skin.'], goal: 10, mode: 'twin', reward: { coins: 1200, gems: 8 } },
-  { id: 'modak', name: 'Modak Hunt',         fest: 'Ganesh Chaturthi',icon: 'drop',    from: '2027-09-03', to: '2027-09-14', skin: 'f_modak', kind: 'collect', theme: ['#ffb703', '#d00000'],
+  { id: 'modak', name: 'Modak Hunt',         fest: 'Ganesh Chaturthi',icon: 'drop',    date: { on: { 2027: '09-04', 2028: '08-23', 2029: '09-11' }, before: 1, after: 10 }, skin: 'f_modak', kind: 'collect', theme: ['#ffb703', '#d00000'],
     tag: 'Collect modaks on every level', rules: ['Every level you clear drops modaks (1 to 3).', 'Collect 51 modaks during the festival.', 'Milestones at 11, 21 and 51 modaks.', 'Reach 51 to unlock the Modak skin.'], goal: 51, mode: 'classic', reward: { coins: 2100, gems: 12 } },
-  { id: 'garba', name: '9 Raatein Garba',    fest: 'Navratri',        icon: 'sun',     from: '2027-09-30', to: '2027-10-09', skin: 'f_garba', kind: 'nights', theme: ['#ff006e', '#06d6a0'],
+  { id: 'garba', name: 'Garba Nights',    fest: 'Navratri',        icon: 'sun',     date: { on: { 2027: '09-30', 2028: '09-19', 2029: '10-08' }, before: 0, after: 9 }, skin: 'f_garba', kind: 'nights', theme: ['#ff006e', '#06d6a0'],
     tag: '9 nights, a new mode every night', rules: ['Each night has its own mode.', 'Remember a 7-tile pattern in that mode to light the night.', 'Light all 9 nights for the mega prize.', 'Missed a night? Watch an ad to replay it once.'], goal: 6, mode: 'classic', reward: { coins: 3000, gems: 20, chest: 'gold' }, nights: ['classic', 'reverse', 'speed', 'twin', 'chaos', 'ghost', 'negative', 'focus', 'classic'] },
-  { id: 'diya',  name: 'Diya Jalao',         fest: 'Diwali',          icon: 'flame',   from: '2027-10-25', to: '2027-11-03', skin: 'f_diya',  kind: 'diya', theme: ['#ff9f1c', '#d00000'],
+  { id: 'diya',  name: 'Festival of Lights',         fest: 'Diwali',          icon: 'flame',   date: { on: { 2026: '11-08', 2027: '10-29', 2028: '10-17', 2029: '11-05' }, before: 4, after: 5 }, skin: 'f_diya',  kind: 'diya', theme: ['#ff9f1c', '#d00000'],
     tag: 'Light 100 diyas. Every diya pays', rules: ['Every step you clear lights 1 diya.', 'Light 100 diyas during the festival.', 'Rewards at 25, 50, 75 and 100 diyas.', 'Reach 100 to unlock the Diwali skin.'], goal: 100, mode: 'classic', reward: { coins: 2500, gems: 20 } },
-  { id: 'ghost', name: 'Ghost Night',        fest: 'Halloween',       icon: 'ghost',   from: '2027-10-29', to: '2027-11-01', skin: 'f_ghost', kind: 'spooky', theme: ['#ff7b00', '#3c096c'],
-    tag: 'Ghost and Chaos swap every level', rules: ['Levels switch between Ghost and Chaos.', 'Survive 6 levels.', '3 hearts.', 'Win to unlock the Spooky skin.'], goal: 6, mode: 'ghost', reward: { coins: 1310, gems: 10 } }
+  { id: 'ghost', name: 'Ghost Night',        fest: 'Halloween',       icon: 'ghost',   date: { fixed: '10-29', days: 4 }, skin: 'f_ghost', kind: 'spooky', theme: ['#ff7b00', '#3c096c'],
+    tag: 'Ghost and Chaos swap every level', rules: ['Levels switch between Ghost and Chaos.', 'Survive 6 levels.', '3 hearts.', 'Win to unlock the Spooky skin.'], goal: 6, mode: 'ghost', reward: { coins: 1310, gems: 10 } },
+  /* v1.7 global festivals: fill the spring / summer gap. Every player in the world sees every festival. */
+  { id: 'lunar', name: 'Lantern Rise',      fest: 'Lunar New Year',   icon: 'sun',     date: { on: { 2027: '02-06', 2028: '01-26', 2029: '02-13' }, before: 1, after: 3 }, skin: 'f_lunar', kind: 'steps', noun: 'lanterns lit', theme: ['#d00000', '#ffba08'],
+    tag: 'Every round you clear lights a red lantern', rules: ['Every round you clear lights one lantern.', 'Light 8 lanterns to win (pattern starts at 2 tiles, +1 every round).', '3 hearts, no revives.', 'Win to unlock the Lantern skin.'], goal: 8, mode: 'classic', reward: { coins: 1800, gems: 10 } },
+  { id: 'easter', name: 'Egg Hunt',         fest: 'Easter',           icon: 'drop',    date: { rule: 'easter', before: 3, after: 2 }, skin: 'f_easter', kind: 'collect', noun: 'eggs', theme: ['#9b5de5', '#00bbf9'],
+    tag: 'Find hidden eggs in every level you clear', rules: ['Every level you clear hides 1 to 3 eggs.', 'Eggs add up over the whole festival.', 'Collect 51 eggs to unlock the Easter skin.', '3 tries a day.'], goal: 51, mode: 'classic', reward: { coins: 2000, gems: 12 } },
+  { id: 'earth', name: 'Green Planet',      fest: 'Earth Day',        icon: 'leaf',    date: { fixed: '04-20', days: 5 }, skin: 'f_earth', kind: 'steps', noun: 'trees planted', theme: ['#2d6a4f', '#52b788'],
+    tag: 'Eye Spy rounds. Every round plants a tree', rules: ['Eye Spy mode: tiles hide after they flash. Tap to reveal.', 'Every round you clear plants one tree.', 'Plant 7 trees to win.', 'Win to unlock the Earth skin.'], goal: 7, mode: 'eye', pureMode: true, reward: { coins: 1600, gems: 10 } },
+  { id: 'music', name: 'World Music Day',   fest: 'World Music Day',  icon: 'music',   date: { fixed: '06-19', days: 5 }, skin: 'f_music', kind: 'steps', noun: 'beats', theme: ['#7b2cbf', '#ff006e'],
+    tag: 'Rhythm Rush on the big stage', rules: ['Rhythm Rush: tiles blink fast. Tap the LAST tiles, in order.', 'Every round you clear is one beat.', 'Hit 8 beats to win.', 'Win to unlock the Music skin.'], goal: 8, mode: 'rush', pureMode: true, reward: { coins: 1700, gems: 10 } },
+  { id: 'friend', name: 'Best Friends',     fest: 'Friendship Day',   icon: 'users',   date: { rule: 'friend', before: 2, after: 1 }, skin: 'f_friend', kind: 'twin', theme: ['#06d6a0', '#118ab2'],
+    tag: 'Twin mode: two friends light up together', rules: ['Twin mode: two tiles light together. Tap both.', 'Match 12 pairs to win.', '3 hearts, no revives.', 'Win to unlock the Friends skin.'], goal: 12, mode: 'twin', reward: { coins: 1500, gems: 8 } },
+  { id: 'thanks', name: 'Thanksgiving Feast', fest: 'Thanksgiving',   icon: 'gift',    date: { rule: 'thanks', before: 2, after: 2 }, skin: 'f_thanks', kind: 'collect', noun: 'pies', theme: ['#bc6c25', '#606c38'],
+    tag: 'Bake pies: every level you clear adds to the feast', rules: ['Every level you clear bakes 1 to 3 pies.', 'Pies add up over the whole festival.', 'Bake 51 pies to unlock the Feast skin.', '3 tries a day.'], goal: 51, mode: 'classic', reward: { coins: 1900, gems: 12 } }
 ];
 D.festDate = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d).getTime(); };
+/* v1.7 festival calendar: fixed-date festivals repeat every year by themselves; moving festivals use
+   verified dates (2027-2029) and an online calendar file can add or change dates without an app update */
+D.easterDay = y => { const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451), mo = Math.floor((h + l - 7 * m + 114) / 31), da = ((h + l - 7 * m + 114) % 31) + 1; return new Date(y, mo - 1, da); };
+D.nthWeekday = (y, mo, wd, n) => { const d = new Date(y, mo, 1); d.setDate(1 + ((wd - d.getDay() + 7) % 7) + (n - 1) * 7); return d; };
+D.festWin = (f, y) => {
+  const dt = f.date || {}, day = 864e5;
+  if (dt.fixed) { const [m, d] = dt.fixed.split('-').map(Number), a = new Date(y, m - 1, d).getTime(); return { start: a, end: a + dt.days * day }; }
+  let main = null;
+  if (dt.on && dt.on[y]) { const [m, d] = dt.on[y].split('-').map(Number); main = new Date(y, m - 1, d); }
+  else if (dt.rule === 'easter') main = D.easterDay(y);
+  else if (dt.rule === 'thanks') main = D.nthWeekday(y, 10, 4, 4);   // 4th Thursday of November
+  else if (dt.rule === 'friend') main = D.nthWeekday(y, 7, 0, 1);    // 1st Sunday of August
+  if (!main) return null;
+  return { start: main.getTime() - (dt.before || 0) * day, end: main.getTime() + ((dt.after || 0) + 1) * day };
+};
 
 /* ---------- Event rules (shown with the (i) button) ---------- */
 D.RULES = {
@@ -643,9 +777,9 @@ D.RULES = {
   champ: ['The AI champion is always 2 tiles ahead of your best pattern (last 10 event runs). Locked for the week.', 'Event ladder: starts at 2 tiles, +1 every round. Score = tiles², combo and accuracy.', 'Reach 80%, 90%, 95% of the score for rewards.', 'Beat him: take the bounty, then Champion II arrives (+1 tile, 1.5× bounty). Then III, IV, V.', 'The bounty grows every day of the week.', '3 tries a day. Watch an ad for 1 extra try.'],
   oma: ['Event ladder in Classic: starts at 2 tiles, +1 every round.', '5 AI soldiers: clear a 5, 7, 9, 11 and 13 tile pattern to eliminate each one and win its bounty.', 'Every 4th tile length (4, 8, 12) is SUDDEN DEATH: 1 heart only.', 'No revives.', 'Rank rewards for every soldier you eliminate this week.', '5 attempts a week. Watch an ad for 1 extra try a day.'],
   bco: ['Raid the vault: earn as many coins as you can in one run.', 'Higher tiers raise your coin multiplier for the day.', '15+ combo = JACKPOT (×2). Last hour of the day = ×1.5.', 'Play every day for a streak bonus up to ×2.', '5 raids a day. Watch an ad for 1 extra raid.'],
-  tour: ['4 grids this month. A new grid opens every week.', 'Each grid has its own modes and point multiplier.', 'Flash Surge every 4 hours: 10 minutes of ×3 points.', 'Hit the grid goal for a big reward.', 'Limited tries per grid. Watch an ad for 1 extra try a day.'],
-  mania: ['Monthly score chase on the event ladder in any mode you unlocked.', 'Score = longest pattern², combo and accuracy.', 'Three phases: Qualifier ×1, Championship ×1.5, Grand Final ×2.', 'Division League: Bronze, Silver, Gold, Platinum, Diamond, Sanx League. Your division pays a reward when the month ends.', 'Milestones pay coins and diamonds. 1,20,000 points unlocks the Sanx Purple skin.', '5 tries a day. Watch an ad for 1 extra try.'],
+  tour: ['4 cities this week: Tokyo ×1, Rio ×1.5, Cairo ×2, New York ×3.', 'Clear a city goal to fly to the next one. Cities also open by themselves on Wednesday, Friday and Sunday.', 'Each city has its own modes and point multiplier.', 'Flash Surge every 4 hours: 10 minutes of ×3 points.', 'Every city has its own energy for the week. Watch an ad for +1.'],
+  mania: ['Weekly score chase on the event ladder in any mode you unlocked.', 'Score = longest pattern², combo and accuracy.', 'Qualifier Mon-Wed ×1, Championship Thu-Sat ×1.5, Grand Final Sunday ×2.', 'Your best score sets your division. Division reward arrives on Monday.', '5 energy a day. Watch an ad for +1.'],
   daily: ['DAILY BEAT: one pattern a day, the same for every player in the world.', 'It starts at 3 tiles and grows +1 every round.', 'ONE mistake ends it. Your score = tiles remembered.', 'Sanx posts his own score every day. Beat it for +150 coins.', 'Share your grid. Practice runs (ad) never change your official score.'],
-  imp: ['Pick your target: 10 to 100 tiles.', 'The pattern starts at 1 tile and grows by 1 every round.', 'Same comfortable speed for the whole run. Generous tap timer: 5 sec + 2 sec per tile.', 'Checkpoint every 5 tiles (optional, with an ad). After a mistake you can restart from it.', 'Continue after a mistake with an ad: max 3 per run. Replay the pattern with an ad.', 'Reward: tiles × tiles coins. Diamonds only on your first win of each target per day.', '1 free entry a day. More entries with an ad.'],
+  imp: ['First pick your grid: 3×3, 4×4 or 5×5. The whole run stays on that grid.', 'Pick your target: 10 to 100 tiles. The pattern starts at 1 tile and grows by 1 every round.', 'Tap timer (never runs while the pattern plays): 3×3 = 10 sec + 2.5 sec per tile, 4×4 = 10 sec + 3 sec per tile, 5×5 = 10 sec + 3.5 sec per tile.', 'Prize: tiles × tiles coins, ×1 on 3×3, ×3 on 4×4, ×5 on 5×5. Diamonds on your first win per target and grid each day.', 'Replay booster: up to 10 per run with an ad. The pattern plays again and you continue from the same tile. Also offered after a mistake.', 'Checkpoint every 5 tiles (optional, with an ad). After a mistake you can restart from it.', '1 free entry a day, more with ads.'],
   chal: ['Duel Ladder: the pattern starts at 2 tiles and grows +1 every round, on a 4x4 grid with 2 hearts.', 'Your score is the longest pattern you remember. Your friend plays the exact same pattern.', 'Friend must remember MORE tiles than you. Same tiles? Fewer mistakes wins, then the faster time.', 'No revives, no boosters, no ads inside a duel. Fair for both.', 'Bet limit: 10% of your coins, max 1,000. Coins never move between players: Sanx Bank pays the winner 2x the bet.', 'Your bet waits in Sanx Bank. No reply in 24 hours = your FULL bet comes back.', 'Max 5 duels with the same friend per day. You need level 10 to win coins.', 'Online duels (when on): results arrive by themselves, invite friends by player ID, or play a random real opponent.']
 };

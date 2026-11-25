@@ -1,6 +1,6 @@
 /* ================= BEAT SANX — boot ================= */
 'use strict';
-window.BS_VERSION = '1.6';
+window.BS_VERSION = '1.7';
 (function boot() {
   if (window.BS_CREATOR) { S.st.seenTut = true; S.st.login.pending = false; ADS.inter = async () => false; ADS.rewarded = async () => true; ADS.banner = () => { }; document.body.classList.add('isCreator'); }
   if (window.BS_WEB) { D.DBEAT.practiceAds = 0; D.ADCAP.contAd = 0; D.ADCAP.replay = 0; S.st.seenTut = true; document.body.classList.add('isWeb'); }
