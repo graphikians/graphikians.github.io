@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Machhar Maaro · Video Studio</title>
+<link rel="icon" href="game/art/appicon.webp">
+<style>
+@font-face{font-family:Inter;font-weight:500;src:url(game/fonts/inter-latin-500-normal.woff2)}
+@font-face{font-family:Inter;font-weight:600;src:url(game/fonts/inter-latin-600-normal.woff2)}
+@font-face{font-family:Inter;font-weight:700;src:url(game/fonts/inter-latin-700-normal.woff2)}
+@font-face{font-family:Inter;font-weight:800;src:url(game/fonts/inter-latin-800-normal.woff2)}
+@font-face{font-family:Inter;font-weight:900;src:url(game/fonts/inter-latin-900-normal.woff2)}
+:root{--p1:#743ae8;--p2:#9a6df5;--blue:#5fd0ff;--ink:#12063a;--card:rgba(255,255,255,.06);--line:rgba(154,109,245,.35)}
+*{box-sizing:border-box}
+html{background:#12063a}
+html,body{margin:0;background:radial-gradient(1200px 700px at 20% -10%,#3a179e 0%,#1a0b4d 45%,#0d0530 100%) #12063a;color:#fff;font:500 15px/1.45 Inter,system-ui,sans-serif;min-height:100%}
+header{display:flex;align-items:center;gap:14px;padding:18px 24px;border-bottom:1px solid var(--line)}
+header img{width:46px;height:46px;border-radius:12px}
+header h1{margin:0;font:900 22px Inter;letter-spacing:.5px}header h1 b{color:var(--blue)}
+header small{display:block;font:600 12px Inter;color:#c7b0ff;letter-spacing:2px}
+.wrap{display:grid;grid-template-columns:minmax(330px,440px) 1fr;gap:22px;padding:22px;max-width:1300px;margin:0 auto}
+@media(max-width:860px){.wrap{grid-template-columns:1fr;padding:12px}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px}
+.card h2{margin:0 0 10px;font:800 13px Inter;letter-spacing:2px;color:#bfe9ff;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.card h2 i{width:8px;height:8px;border-radius:50%;background:var(--blue);box-shadow:0 0 10px var(--blue)}
+label{display:block;font:700 12px Inter;color:#c7b0ff;margin:10px 0 5px;letter-spacing:.5px}
+select,input[type=text],input[type=number]{width:100%;background:rgba(10,4,30,.6);color:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:600 14px Inter;outline:none}
+select:focus,input:focus{border-color:var(--blue)}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.seg{display:flex;gap:6px;flex-wrap:wrap}.seg button{flex:1;min-width:60px}
+button{font:800 14px Inter;color:#fff;background:rgba(255,255,255,.08);border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer}
+button:hover{border-color:var(--blue)}button.on{background:var(--p1);border-color:var(--blue)}
+button.big{width:100%;padding:15px;font-size:16px;background:linear-gradient(180deg,var(--p2),var(--p1));border:0;box-shadow:0 5px 0 #4b1fb0,0 12px 26px rgba(116,58,232,.45)}
+button.big:active{transform:translateY(3px);box-shadow:0 2px 0 #4b1fb0}
+button.stop{background:#fff;color:var(--ink);border:0}
+button:disabled{opacity:.45;cursor:not-allowed}
+input[type=range]{width:100%;accent-color:var(--p2)}
+.hooks{display:flex;flex-direction:column;gap:6px;max-height:250px;overflow:auto}
+.hooks button{text-align:left;font-weight:700;font-size:13.5px}
+.hooks button b{color:var(--blue);font-weight:800}
+.stage{position:sticky;top:12px}
+.screen{position:relative;margin:0 auto;width:min(100%,400px);aspect-ratio:9/16;border-radius:28px;overflow:hidden;background:#05030c;box-shadow:0 0 0 3px rgba(154,109,245,.6),0 30px 70px rgba(0,0,0,.5)}
+.screen canvas{width:100%;height:100%;display:block}
+.screen .msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:30px;font:700 15px Inter;color:#c7b0ff}
+.ctl{display:flex;gap:10px;margin:14px auto 0;max-width:400px}
+.prog{max-width:400px;margin:12px auto 0}.bar{height:10px;border-radius:6px;background:rgba(255,255,255,.1);overflow:hidden}.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--p2),var(--blue));transition:width .2s}
+.prog small{display:block;margin-top:6px;color:#c7b0ff;font-weight:700;text-align:center}
+.plan{max-width:400px;margin:14px auto 0;font-size:13px;color:#d9ccff}.plan div{display:flex;gap:8px;padding:5px 0;border-bottom:1px dashed rgba(154,109,245,.25)}.plan span{min-width:66px;color:var(--blue);font-weight:800}
+.out{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:10px}
+.out .v{background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:14px;overflow:hidden;font-size:12px}
+.out .v img{width:100%;aspect-ratio:9/16;object-fit:cover;display:block}.out .v div{padding:8px}.out .v a{color:var(--blue);font-weight:800;margin-right:8px}
+.note{font-size:12.5px;color:#c7b0ff}.ok{color:#9ff0c8}.warn{color:#fff;background:rgba(116,58,232,.5);border-radius:10px;padding:8px 10px;font-weight:700}
+.tabs{display:flex;gap:6px;margin-bottom:14px}.tabs button{flex:1}
+.hide{display:none!important}
+.photo{display:flex;align-items:center;gap:12px}.photo img{width:56px;height:56px;border-radius:50%;object-fit:cover;border:3px solid var(--blue);background:var(--p1)}
+#eng{position:fixed;left:-2000px;top:0;width:540px;height:960px;border:0;opacity:1;pointer-events:none}
+#cam{width:100%;border-radius:14px;margin-top:8px;background:#000}
+</style>
+</head>
+<body>
+<header><img src="game/art/appicon.webp" alt=""><div><h1>MACHHAR <b>MAARO</b> · VIDEO STUDIO</h1><small>REAL GAME · 1080p HD · ZERO COST PER VIDEO</small></div></header>
+<div class="wrap">
+<div>
+  <div class="tabs"><button id="tOne" class="on">One video</button><button id="tSpot">Feature Spotlight</button><button id="tBatch">Batch</button><button id="tCreator">Creator</button></div>
+
+  <div class="card" id="cStyle">
+    <h2><i></i>Style &amp; look</h2>
+    <label>Video style</label><select id="style"></select>
+    <label>Look (world · racket · frame · text)</label><select id="look"></select>
+    <div class="row"><div><label>Length</label><select id="dur"><option value="25">25 sec</option><option value="35" selected>35 sec</option><option value="50">50 sec</option></select></div>
+    <div><label>Variation (seed)</label><input type="number" id="seed" value="1" min="1" max="9999"></div></div>
+  </div>
+
+  <div class="card hide" id="cSpot">
+    <h2><i></i>Feature Spotlight</h2>
+    <label>Choose a booster, racket, boss, event, challenge or character</label><select id="feat"></select>
+    <p class="note">The look (world, frame, text) comes from the style and look above.</p>
+  </div>
+
+  <div class="card" id="cHook">
+    <h2><i></i>Hook (first 2 seconds)</h2>
+    <div class="hooks" id="hooks"></div>
+  </div>
+
+  <div class="card" id="cMusic">
+    <h2><i></i>Music</h2>
+    <select id="mus"></select>
+    <div id="upWrap" class="hide"><label>Your song (MP3 / WAV)</label><input type="file" id="upFile" accept="audio/*"><p class="note" id="upInfo"></p></div>
+    <div class="row"><div><label>Music volume</label><input type="range" id="mv" min="0" max="1.2" step="0.05" value="0.8"></div><div><label>Game sounds</label><input type="range" id="gv" min="0" max="1.5" step="0.05" value="1"></div></div>
+  </div>
+
+  <div class="card">
+    <h2><i></i>End card</h2>
+    <div class="photo"><img id="phImg" alt=""><div style="flex:1"><input type="text" id="phName" value="Sanx"><input type="text" id="phSub" value="SANX Graphikians" style="margin-top:6px"></div></div>
+    <div class="row" style="margin-top:8px"><button id="phBtn">Upload photo</button><button id="phOn" class="on">Photo ON</button></div>
+    <input type="file" id="phFile" accept="image/*" class="hide">
+  </div>
+
+  <div class="card hide" id="cBatch">
+    <h2><i></i>Batch: today's videos</h2>
+    <label>How many videos</label><div class="seg" id="bN"><button>3</button><button class="on">5</button><button>8</button><button>10</button></div>
+    <label>Styles to use</label><div class="seg" id="bStyles"></div>
+    <label>Include a Feature Spotlight</label><div class="seg"><button id="bSpot" class="on">Yes</button></div>
+    <p class="note">Every video gets a different style, hook, look and music. Hooks and looks used in the last 7 days are skipped. Each video comes with a thumbnail and ready captions + hashtags.</p>
+    <button class="big" id="bGo">Make today's videos</button>
+  </div>
+
+  <div class="card hide" id="cCreator">
+    <h2><i></i>Creator / Reaction</h2>
+    <p class="note">Game on top, your face below. Press record: the preview plays and your camera + mic record your reaction. Then render the HD video. Use headphones.</p>
+    <video id="cam" muted playsinline class="hide"></video>
+    <div class="row" style="margin-top:8px"><button id="crRec">● Record reaction</button><button id="crClear" disabled>Clear</button></div>
+    <p class="note" id="crInfo"></p>
+  </div>
+
+  <div class="card">
+    <h2><i></i>Save to</h2>
+    <button id="dirBtn">Choose a folder on this laptop</button>
+    <p class="note" id="dirInfo">Without a folder, videos go to Downloads.</p>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="screen"><canvas id="pv" width="1080" height="1920"></canvas><div class="msg" id="msg">Loading the game engine…</div></div>
+  <div class="ctl"><button class="big" id="pvBtn" disabled>▶ Preview</button><button class="big" id="rdBtn" disabled>⬇ Render HD</button></div>
+  <div class="ctl"><button class="stop hide" id="stopBtn" style="width:100%">■ Stop</button></div>
+  <div class="prog hide" id="prog"><div class="bar"><i id="pbar"></i></div><small id="ptxt"></small></div>
+  <div class="plan" id="plan"></div>
+  <div class="card" style="max-width:400px;margin:14px auto 0"><h2><i></i>Made today</h2><div class="out" id="out"><p class="note">Your videos will appear here.</p></div></div>
+</div>
+</div>
+<iframe id="eng" src="game/engine.html" title="engine"></iframe>
+<script src="music.js"></script>
+<script src="catalog.js"></script>
+<script src="planner.js"></script>
+<script src="studio.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>
