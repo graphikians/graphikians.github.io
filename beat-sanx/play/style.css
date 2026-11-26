@@ -1607,3 +1607,107 @@ body.smooth .ch3d svg,body.smooth .ch3dGlow,body.smooth .ch3d .cSweep{animation:
 body.smooth .evPlay .btn.big::after,body.smooth .escPin.s-now span::after{animation:none!important;opacity:.6}
 body.smooth .pulse{animation:none!important}
 body.smooth .arenaBg i{animation:none!important}
+/* v1.8 Pass perks in the Shop */
+.ppCard{display:flex;align-items:center;gap:12px;margin:10px 0;padding:12px 14px;border-radius:16px;background:linear-gradient(135deg,rgba(116,58,232,.35),rgba(30,16,70,.85));border:1px solid rgba(154,109,245,.5)}
+.ppCard>svg{width:28px;height:28px;flex:none;color:#c4a7ff}
+.ppCard>div{flex:1;min-width:0}.ppCard b{display:block;font-size:14px}.ppCard small{display:block;color:var(--mut,#b9acd9);font-size:11.5px;margin-top:2px}
+.ppCard .bar{height:6px;margin-top:6px}.ppCard.cp{border-color:rgba(29,158,117,.7);background:linear-gradient(135deg,rgba(15,110,86,.45),rgba(20,16,50,.85))}.ppCard.cp>svg{color:#5DCAA5}
+/* ===== v1.8 home: Sanx with round side icons, highlighted IMPOSSIBLE 100 (crimson) + CHALLENGE A FRIEND (teal) ===== */
+.heroRow{display:flex;align-items:center;justify-content:center;gap:10px;width:100%}
+.heroRow .heroSanx{flex:0 0 auto}
+.rail{display:flex;flex-direction:column;gap:9px;flex:0 0 64px;align-items:center}
+.rlB{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;width:64px}
+.rlIc{display:grid;place-items:center;width:46px;height:46px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#8f5cf7,#3d1a8f);border:2px solid rgba(196,167,255,.55);box-shadow:0 6px 14px rgba(10,2,30,.45)}
+.rlIc .ic{width:22px;height:22px;color:#fff}
+.rlB b{font-size:10.5px;font-weight:800;line-height:1.1;margin-top:2px}.rlB small{font-size:9px;color:var(--mut);font-weight:700;line-height:1}
+.rlB .dot{position:absolute;top:0;right:8px;width:12px;height:12px;border-radius:50%;background:#ff3d5a;border:2px solid #1a0b3d;z-index:2}
+.rlB.locked .rlIc{filter:grayscale(.8);opacity:.6}
+.rlB:active .rlIc{transform:scale(.92)}
+.featRow.hl{gap:10px;margin-top:10px}
+.featRow.hl .feat{min-height:118px;padding:12px 12px 10px;border-width:2px;isolation:isolate;overflow:visible}
+.featRow.hl .feat b{font-size:15px;font-weight:900;line-height:1.05;margin-top:2px;letter-spacing:.2px}
+.featRow.hl .feat small{font-size:11px;opacity:.88}
+.featRow.hl .impF{background:linear-gradient(150deg,#a32d2d,#501313 85%);border-color:#ff5a5a;box-shadow:0 8px 22px rgba(163,45,45,.45);animation:none}
+.featRow.hl .chF{background:linear-gradient(150deg,#13866a,#063f33 85%);border-color:#2ed3a2;box-shadow:0 8px 22px rgba(15,110,86,.45)}
+.featRow.hl .feat::after{content:'';position:absolute;inset:-4px;border-radius:21px;pointer-events:none;opacity:0;animation:ftGlow 2.4s ease-in-out infinite;will-change:opacity;z-index:-1}
+.featRow.hl .impF::after{box-shadow:0 0 22px 3px rgba(255,90,90,.75)}
+.featRow.hl .chF::after{box-shadow:0 0 22px 3px rgba(46,211,162,.75);animation-delay:1.2s}
+@keyframes ftGlow{50%{opacity:1}}
+.ftBadge{position:absolute;top:-10px;right:10px;font-size:9px;font-weight:900;letter-spacing:.8px;padding:3px 8px;border-radius:9px;color:#fff;white-space:nowrap;z-index:2}
+.impF .ftBadge{background:#ff4747;box-shadow:0 3px 8px rgba(80,19,19,.6)}
+.chF .ftBadge{background:#17b88b;box-shadow:0 3px 8px rgba(4,52,44,.6)}
+.chF .ftBadge.hot{background:#ff3d5a}
+.ftArt{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;margin-bottom:2px;animation:ftBob 2.6s ease-in-out infinite;will-change:transform}
+.ftArt .ic{width:24px;height:24px}
+.impF .ftArt{background:rgba(255,120,120,.22);color:#ffd0d0}
+.chF .ftArt{background:rgba(93,202,165,.22);color:#c9f5e6}
+@keyframes ftBob{50%{transform:translateY(-3px) rotate(-4deg)}}
+.ftGo{margin-top:auto;align-self:stretch;display:flex;align-items:center;justify-content:center;gap:4px;font-size:12px;font-weight:900;padding:7px 0;border-radius:11px;margin-top:8px}
+.ftGo .ic{width:14px;height:14px}
+.impF .ftGo{background:#ff4747;color:#fff}.chF .ftGo{background:#17b88b;color:#fff}
+.featRow.hl .feat.locked{filter:saturate(.5)}
+body.smooth .featRow.hl .feat::after{animation:none;opacity:.55}body.smooth .ftArt{animation:none}
+@media (max-height:720px){.rlIc{width:40px;height:40px}.rlIc .ic{width:19px;height:19px}.rail{gap:6px}.rlB small{display:none}.featRow.hl .feat{min-height:96px;padding:10px}.featRow.hl .ftArt{width:30px;height:30px}.featRow.hl .ftArt .ic{width:19px;height:19px}.ftGo{padding:5px 0;margin-top:5px}}
+@media (max-height:620px){.featRow.hl .feat small{display:none}.featRow.hl .feat{min-height:82px}}
+.heroRow{align-items:stretch}
+.heroRow .heroSanx{height:clamp(112px,21vh,205px)}
+.rail{justify-content:space-around;gap:4px}
+.rlIc{width:clamp(34px,5.2vh,46px);height:clamp(34px,5.2vh,46px)}
+.rlIc .ic{width:52%;height:52%}
+.rlB small{display:none}
+.rlB b{font-size:10px}
+@media (max-height:720px){.heroRow .heroSanx{height:clamp(100px,20vh,150px)}.rlIc{width:34px;height:34px}}
+.heroRow{position:relative;display:flex;justify-content:center}
+.rail{position:absolute;top:0;bottom:0;width:66px;justify-content:space-between;gap:0}
+.rail.L{left:3%}.rail.R{right:3%;justify-content:space-around}
+.rlB{flex:0 0 auto}
+.rlIc{width:clamp(28px,4.4vh,44px);height:clamp(28px,4.4vh,44px)}
+@media (max-height:720px){.rlIc{width:clamp(26px,4.3vh,34px);height:clamp(26px,4.3vh,34px)}.rlB b{font-size:9px}}
+.hero{overflow:visible}
+.hero.tight .heroBubble{display:none}
+.hero.tight .rlB b{display:none}
+.featRow.hl .feat{min-height:104px}
+/* v1.8 feedback form */
+.fbKinds{display:flex;gap:8px;justify-content:center;margin:10px 0}
+.fbKinds button{padding:7px 16px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);font-weight:800;font-size:13px}
+.fbKinds button.on{background:#743ae8;border-color:#9a6df5}
+#fbText{width:100%;min-height:110px;border-radius:14px;padding:12px;background:rgba(10,4,30,.6);border:1px solid rgba(154,109,245,.45);color:#fff;font:inherit;font-size:14px;resize:none;margin-bottom:10px}
+/* ===== v1.8 Challenges: Friend / World blocks, mode cards, grid + prize picker, live search ===== */
+.chBlocks{display:grid;gap:12px;margin:12px 0 6px}
+.chBlock{position:relative;display:grid;grid-template-columns:52px 1fr;column-gap:12px;align-items:center;text-align:left;padding:16px 14px;border-radius:20px;border:2px solid;overflow:hidden}
+.chBlock .cbIc{grid-row:1/4;display:grid;place-items:center;width:52px;height:52px;border-radius:16px}
+.chBlock .cbIc .ic{width:28px;height:28px}
+.chBlock b{font-size:18px;font-weight:900;line-height:1.1}.chBlock small{font-size:12px;opacity:.85;margin-top:3px;line-height:1.35}
+.chBlock em{font-style:normal;font-size:11px;font-weight:900;letter-spacing:.4px;margin-top:6px}
+.chBlock.fr{background:linear-gradient(140deg,#13866a,#063f33);border-color:#2ed3a2;box-shadow:0 8px 22px rgba(15,110,86,.4)}
+.chBlock.fr .cbIc{background:rgba(93,202,165,.25);color:#c9f5e6}.chBlock.fr em{color:#9ff0d2}
+.chBlock.wd{background:linear-gradient(140deg,#2c5fd6,#13224f);border-color:#6fa0ff;box-shadow:0 8px 22px rgba(44,95,214,.4)}
+.chBlock.wd .cbIc{background:rgba(133,183,235,.25);color:#dbe8ff}.chBlock.wd em{color:#b8d2ff}
+.chBlock:active{transform:scale(.98)}
+.chModes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.chMode{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:12px;border-radius:16px;background:var(--card);border:1px solid var(--line);text-align:left}
+.chMode span{display:grid;place-items:center;width:36px;height:36px;border-radius:11px;background:rgba(154,109,245,.22);color:#d9c8ff}.chMode span .ic{width:20px;height:20px}
+.chMode b{font-size:14px;font-weight:900}.chMode small{font-size:10.5px;color:var(--mut);line-height:1.3}
+.chMode.lk{opacity:.5}
+.chGrids{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.chGrids button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 6px;border-radius:16px;background:var(--card);border:2px solid var(--line)}
+.chGrids button.on{border-color:#9a6df5;background:rgba(116,58,232,.3)}
+.chGrids b{font-size:15px;font-weight:900}.chGrids small{font-size:10px;color:var(--mut)}
+.gMini{display:grid;gap:2px;width:38px;height:38px}.gMini i{border-radius:3px;background:#9a6df5;opacity:.75}
+.gMini.g3{grid-template-columns:repeat(3,1fr)}.gMini.g4{grid-template-columns:repeat(4,1fr)}.gMini.g5{grid-template-columns:repeat(5,1fr)}
+.chPay{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 14px;margin:8px 0;border-radius:16px;background:var(--card);border:2px solid var(--line)}
+.chPay>svg{width:26px;height:26px;flex:none;color:#c4a7ff}
+.chPay b{display:block;font-size:14px;font-weight:900}.chPay small{display:block;font-size:11px;color:var(--mut);margin-top:2px}
+.chPay.on{border-color:#9a6df5;background:rgba(116,58,232,.28)}.chPay.off{opacity:.5}
+.chTried{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;padding:4px 10px;border-radius:10px;background:rgba(255,255,255,.1);margin:4px 0}
+.chTried .ic{width:14px;height:14px}
+.botTag{display:inline-block;font-style:normal;font-size:9px;font-weight:900;letter-spacing:.8px;padding:2px 6px;border-radius:6px;background:#5f5e5a;color:#fff;vertical-align:middle}
+.botAv{display:inline-block;width:58px;height:58px;border-radius:50%;overflow:hidden;background:#3d1a8f;border:2px solid #9a6df5}.botAv .sanx{width:100%;height:100%}
+.wSearch{text-align:center}
+.wRadar{position:relative;width:110px;height:110px;margin:6px auto 10px;display:grid;place-items:center}
+.wRadar>svg{width:40px;height:40px;color:#b8d2ff;position:relative;z-index:1}
+.wRadar i{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(111,160,255,.7);animation:wPing 2.4s ease-out infinite;will-change:transform,opacity}
+.wRadar i:nth-child(2){animation-delay:.8s}.wRadar i:nth-child(3){animation-delay:1.6s}
+.wRadar.sm{width:80px;height:80px}
+@keyframes wPing{from{transform:scale(.3);opacity:1}to{transform:scale(1);opacity:0}}
+body.smooth .wRadar i{animation-duration:3.5s}

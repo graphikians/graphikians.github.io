@@ -38,7 +38,7 @@ const SHOP = (() => {
     const st = S.st, ad = adDay(), freeDot = !giftLeft() || D.AD_TRACK.some((t, i) => ad.n >= t.n && !ad.got.includes(i));
     const cnt = { bg: `${D.BGS.length} live scenes`, free: 'Daily gifts', anim: `${itemsOf('anim').length} tiles`, skins: `${D.SKINS.filter(x => x.cost > 0 && !x.cat).length} skins`, tap: '10 effects', shape: '10 shapes', sound: '10 packs', flash: '10 styles', win: '10 effects', frame: '10 frames', sets: `${D.SETS.length} sets · 20% off`, boost: `${D.BOOSTERS.length} boosters`, chests: `${D.CHESTS.length} chests` };
     const feat = itemsOf('anim').find(x => x.gems && !S.st.skins.includes(x.id)) || itemsOf('anim')[0];
-    return `${adFreeHero()}<div class="free100">${ART.ic('check')}<span>100% FREE · Earn everything with coins and ads. Never real money.</span></div>
+    return `${adFreeHero()}${passPerks()}<div class="free100">${ART.ic('check')}<span>100% FREE · Earn everything with coins and ads. Never real money.</span></div>
       ${feat ? `<button class="featShop" data-tab="anim"><small>FEATURED · ${feat.gems ? 'VIP' : 'NEW'}</small><b>${feat.name} tiles</b><span>${feat.gems ? 'Premium animated tiles' : 'Try free for 30 min with an ad'}</span><div class="fsBoard">${feat.colors.slice(0, 9).map(c => `<i style="--c:${c}"></i>`).join('')}</div></button>` : ''}
       <div class="catGrid">${TABS.map(([k, t, ic]) => `<button class="catC ${k === 'free' ? 'free' : ''}" data-tab="${k}">${k === 'free' && freeDot ? '<span class="nb">!</span>' : ['bg', 'anim', 'tap'].includes(k) ? '<span class="nb">NEW</span>' : ''}<span class="ci">${ART.ic(ic)}</span><b>${t}</b><small>${cnt[k]}</small></button>`).join('')}</div>`;
   }
@@ -61,6 +61,23 @@ const SHOP = (() => {
       <div class="pgBody" id="shopBody">${body}</div>`;
   }
 
+  /* v1.8 Sanx Pass perks shown in the Shop: active coupon + shard progress toward a real skin */
+  function passPerks() {
+    const st = S.st, off = S.couponOff(), n = st.shards || 0, t = S.shardTarget();
+    let h = '';
+    if (off) { const left = st.coupon.until - Date.now(); h += `<div class="ppCard cp">${ART.ic('ticket')}<div><b>${off}% OFF coupon</b><small>Any skin or style you buy with coins · ${Math.floor(left / 36e5)}h ${Math.floor(left % 36e5 / 6e4)}m left</small></div><button class="btn sm" data-tab="skins">Use it</button></div>`; }
+    if (n > 0 && t) {
+      const missing = Math.max(0, D.SHARDS - n), per = Math.ceil(t.cost / D.SHARDS);
+      h += `<div class="ppCard sh">${ART.ic('diamond')}<div><b>${t.name} skin · ${Math.min(n, D.SHARDS)}/${D.SHARDS} shards</b><div class="bar"><i style="width:${Math.min(100, n / D.SHARDS * 100)}%"></i></div><small>${missing ? `Complete the rest for ${fmt(missing * per)} coins` : 'All shards collected!'}</small></div><button class="btn sm ${missing ? '' : 'pulse'}" data-act="shShard">${missing ? ART.coin(13) + ' ' + fmt(missing * per) : 'Claim'}</button></div>`;
+    }
+    return h;
+  }
+  function shardClaim() {
+    const st = S.st, n = st.shards || 0, t = S.shardTarget(); if (!t || n <= 0) return;
+    const missing = Math.max(0, D.SHARDS - n), cost = missing * Math.ceil(t.cost / D.SHARDS);
+    if (cost && !S.spend('coins', cost)) { UI.toast('Not enough coins', 'coins'); return; }
+    st.shards = Math.max(0, n - D.SHARDS); S.grant({ skin: t.id }); st.skin = t.id; S.save(); SND.win(); FX.win('fireworks'); UI.toast(`${t.name} skin unlocked!`, 'sparkle'); render();
+  }
   /* v1.6 hero: the 1-crore-coin Ad-free, with a progress bar and 10% milestones */
   function adFreeHero() {
     const st = S.st;
@@ -227,9 +244,12 @@ const SHOP = (() => {
   function buy(key, id, cur) {
     const it = key === 'skin' ? D.skin(id) : D.cos(key, id);
     if (S.owns(key, id)) return;
-    const price = cur === 'gems' ? it.gems : it.cost;
+    let price = cur === 'gems' ? it.gems : it.cost;
     if (!price || price < 0) return;
+    const off = cur === 'coins' ? S.couponOff() : 0;   // v1.8 Pass coupon
+    if (off) price = Math.round(price * (1 - off / 100));
     if (!S.spend(cur, price)) { UI.toast(cur === 'gems' ? 'Not enough diamonds' : 'Not enough coins', cur === 'gems' ? 'diamond' : 'coins'); return; }
+    if (off) { S.st.coupon = null; S.save(); }
     S.giveCos(key, id); equip(key, id); S.checkAch(); SND.win(); FX.win(it.premium ? 'fireworks' : 'confetti');
     UI.toast(`${it.name} unlocked!`, 'sparkle'); checkCollect();
   }
@@ -285,6 +305,7 @@ const SHOP = (() => {
       }
       case 'shDeal': { const ds = dealSkin(); if (!ds) return; const p = Math.round(ds.cost * (1 - D.DEAL_OFF)); if (!S.spend('coins', p)) { UI.toast('Not enough coins', 'coins'); return; } st.skins.push(ds.id); st.skin = ds.id; S.save(); S.checkAch(); SND.win(); UI.toast(`${ds.name} unlocked!`, 'sparkle'); render(); return; }
       case 'shBundle': { if (!S.spend('coins', D.BUNDLE.price)) { UI.toast('Not enough coins', 'coins'); return; } const got = {}; for (let i = 0; i < D.BUNDLE.boosts; i++) { const b = D.BOOSTERS[Math.floor(Math.random() * D.BOOSTERS.length)].id; st.boosters[b] = Math.min(9, (st.boosters[b] || 0) + 1); got[b] = (got[b] || 0) + 1; } S.save(); SND.win(); UI.toast('Bundle: ' + Object.entries(got).map(([b, n]) => `${D.BOOST[b].name} ×${n}`).join(', '), 'sparkle'); render(); return; }
+      case 'shShard': shardClaim(); return;
       case 'shTrial': trial(v, w); return;
       case 'shTrialSet': trialSet(v); return;
       case 'shBuySet': buySet(v, w); return;

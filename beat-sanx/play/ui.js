@@ -84,11 +84,19 @@ const UI = (() => {
     const chalN = CH.pendingCount();
     const evL = !S.feat('events'), impL = !S.feat('imp'), duL = !S.feat('duel');
     const lk = id => `<span class="lkTag">${ART.ic('lock')} LEVEL ${D.UNLOCK[id].lv}</span>`;
+    /* v1.8: the 5 quick buttons now sit as round icons beside Sanx (left: Quests, Spin, Pass · right: Ranking, Chests) */
+    const rail = (act, ic, t, sub, dot) => `<button class="rlB" data-act="${act}">${dot ? '<i class="dot"></i>' : ''}<span class="rlIc">${ART.ic(ic)}</span><b>${t}</b><small>${sub}</small></button>`;
+    const railQ = (id, act, ic, t, sub, dot) => S.feat(id) ? rail(act, ic, t, sub, dot) : `<button class="rlB locked" data-act="locked:${id}"><span class="rlIc">${ART.ic('lock')}</span><b>${t}</b><small>Lv ${D.UNLOCK[id].lv}</small></button>`;
+    const impFree = () => { const I = st.imp; return I.day !== S.dayKey() || (I.entries || 0) < D.IMP.freeEntries; };
     const lockQ = (id, act, ic, t, sub, dot) => S.feat(id) ? qa(act, ic, t, sub, dot) : `<button class="qa locked" data-act="locked:${id}">${ART.ic('lock')}<b>${t}</b><small>Lv ${D.UNLOCK[id].lv}</small></button>`;
     $('home').innerHTML = h`${topbar()}
     <div class="hero">
       <div class="heroBg"></div>
-      <div class="heroSanx">${ART.sanx('smug')}</div>
+      <div class="heroRow">
+        <div class="rail L">${railQ('quests', 'quests', 'flag', 'Quests', `${st.quests.list.filter(q => q.claimed).length}/3`, qDone > 0)}${railQ('spin', 'spin', 'sparkle', 'Spin', spinRdy ? 'Free' : 'Ad', spinRdy)}${railQ('pass', 'pass', 'ticket', 'Pass', `Tier ${ptier}`, pReady > 0)}</div>
+        <div class="heroSanx">${ART.sanx('smug')}</div>
+        <div class="rail R">${rail('rank', 'bars', 'Ranking', 'Weekly', !!pendingLB())}${rail('chests', 'gift', 'Chests', 'Loot', false)}</div>
+      </div>
       <div class="heroBubble">${line}</div>
       <img class="heroLogo" src="img/logo.png" alt="Beat Sanx">
       <button class="season" data-act="season">${ART.ic(se.icon)}<span><b>${se.name}</b> · ${se.desc}</span><em>${left(se.end)}</em></button>
@@ -99,9 +107,9 @@ const UI = (() => {
       <span class="lvTx"><small>${live.k}</small><b>${live.name}</b><em>${evL ? 'Events unlock at Level ' + D.UNLOCK.events.lv + ' · keep playing!' : live.sub}</em></span>
       <span class="lvGo">${ART.ic(evL ? 'lock' : 'play')}</span>
     </button>
-    <div class="featRow">
-      <button class="feat impF ${impL ? 'locked' : ''}" data-act="${impL ? 'locked:imp' : 'imp'}">${impL ? lk('imp') : '<span class="ftK">CHALLENGE</span>'}<b>IMPOSSIBLE <i>100</i></b><small>${st.imp.best ? 'Your best: ' + st.imp.best + ' tiles' : 'How much can you remember?'}</small>${ART.ic('brain', 'ftIc')}</button>
-      <button class="feat chF ${duL ? 'locked' : ''}" data-act="${duL ? 'locked:duel' : 'chal'}">${chalN && !duL ? `<i class="dot"></i>` : ''}${duL ? lk('duel') : `<span class="ftK">${chalN ? chalN + ' WAITING' : '2× COINS'}</span>`}<b>DUEL A FRIEND</b><small>Same pattern. Winner takes 2×</small>${ART.ic('swords', 'ftIc')}</button>
+    <div class="featRow hl">
+      <button class="feat impF ${impL ? 'locked' : ''}" data-act="${impL ? 'locked:imp' : 'imp'}">${impL ? lk('imp') : `<span class="ftBadge">${impFree() ? '1 FREE TODAY' : 'CHALLENGE'}</span>`}<span class="ftArt">${ART.ic('flame')}</span><b>IMPOSSIBLE <i>100</i></b><small>${st.imp.best ? 'Your best: ' + st.imp.best + ' tiles' : 'How much can you remember?'}</small>${impL ? '' : `<span class="ftGo">Try now ${ART.ic('next')}</span>`}</button>
+      <button class="feat chF ${duL ? 'locked' : ''}" data-act="${duL ? 'locked:duel' : 'chal'}">${duL ? lk('duel') : `<span class="ftBadge ${chalN ? 'hot' : ''}">${chalN ? chalN + ' WAITING' : 'WINNER TAKES 2×'}</span>`}<span class="ftArt">${ART.ic('swords')}</span><b>CHALLENGE A FRIEND</b><small>Same pattern. Friends or the world</small>${duL ? '' : `<span class="ftGo">Challenge ${ART.ic('next')}</span>`}</button>
     </div>
     <div class="playZone">
       <button class="modePick" data-act="modes">
@@ -112,14 +120,20 @@ const UI = (() => {
       </button>
       <button class="playBtn" data-act="ready"><span>${ART.ic('play')}PLAY</span><small>${selMode === 'blitz' ? '90 second race' : `Level ${lv} · ${D.levelLen(lv)} tiles · ${D.gridFor(lv)}×${D.gridFor(lv)}`}</small></button>
     </div>
-    <div class="quick">
-      ${lockQ('quests', 'quests', 'flag', 'Quests', `${st.quests.list.filter(q => q.claimed).length}/3`, qDone > 0)}
-      ${lockQ('spin', 'spin', 'sparkle', 'Spin', spinRdy ? 'Free' : 'Ad', spinRdy)}
-      ${lockQ('pass', 'pass', 'ticket', 'Pass', `Tier ${ptier}`, pReady > 0)}
-      ${qa('rank', 'bars', 'Ranking', 'Weekly', !!pendingLB())}
-      ${qa('chests', 'gift', 'Chests', 'Loot', false)}
-    </div>`;
+`;
+    requestAnimationFrame(heroFit);
   }
+  /* v1.8: fit Sanx to the space left on the home screen so nothing spills over the top bar on small phones */
+  function heroFit() {
+    const hero = document.querySelector('#home .hero'), sx = hero && hero.querySelector('.heroSanx'); if (!hero || !sx) return;
+    sx.style.height = ''; hero.classList.remove('tight');
+    const kids = [...hero.children].filter(c => getComputedStyle(c).position !== 'absolute');
+    const used = kids.reduce((a, c) => { const m = getComputedStyle(c); return a + c.offsetHeight + (parseFloat(m.marginTop) || 0) + (parseFloat(m.marginBottom) || 0); }, 0), room = hero.clientHeight;
+    if (used <= room) return;
+    const h = Math.max(64, sx.offsetHeight - (used - room) - 4);
+    sx.style.height = h + 'px'; if (h < 110) hero.classList.add('tight');
+  }
+  addEventListener('resize', () => { if (cur === 'home') heroFit(); });
   /* the next feature that will open (anticipation) */
   function nextUnlockStrip() {
     const b = S.best(), n = Object.entries(D.UNLOCK).find(([k, u]) => b < u.lv);
@@ -234,12 +248,14 @@ const UI = (() => {
   function modal(html, cls = '') {
     const m = $('modal'); m.className = 'on ' + cls; m.innerHTML = `<div class="mdBox">${html}</div>`;
   }
-  function closeModal() { $('modal').className = ''; $('modal').innerHTML = ''; }
+  let askRes = null;   // v1.8: a pending ask() resolves with null if its modal is closed another way
+  function closeModal() { $('modal').className = ''; $('modal').innerHTML = ''; if (askRes) { const r = askRes; askRes = null; r(null); } }
   /* modal that resolves with the data-pick value of the pressed button */
   function ask(html, cls = '') {
+    if (askRes) { const r = askRes; askRes = null; r(null); }
     return new Promise(res => {
-      modal(html, cls);
-      $('modal').querySelectorAll('[data-pick]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); const v = b.dataset.pick; SND.click(); closeModal(); res(v); }));
+      modal(html, cls); askRes = res;
+      $('modal').querySelectorAll('[data-pick]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); const v = b.dataset.pick; SND.click(); askRes = null; closeModal(); res(v); }));
     });
   }
   function toast(t, ic = 'info') {
@@ -355,6 +371,9 @@ const UI = (() => {
     if (g.boost) items.push(`<span class="rbIc">${ART.ic(D.BOOST[g.boost].icon)}</span><b>${D.BOOST[g.boost].name}</b>`);
     if (g.xp) items.push(`<span class="xpBig">XP</span><b>+${fmt(g.xp)}</b>`);
     if (g.skin) items.push(`<span class="rbIc">${ART.ic('sparkle')}</span><b>${D.skin(g.skin).name} skin</b>`);
+    if (g.coupon) items.push(`<span class="rbIc">${ART.ic('ticket')}</span><b>${g.coupon}% off coupon</b><small>SHOP · 48 HOURS</small>`);
+    if (g.shard) items.push(`<span class="rbIc">${ART.ic('diamond')}</span><b>+${g.shard} shard</b><small>${S.st.shards || 0}/${D.SHARDS} · SHOP SKIN</small>`);
+    if (g.trial) items.push(`<span class="rbIc">${ART.ic('clock')}</span><b>${g.trialId ? D.skin(g.trialId).name : 'Skin'} · 1 day</b><small>FREE TRIAL</small>`);
     if (g.badge) items.push(`<span class="rbIc">${ART.ic(D.BADGES[g.badge].icon)}</span><b>${D.BADGES[g.badge].name} badge</b>`);
     if (g.item) items.push(`<span class="rbIc">${ART.ic('palette')}</span><b>${g.item}</b>`);
     return items.map((i, k) => `<div class="rwI ${k === 0 && g.coins ? 'gold' : ''}" style="--d:${k * 90}ms">${i}</div>`).join('');
@@ -528,8 +547,8 @@ const UI = (() => {
   }
 
   /* ---------- SANX PASS SEASON (14 days · free track + Gold track · missions) ---------- */
-  function passIc(r) { return r.skin ? ART.ic('crown') : r.chest ? ART.ic('gift') : r.gems ? ART.gem(20) : r.boost ? ART.ic(D.BOOST[r.boost].icon) : ART.coin(20); }
-  function passTx(r) { return r.skin ? 'Elite skin' : r.chest ? D.CHESTS.find(c => c.id === r.chest).name.split(' ')[0] : r.gems ? '+' + r.gems : r.boost ? D.BOOST[r.boost].name.split(' ')[0] : '+' + r.coins; }
+  function passIc(r) { return r.skin ? ART.ic('crown') : r.chest ? ART.ic('gift') : r.coupon ? ART.ic('ticket') : r.shard ? ART.ic('diamond') : r.trial ? ART.ic('clock') : r.gems ? ART.gem(20) : r.boost ? ART.ic(D.BOOST[r.boost].icon) : ART.coin(20); }
+  function passTx(r) { return r.skin ? 'Elite skin' : r.chest ? D.CHESTS.find(c => c.id === r.chest).name.split(' ')[0] : r.coupon ? r.coupon + '% off' : r.shard ? 'Shard' : r.trial ? '1-day trial' : r.gems ? '+' + r.gems : r.boost ? D.BOOST[r.boost].name.split(' ')[0] : '+' + r.coins; }
   function misProg(p, m) { const st = S.st.stats; if (m.k === 'bestTiles') return p.bestTiles || 0; return (st[m.k] || 0) - ((p.base || {})[m.k] || 0); }
   /* v1.6 Sanx Pass: vertical ladder. tier line in the middle, free left, Premium (crown) right */
   let passTab = 'rw';
@@ -678,9 +697,9 @@ const UI = (() => {
   }
   async function passAll() {
     const p = S.passTouch(), tier = S.passTier(), sum = { coins: 0, gems: 0 }; const chests = [];
-    const take = r => { if (r.coins) sum.coins += r.coins; if (r.gems) sum.gems += r.gems; if (r.boost) S.grant({ boost: r.boost }); if (r.skin) S.grant({ skin: r.skin }); if (r.chest) chests.push(r.chest); };
+    const take = r => { if (r.coins) sum.coins += r.coins; if (r.gems) sum.gems += r.gems; if (r.boost) S.grant({ boost: r.boost }); if (r.skin) S.grant({ skin: r.skin }); if (r.chest) chests.push(r.chest); if (r.coupon || r.shard || r.trial) { const x = { coupon: r.coupon, shard: r.shard, trial: r.trial }; S.grant(x); if (x.coupon) sum.coupon = Math.max(sum.coupon || 0, x.coupon); if (x.shard) sum.shard = (sum.shard || 0) + x.shard; if (x.trialId) { sum.trial = 1; sum.trialId = x.trialId; } } };
     for (let i = 0; i < tier; i++) { if (!p.got.includes(i)) { p.got.push(i); take(D.PASS.reward(i)); } if (p.gold && !p.got2.includes(i)) { p.got2.push(i); take(D.PASS.gold(i)); } }
-    S.save(); S.grant(sum);
+    S.save(); S.grant({ coins: sum.coins, gems: sum.gems });
     for (const c of chests) await chest(c, true, 'Pass reward');
     reward(sum, 'Pass rewards'); passSheet(); refresh();
   }
@@ -721,6 +740,8 @@ const UI = (() => {
         <div class="volRow">${ART.ic('sound')}<span>Tile sound volume</span><input type="range" class="volR" data-vol="sfxVol" min="0" max="1" step="0.05" value="${st.set.sfxVol == null ? 1 : st.set.sfxVol}"></div>
         ${window.BS_PRIV ? `<button class="setRow" data-act="privOpts">${ART.ic('shield')}<span>Ad privacy choices</span>${ART.ic('next')}</button>` : ''}
         <button class="setRow" data-act="howto">${ART.ic('info')}<span>How to play</span>${ART.ic('next')}</button>
+        <button class="setRow" data-act="rateApp">${ART.ic('star')}<span>Rate Beat Sanx</span>${ART.ic('next')}</button>
+        <button class="setRow" data-act="feedback">${ART.ic('info')}<span>Send feedback</span>${ART.ic('next')}</button>
         <a class="setRow" href="https://graphikians.github.io/beat-sanx/privacy.html" target="_blank" rel="noopener">${ART.ic('lock')}<span>Privacy policy</span>${ART.ic('next')}</a>
       </div>
       <div class="ver">Beat Sanx v${window.BS_VERSION || '1.0'} · by SANX Graphikians</div></div>`;
@@ -1026,7 +1047,7 @@ const UI = (() => {
   function rulesModal(id) {
     const fest = D.FESTS.find(f => f.id === id), er = EV.rules(id);
     const list = fest ? fest.rules : er ? er.list : D.RULES[id] || [];
-    const name = fest ? fest.name : er ? er.name : ({ bts: 'Beat the Sanx', champ: 'Beat the Champion', oma: 'One Man Army', bco: 'Beat the Coins', tour: 'World Flash Tour', mania: 'Sanx Mania', daily: 'Daily Challenge', imp: 'IMPOSSIBLE 100', chal: 'Duel a Friend' })[id] || 'Rules';
+    const name = fest ? fest.name : er ? er.name : ({ bts: 'Beat the Sanx', champ: 'Beat the Champion', oma: 'One Man Army', bco: 'Beat the Coins', tour: 'World Flash Tour', mania: 'Sanx Mania', daily: 'Daily Challenge', imp: 'IMPOSSIBLE 100', chal: 'Challenges' })[id] || 'Rules';
     modal(h`<div class="mdK">Rules</div><div class="mdT">${name}</div><ol class="rlList">${list.map(r => `<li>${r}</li>`).join('')}</ol>${fest ? `<div class="rlRw">${ART.ic('gift')} Win: ${fest.reward.coins ? ART.coin(14) + fmt(fest.reward.coins) : ''} ${fest.reward.gems ? ART.gem(14) + fest.reward.gems : ''} + ${D.skin(fest.skin).name} skin</div>` : ''}<button class="btn big" data-act="closeModal">GOT IT</button>`, 'rules');
   }
 
@@ -1150,8 +1171,11 @@ const UI = (() => {
       case 'impG': impG = +v; impSheet(); break;
       case 'impGo': impGo(); break;
       case 'chal': CH.open(); break;
+      case 'rateApp': RATE.store(); break;
+      case 'feedback': RATE.feedback(); break;
       default:
         if (k === 'ev') EV.act(a.slice(3), t);
+        else if (k === 'fbKind' || k === 'fbSend') RATE.act(a);
         else if (k.startsWith('ch')) CH.act(a, t);
         else if (k.startsWith('sh') || k.startsWith('bg')) SHOP.act(a, t);
     }
@@ -1161,7 +1185,7 @@ const UI = (() => {
   function afterLogin() {
     if ($('modal').classList.contains('on') || cur !== 'home') return;
     if (EV.dayPopup()) return;
-    CH.checkClipboard();
+    CH.checkClipboard(); CH.startLoop();
   }
 
   function init() {

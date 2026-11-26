@@ -227,7 +227,7 @@ const G = (() => {
   }
   function setWorld() {
     const w = D.world(R.level);
-    $('gWorld').textContent = R.dbeat ? 'Same pattern for every player today' : R.test ? `Memory Score ${S.memBest()} · ${D.memRank(S.memBest()).name}` : R.imp ? `Target ${R.imp.target} tiles · ${D.IMP.coins(R.imp.target, R.imp.grid).toLocaleString('en-IN')} coins` : R.chal ? (R.chal.role === 'make' ? 'Set the score: longest pattern' : `Beat ${R.chal.target} tiles`) : R.ev ? R.ev.title : (R.daily ? 'Daily Challenge' : `World ${D.WORLDS.indexOf(D.WORLDS.find(x => x.name === w.name)) + 1} · ${w.name}`);
+    $('gWorld').textContent = R.dbeat ? 'Same pattern for every player today' : R.test ? `Memory Score ${S.memBest()} · ${D.memRank(S.memBest()).name}` : R.imp ? `Target ${R.imp.target} tiles · ${D.IMP.coins(R.imp.target, R.imp.grid).toLocaleString('en-IN')} coins` : R.chal ? (R.chal.role !== 'play' ? (R.chal.role === 'world' ? 'Live duel · go as far as you can' : 'Set the score: longest pattern') : `Beat ${R.chal.target} tiles`) : R.ev ? R.ev.title : (R.daily ? 'Daily Challenge' : `World ${D.WORLDS.indexOf(D.WORLDS.find(x => x.name === w.name)) + 1} · ${w.name}`);
     const th = R.ev && R.ev.theme;
     $('game').style.setProperty('--wa', R.boss ? '#3a0820' : th ? th[0] + '55' : w.a); $('game').style.setProperty('--wb', R.boss ? '#12030a' : th ? '#07041a' : w.b);
     $('game').classList.toggle('isBoss', R.boss); $('game').classList.toggle('isBonus', R.bonus);
@@ -375,7 +375,7 @@ const G = (() => {
     if (R.imp) { k = 'IMPOSSIBLE 100'; big = R.imp.target; sub = 'Pattern grows 1 tile every round'; }
     else if (R.dbeat) { k = `DAILY BEAT #${R.dbeat.no}`; big = D.sanxScore(R.dbeat.no); sub = R.dbeat.practice ? 'Practice run · your official score stays the same' : 'Sanx remembered this many. Same pattern for the whole world. One mistake ends it.'; }
     else if (R.test) { k = 'MEMORY TEST'; big = ART.ic('brain'); sub = `Starts at ${D.TEST.start} tiles, +1 every round. ${D.TEST.hearts} mistakes and it ends. No boosters.`; }
-    else if (R.chal) { k = 'DUEL LADDER'; big = R.chal.role === 'make' ? 'GO!' : `${R.chal.target + 1}+`; sub = R.chal.role === 'make' ? 'Starts at 2 tiles, +1 every round. Go as far as you can' : `Remember a pattern longer than ${R.chal.target} tiles`; }
+    else if (R.chal) { k = 'DUEL LADDER'; big = R.chal.role !== 'play' ? 'GO!' : `${R.chal.target + 1}+`; sub = R.chal.role !== 'play' ? 'Starts at 2 tiles, +1 every round. Go as far as you can' : `Remember a pattern longer than ${R.chal.target} tiles`; }
     else if (R.ev) { k = R.ev.name; big = ART.ic(R.ev.icon || 'trophy'); sub = R.ladder ? `${R.ev.title} · starts at ${R.ladder.start} tiles, +1 every round` : R.ev.title; }
     else if (!R.daily && !R.blitz && S.st.stats.runs < 1) { k = 'HOW TO PLAY'; big = ART.ic('zap'); sub = 'Tiles flash. Tap them in the same order. Every round adds ONE new tile.'; }
     else { const m = D.MODE[R.mode]; k = m.name.toUpperCase(); big = ART.ic(m.icon); sub = R.daily ? 'One pattern. One shot.' : m.tag; }
@@ -664,7 +664,7 @@ const G = (() => {
     let extra = '';
     if (R.boss) {
       const bm = D.season().id === 'boss' ? 2 : 1;
-      coins += D.BOSS_COINS * bm; st.stats.bosses++; S.quest('boss');
+      coins += D.BOSS_COINS * bm; st.stats.bosses++; S.quest('boss'); R.bossWins = (R.bossWins || 0) + 1;
       S.grant({ gems: 1 * bm }); extra = `<div class="bnR">${ART.gem(16)} +${bm} · Boss chest!</div>`;
       R.chest = !R.pure;
       R.passPts += S.passAdd('boss') * R.passMul;
@@ -691,7 +691,8 @@ const G = (() => {
       extra += `<div class="bnR myst">${ART.ic('gift')} Mystery card: ${m.coins ? `+${m.coins} coins` : m.boost ? `+1 ${D.BOOST[m.boost].name}` : m.gems ? '+1 gem' : '+1 shield'}</div>`;
     }
     const ms = D.MILESTONES[R.levelsDone];
-    if (ms && !R.pure) { earn(ms); extra += `<div class="bnR">${ART.coin(16)} Milestone +${ms}</div>`; }
+    /* v1.8: run milestones pay only on a NEW personal-best run (not again on every short run) */
+    if (ms && !R.pure && !R.ev && !R.daily && R.levelsDone > (st.stats.bestRun || 0)) { earn(ms); extra += `<div class="bnR">${ART.coin(16)} New best run · +${ms}</div>`; }
     const nearPB = !R.ev && st.stats.bestRun > 0 && R.levelsDone >= st.stats.bestRun - 1 && R.levelsDone <= st.stats.bestRun + 1;
     if (R.levelsDone > st.stats.bestRun && st.stats.bestRun > 0 && !R.pbShown && !R.ev && !R.pure) { R.pbShown = true; extra += `<div class="bnR pb">NEW RECORD RUN!</div>`; }
     else if (nearPB && R.levelsDone === st.stats.bestRun) extra += `<div class="bnR pb">Matching your best run</div>`;
@@ -928,6 +929,9 @@ const G = (() => {
     const st = S.st;
     if (R.ladder && R.maxLen) R.newMem = S.memAdd(R.maxLen, R.dbeat ? 'daily' : R.test ? 'test' : R.chal ? 'duel' : 'event');
     const res = result(won, why); lastResult = res;
+    /* v1.8 rating popup: only after a happy run (event/daily/IMPOSSIBLE win, new best run, boss beaten, new memory best) */
+    const happy = (won && (R.ev || R.imp || R.daily || R.dbeat)) || (!R.ev && !R.daily && !R.pure && !R.imp && R.levelsDone > st.stats.bestRun && st.stats.bestRun > 0) || R.bossWins > 0 || R.newMem;
+    if (happy && !R.chal && typeof RATE !== 'undefined') RATE.maybe(R.ev ? 'event' : R.imp ? 'imp' : 'run');
     if (typeof REC !== 'undefined' && REC.recording) REC.end(res);
     st.stats.runs++; st.ads.runs++;
     if (!R.ev && !R.daily && !R.pure && !R.imp && R.levelsDone > st.stats.bestRun) st.stats.bestRun = R.levelsDone;

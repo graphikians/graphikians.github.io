@@ -2,9 +2,11 @@
    Plain REST calls (no SDK): anonymous sign-in + Firestore.
    Turns on only when firebase-config.js has a projectId + apiKey. Until then duels work by link.
    Collections:
-     duels/{id}   challenge + result (challenger app settles automatically, no result code)
-     runs/{auto}  finished duel runs, used as "random opponent" ghosts
-     inbox/{auto} small bonus for a player whose run was used as a ghost and lost
+     duels/{id}          Challenge a Friend: the open challenge (24h, any number of players)
+     plays/{duel_player} one result per player per challenge (the creator's app settles from these)
+     presence/{uid}      who is online now (Challenge the World matching by level)
+     wduels/{id}         Challenge the World: 1 vs 1 live invite + both results
+     feedback/{auto}     Send feedback from Settings
    Free quota (Spark): 50,000 reads + 20,000 writes per day. One duel = about 3-4 writes. */
 'use strict';
 const FB = (() => {
@@ -50,27 +52,21 @@ const FB = (() => {
   }
   const F = (field, op, v) => ({ field: { fieldPath: field }, op, value: enc({ v }).fields.v });
 
-  /* ---------- duels ---------- */
+  /* ---------- v1.8 Challenge a Friend: one open challenge, many players (one play each) ---------- */
   async function putDuel(d) { return req('PATCH', `/duels/${d.id}`, enc({ ...d, cuid: await myUid() })); }
   async function getDuel(id) { return dec(await req('GET', `/duels/${id}`)); }
-  async function finishDuel(id, r) { const o = { status: 'done', fid: r.fid, fname: r.fname, ftiles: r.tiles, ferr: r.err, fsecs: r.secs, fts: Date.now(), fuid: await myUid() }; return req('PATCH', `/duels/${id}?${mask(o)}`, enc(o)); }
-  async function myOpen(pid) { return query('duels', [F('cid', 'EQUAL', pid)], 30); }
-  async function invites(pid) { return (await query('duels', [F('toPid', 'EQUAL', pid), F('status', 'EQUAL', 'open')], 10)); }
-  /* ---------- random opponent ---------- */
-  async function saveRun(r) { return req('POST', '/runs', enc({ ...r, r: Math.random(), uid: await myUid() })); }
-  /* single-field range query (no composite index needed); the duel uses the ghost run's mode */
-  async function randomRun(myPid) {
-    const x = Math.random();
-    let a = await query('runs', [F('r', 'GREATER_THAN_OR_EQUAL', x)], 8, 'r');
-    if (a.filter(z => z.pid !== myPid).length === 0) a = await query('runs', [F('r', 'LESS_THAN', x)], 8, 'r');
-    return a.filter(z => z.pid !== myPid)[0] || null;
-  }
-  async function sendBonus(touid, coins, from) { return req('POST', '/inbox', enc({ touid, coins, from, fuid: await myUid(), ts: Date.now() })); }
-  async function collectInbox(pid) {
-    const a = await query('inbox', [F('touid', 'EQUAL', await myUid())], 20);
-    let sum = 0; for (const m of a) { sum += m.coins || 0; try { await req('DELETE', `/inbox/${m._id}`); } catch (e) { } }
-    return sum;
-  }
+  /* a play doc id is duel_player, created once: a second try is refused by the security rules */
+  async function putPlay(p) { return req('PATCH', `/plays/${p.did}_${p.pid}?currentDocument.exists=false`, enc({ ...p, puid: await myUid() })); }
+  async function getPlay(did, pid) { return dec(await req('GET', `/plays/${did}_${pid}`)); }
+  async function playsFor(did) { return query('plays', [F('did', 'EQUAL', did)], 60); }
+  async function playsByCreator(pid) { return query('plays', [F('cpid', 'EQUAL', pid)], 60); }
+  /* ---------- v1.8 Challenge the World: who is online + 1 vs 1 live invites ---------- */
+  async function presence(p) { const uid = await myUid(); return req('PATCH', `/presence/${uid}`, enc({ ...p, uid, ts: Date.now() })); }
+  async function online(sinceMs) { return query('presence', [F('ts', 'GREATER_THAN_OR_EQUAL', Date.now() - sinceMs)], 40); }
+  async function wCreate(d) { return req('PATCH', `/wduels/${d.id}?currentDocument.exists=false`, enc({ ...d, cuid: await myUid(), status: 'invite', ts: Date.now() })); }
+  async function wGet(id) { return dec(await req('GET', `/wduels/${id}`)); }
+  async function wPatch(id, o) { return req('PATCH', `/wduels/${id}?${mask(o)}`, enc(o)); }
+  async function wInvites() { return query('wduels', [F('touid', 'EQUAL', await myUid()), F('status', 'EQUAL', 'invite')], 5); }
   /* ---------- v1.4 Daily Beat: world stats (counter doc, 1 write + 1 read per player) ---------- */
   async function dstatAdd(no, score) {
     const doc = `projects/${C.projectId}/databases/(default)/documents/dstats/d${no}`;
@@ -82,5 +78,7 @@ const FB = (() => {
   async function getGroup(code) { return dec(await req('GET', `/groups/${code}`)); }
   async function groupScore(code, no, pid, name, score, av) { const id = `${code}_${no}_${pid}`; return req('PATCH', `/gscores/${id}`, enc({ gn: `${code}_${no}`, pid, name, score, av: av || '', uid: await myUid(), ts: Date.now() })); }
   async function groupBoard(code, no) { return (await query('gscores', [F('gn', 'EQUAL', `${code}_${no}`)], 60)).sort((a, b) => b.score - a.score); }
-  return { on, dstatAdd, dstat, putGroup, getGroup, groupScore, groupBoard, auth, putDuel, getDuel, finishDuel, myOpen, invites, saveRun, randomRun, sendBonus, collectInbox };
+  /* ---------- v1.8 feedback (create only, read in the Firebase console) ---------- */
+  async function feedback(f) { return req('POST', '/feedback', enc({ ...f, uid: await myUid() })); }
+  return { on, feedback, dstatAdd, dstat, putGroup, getGroup, groupScore, groupBoard, auth, myUid, putDuel, getDuel, putPlay, getPlay, playsFor, playsByCreator, presence, online, wCreate, wGet, wPatch, wInvites };
 })();

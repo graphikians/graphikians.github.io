@@ -638,11 +638,23 @@ D.IMP = {
    Pattern starts at 2 tiles and grows +1 every round on a 4x4 grid, 2 hearts.
    Score = longest pattern cleared. Same seed for both players. */
 D.CHAL = {
-  stakes: [0, 100, 250, 500, 1000], pct: 0.10, expireH: 24, perFriendDay: 5,
-  adWin: 200, freeWin: 100, minLevel: 10, winBonusAd: 0.5,
+  stakes: [100, 250, 500, 1000], pct: 0.10, expireH: 24, perFriendDay: 5, minLevel: 10, winBonusAd: 0.5,
+  /* v1.8 rewards. Friend: creator watches an ad = 500 once (however many players fail); challenger: bet 2x,
+     ad 500, no ad 100. Creator's coin bet earns 50% of each losing coin bet, max 5x his own bet.
+     World: always 1 vs 1 (a live player, or a Sanx bot); bet 2x or ad 200. Ad limits are separate. */
+  creatorAdWin: 500, adWin: 500, noAdWin: 100, worldAdWin: 200, adCapF: 5, adCapW: 5, betShare: 0.5, betCap: 5,
+  grids: [3, 4, 5], worldWaitS: 35, onlineMs: 5 * 6e4,
   ladder: { start: 2, grid: 4, hearts: 2 },
   modes: ['classic', 'reverse', 'speed', 'twin', 'chaos', 'ghost', 'negative', 'focus']
 };
+/* v1.8 Sanx bots for Challenge the World when no live player accepts. Always shown with a BOT tag. */
+D.BOTS = [
+  { id: 'lite', name: 'Sanx Lite', to: 19, t: [4, 5] },
+  { id: 'standard', name: 'Sanx Standard', to: 49, t: [6, 7] },
+  { id: 'pro', name: 'Sanx Pro', to: 99, t: [8, 9] },
+  { id: 'elite', name: 'Sanx Elite', to: 199, t: [10, 11] },
+  { id: 'legend', name: 'Sanx Legend', to: Infinity, t: [12, 14] }
+];
 
 /* ---------- Challenges tab: 10 challenges x 3 stars, 30 stars = Legendary skin ---------- */
 D.CHALLENGES = [
@@ -668,10 +680,12 @@ D.luckyCoins = lv => 30 + lv * 3;
 /* ---------- Sanx Pass SEASON (14 days, 30 tiers, free track + Gold track) ----------
    Gold track unlocks for free by watching 3 rewarded ads in the season (never real money). */
 D.PASS = {
-  tiers: 30, per: 60, goldAds: 3,
+  tiers: 30, per: 150, goldAds: 3,
   pts: { level: 10, boss: 30, event: 25, quest: 40, daily: 50, imp: 40, chal: 40 },
-  reward: i => { const n = i + 1; if (n === 30) return { skin: 'passx', gems: 30 }; if (n % 10 === 0) return { chest: n === 20 ? 'gold' : 'silver' }; if (n % 5 === 0) return { gems: 5 }; if (n % 3 === 0) return { boost: ['slow', 'heart', 'double', 'hint', 'shield', 'xray'][n % 6] }; return { coins: 80 + n * 20 }; },
-  gold: i => { const n = i + 1; if (n % 5 === 0) return n % 10 === 0 ? { chest: n === 30 ? 'brain' : 'gold' } : { gems: 8 }; if (n % 2 === 0) return { boost: ['double', 'shield', 'xray', 'heart', 'slow', 'double', 'shield'][n % 7] }; return { coins: 150 + n * 30 }; },
+  /* v1.8: fewer coins (~4,500 a season with both tracks, was ~16,800). Instead the Pass sends players to the
+     Shop: coupons (% off any coin purchase for 48h), 1-day skin trials and shards (10 shards = one shop skin). */
+  reward: i => { const n = i + 1; if (n === 30) return { skin: 'passx', gems: 30 }; if (n === 10) return { coupon: 20 }; if (n === 20) return { coupon: 30 }; if (n % 5 === 0) return { gems: 5 }; if (n % 7 === 0) return { shard: 1 }; if (n % 4 === 2) return { trial: 1 }; if (n % 3 === 0) return { boost: ['slow', 'heart', 'double', 'hint', 'shield', 'xray'][n % 6] }; return { coins: 70 + n * 4 }; },
+  gold: i => { const n = i + 1; if (n === 30) return { chest: 'gold' }; if (n === 10) return { chest: 'silver' }; if (n === 20) return { coupon: 40 }; if (n % 5 === 0) return { gems: 8 }; if (n % 4 === 0) return { shard: 1 }; if (n % 2 === 0) return { boost: ['double', 'shield', 'xray', 'heart', 'slow', 'double', 'shield'][n % 7] }; return { coins: 100 + n * 6 }; },
   missions: [
     { id: 'm1', t: 'Clear 30 levels', k: 'levelsTotal', n: 30, pts: 120 },
     { id: 'm2', t: 'Win 3 duels', k: 'chalWins', n: 3, pts: 150 },
@@ -683,6 +697,8 @@ D.PASS = {
 D.SKINS.push({ id: 'passx', name: 'Pass Elite', cost: -5, desc: 'Reach tier 30 of a Sanx Pass', icons: ['bolt2', 'star', 'crown', 'diamond', 'mask', 'zap', 'shield', 'sun', 'trophy'], colors: ['#9a6df5', '#00e5ff', '#ff3d7f', '#743ae8', '#ffd700', '#22c55e', '#f97316', '#c4a7ff', '#3b82f6'] });
 
 /* ---------- Comeback reward (away 3+ days) ---------- */
+D.SHARDS = 10;              // v1.8 Pass shards needed for one shop skin
+D.COUPON_H = 48;            // a Pass coupon works for 48 hours
 D.COMEBACK = { days: 3, r: { coins: 1000, gems: 10, boost: 'double' }, chest: 'silver' };
 
 /* ---------- Rewarded-ad placement limits ---------- */
@@ -781,5 +797,5 @@ D.RULES = {
   mania: ['Weekly score chase on the event ladder in any mode you unlocked.', 'Score = longest pattern², combo and accuracy.', 'Qualifier Mon-Wed ×1, Championship Thu-Sat ×1.5, Grand Final Sunday ×2.', 'Your best score sets your division. Division reward arrives on Monday.', '5 energy a day. Watch an ad for +1.'],
   daily: ['DAILY BEAT: one pattern a day, the same for every player in the world.', 'It starts at 3 tiles and grows +1 every round.', 'ONE mistake ends it. Your score = tiles remembered.', 'Sanx posts his own score every day. Beat it for +150 coins.', 'Share your grid. Practice runs (ad) never change your official score.'],
   imp: ['First pick your grid: 3×3, 4×4 or 5×5. The whole run stays on that grid.', 'Pick your target: 10 to 100 tiles. The pattern starts at 1 tile and grows by 1 every round.', 'Tap timer (never runs while the pattern plays): 3×3 = 10 sec + 2.5 sec per tile, 4×4 = 10 sec + 3 sec per tile, 5×5 = 10 sec + 3.5 sec per tile.', 'Prize: tiles × tiles coins, ×1 on 3×3, ×3 on 4×4, ×5 on 5×5. Diamonds on your first win per target and grid each day.', 'Replay booster: up to 10 per run with an ad. The pattern plays again and you continue from the same tile. Also offered after a mistake.', 'Checkpoint every 5 tiles (optional, with an ad). After a mistake you can restart from it.', '1 free entry a day, more with ads.'],
-  chal: ['Duel Ladder: the pattern starts at 2 tiles and grows +1 every round, on a 4x4 grid with 2 hearts.', 'Your score is the longest pattern you remember. Your friend plays the exact same pattern.', 'Friend must remember MORE tiles than you. Same tiles? Fewer mistakes wins, then the faster time.', 'No revives, no boosters, no ads inside a duel. Fair for both.', 'Bet limit: 10% of your coins, max 1,000. Coins never move between players: Sanx Bank pays the winner 2x the bet.', 'Your bet waits in Sanx Bank. No reply in 24 hours = your FULL bet comes back.', 'Max 5 duels with the same friend per day. You need level 10 to win coins.', 'Online duels (when on): results arrive by themselves, invite friends by player ID, or play a random real opponent.']
+  chal: ['Duel Ladder: the pattern starts at 2 tiles and grows +1 every round, 2 hearts, on the grid you pick (3×3, 4×4 or 5×5).', 'Your score is the longest pattern you remember. Tie: fewer mistakes wins, then the faster time.', 'Challenge a Friend: you play first, then share ONE link anywhere. It stays open for 24 hours and every player can try it once.', 'Creator: watch an ad and win 500 coins the first time a player fails to beat you (paid once), or bet coins and earn 50% of every losing coin bet, up to 5× your bet. No one plays in 24 hours = bet refunded.', 'Player: bet coins (win 2× the bet), watch an ad (win 500) or play with no ad (win 100).', 'Challenge the World: always 1 vs 1. A player online now near your level gets your challenge. If nobody accepts in 35 seconds you play a Sanx bot (marked BOT). Bet coins (win 2×) or watch an ad (win 200).', 'Watch-ad limits: 5 a day in Challenge a Friend, 5 a day in Challenge the World. Coins from level 10.'],
 };

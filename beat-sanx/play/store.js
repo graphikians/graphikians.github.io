@@ -73,7 +73,15 @@ const S = (() => {
       if (r.boost && !D.BOOST_ACTIVE.includes(r.boost)) { api.add('coins', Math.round((D.BOOST[r.boost] ? D.BOOST[r.boost].coins : 400) * 0.8)); }
       else if (r.boost) { st.boosters[r.boost] = Math.min(9, (st.boosters[r.boost] || 0) + 1); save(); emit(); }
       if (r.skin && !st.skins.includes(r.skin)) { st.skins.push(r.skin); save(); emit(); }
+      /* v1.8 Pass rewards that lead to the Shop */
+      if (r.coupon) { const c = st.coupon; if (!c || c.until < Date.now() || c.off <= r.coupon) st.coupon = { off: r.coupon, until: Date.now() + D.COUPON_H * 36e5 }; save(); emit(); }
+      if (r.shard) { st.shards = (st.shards || 0) + r.shard; save(); emit(); }
+      if (r.trial) { const t = api.trialPick(); if (t) { st.trials.skin = { id: t.id, until: Date.now() + 864e5, pass: true }; r.trialId = t.id; save(); emit(); } else api.add('coins', 150); }
     },
+    /* skins a Pass trial / shards can point at: real shop skins the player does not own yet */
+    trialPick() { const a = D.SKINS.filter(x => x.cost >= 1500 && !st.skins.includes(x.id)); return a.length ? a[Math.floor(Math.random() * a.length)] : null; },
+    shardTarget() { return D.SKINS.filter(x => x.cost >= 1500 && !st.skins.includes(x.id)).sort((a, b) => a.cost - b.cost)[0] || null; },
+    couponOff() { const c = st.coupon; return c && c.until > Date.now() ? c.off : 0; },
     lv(mode) { return st.modeLv[mode] || 1; },
     best() { return Math.max(1, ...Object.values(st.bestLv), ...Object.values(st.modeLv)); },
     unlocked(mode) { return mode === 'zen' || api.best() >= D.MODE[mode].unlock; },
