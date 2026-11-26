@@ -1711,3 +1711,25 @@ body.smooth .featRow.hl .feat::after{animation:none;opacity:.55}body.smooth .ftA
 .wRadar.sm{width:80px;height:80px}
 @keyframes wPing{from{transform:scale(.3);opacity:1}to{transform:scale(1);opacity:0}}
 body.smooth .wRadar i{animation-duration:3.5s}
+.hero.nobub .heroBubble{display:none}
+.hero.tight .heroBubble{display:none}
+.hero.tight .rlB b{display:block;font-size:8.5px}
+.hero.tight .rail{width:58px}
+/* side icons never taller than their row: the row is at least as tall as 3 icons with labels */
+.heroRow{min-height:168px}
+.rlIc{width:40px;height:40px}
+.rlB b{font-size:10px;display:block}
+.hero.tight .heroRow{min-height:132px}
+.hero.tight .rlB b{display:none}
+.hero.tight .rlIc{width:38px;height:38px}
+@media (max-height:720px){.rlIc{width:36px;height:36px}.heroRow{min-height:150px}}
+.hero.smlogo .heroLogo{width:min(62vw,250px)}
+.hero.tiny .heroLogo{width:min(48vw,180px)}
+.hero.tiny .heroRow{min-height:112px}
+.hero.tiny .rlIc{width:32px;height:32px}
+.hero.smlogo .heroRow{min-height:140px}
+.hero.smlogo .rlIc{width:34px;height:34px}
+.hero.smlogo .rlB b{font-size:9px}
+.hero.tight .heroRow{min-height:120px}
+.hero.tiny .season{display:none}
+.hero.tiny .heroRow{min-height:108px}

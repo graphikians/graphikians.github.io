@@ -121,19 +121,31 @@ const UI = (() => {
       <button class="playBtn" data-act="ready"><span>${ART.ic('play')}PLAY</span><small>${selMode === 'blitz' ? '90 second race' : `Level ${lv} · ${D.levelLen(lv)} tiles · ${D.gridFor(lv)}×${D.gridFor(lv)}`}</small></button>
     </div>
 `;
-    requestAnimationFrame(heroFit);
+    requestAnimationFrame(heroFit); heroFitLater();
   }
   /* v1.8: fit Sanx to the space left on the home screen so nothing spills over the top bar on small phones */
   function heroFit() {
     const hero = document.querySelector('#home .hero'), sx = hero && hero.querySelector('.heroSanx'); if (!hero || !sx) return;
-    sx.style.height = ''; hero.classList.remove('tight');
-    const kids = [...hero.children].filter(c => getComputedStyle(c).position !== 'absolute');
-    const used = kids.reduce((a, c) => { const m = getComputedStyle(c); return a + c.offsetHeight + (parseFloat(m.marginTop) || 0) + (parseFloat(m.marginBottom) || 0); }, 0), room = hero.clientHeight;
-    if (used <= room) return;
-    const h = Math.max(64, sx.offsetHeight - (used - room) - 4);
-    sx.style.height = h + 'px'; if (h < 110) hero.classList.add('tight');
+    sx.style.height = ''; hero.classList.remove('tight', 'nobub', 'smlogo', 'tiny');
+    const over = () => { const kids = [...hero.children].filter(c => getComputedStyle(c).position !== 'absolute' && c.offsetParent !== null);
+      return kids.reduce((a, c) => { const m = getComputedStyle(c); return a + c.offsetHeight + (parseFloat(m.marginTop) || 0) + (parseFloat(m.marginBottom) || 0); }, 0) - hero.clientHeight; };
+    let o = over(); if (o <= 0) return;
+    hero.classList.add('nobub'); o = over(); if (o <= 0) return;      // 1) drop the speech bubble
+    hero.classList.add('smlogo'); o = over(); if (o <= 0) return;     // 2) smaller logo
+    let h = Math.max(70, sx.offsetHeight - o - 4);                    // 3) smaller Sanx (row keeps room for the icons)
+    sx.style.height = h + 'px'; o = over(); if (o <= 0) return;
+    hero.classList.add('tight'); o = over(); if (o <= 0) return;      // 4) icons without labels
+    hero.classList.add('tiny'); o = over();                           // 5) very small phones
+    if (o > 0) sx.style.height = Math.max(56, sx.offsetHeight - o - 4) + 'px';
   }
   addEventListener('resize', () => { if (cur === 'home') heroFit(); });
+  /* the logo image and fonts can finish loading after the first fit (that made the hero spill over the top bar) */
+  function heroFitLater() {
+    const lg = document.querySelector('#home .heroLogo');
+    if (lg && !lg.complete) lg.addEventListener('load', heroFit, { once: true });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (cur === 'home') heroFit(); });
+    [250, 900].forEach(t => setTimeout(() => { if (cur === 'home') heroFit(); }, t));
+  }
   /* the next feature that will open (anticipation) */
   function nextUnlockStrip() {
     const b = S.best(), n = Object.entries(D.UNLOCK).find(([k, u]) => b < u.lv);
